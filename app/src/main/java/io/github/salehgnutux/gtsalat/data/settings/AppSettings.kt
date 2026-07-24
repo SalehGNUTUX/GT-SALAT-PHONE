@@ -23,6 +23,8 @@ data class AppSettings(
     val enablePreNotify: Boolean = true,
     val useApiTimetables: Boolean = true,
     val doNotDisturb: Boolean = false,
+    val autoSilence: Boolean = false,
+    val silenceMinutes: Int = 15,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
     val setupCompleted: Boolean = false,

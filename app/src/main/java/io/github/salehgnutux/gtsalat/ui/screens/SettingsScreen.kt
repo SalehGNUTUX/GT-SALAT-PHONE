@@ -134,9 +134,13 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             SwitchRow("دعاء بعد الأذان", settings.enableDuaAfterAdhan) { vm.setEnableDua(it) }
             SwitchRow("تنبيه الاقتراب قبل الصلاة", settings.enablePreNotify) { vm.setEnablePreNotify(it) }
             if (settings.enablePreNotify) {
-                PreNotifySlider(settings.preNotifyMinutes) { vm.setPreNotify(it) }
+                MinutesSlider("قبل الصلاة بـ", settings.preNotifyMinutes, 1, 60) { vm.setPreNotify(it) }
             }
             SwitchRow("وضع عدم الإزعاج", settings.doNotDisturb) { vm.setDnd(it) }
+            SwitchRow("الكاتم التلقائيّ أثناء الصلاة", settings.autoSilence) { vm.setAutoSilence(it) }
+            if (settings.autoSilence) {
+                SilenceControls(settings.silenceMinutes) { vm.setSilenceMinutes(it) }
+            }
         }
 
         ReliabilityCard()
@@ -312,19 +316,65 @@ private fun AdhanTypeRow(
 }
 
 @Composable
-private fun PreNotifySlider(minutes: Int, onChange: (Int) -> Unit) {
+private fun MinutesSlider(prefix: String, minutes: Int, min: Int, max: Int, onChange: (Int) -> Unit) {
     var v by remember(minutes) { mutableStateOf(minutes.toFloat()) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         // القيمة الحيّة تظهر أثناء السحب لا بعد تركه فقط.
-        Text("قبل الصلاة بـ ${v.toInt()} دقيقة", style = MaterialTheme.typography.bodyLarge)
+        Text("$prefix ${v.toInt()} دقيقة", style = MaterialTheme.typography.bodyLarge)
         Slider(
             value = v,
             onValueChange = { v = it },
-            valueRange = 1f..60f,
+            valueRange = min.toFloat()..max.toFloat(),
             onValueChangeFinished = { onChange(v.toInt()) },
             modifier = Modifier.fillMaxWidth(),
         )
     }
+}
+
+/** ضوابط الكاتم: تنبيهُ منح إذن «عدم الإزعاج» إن لزم، ومدّة الكتم. */
+@Composable
+private fun SilenceControls(minutes: Int, onChange: (Int) -> Unit) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var refreshKey by remember { mutableIntStateOf(0) }
+    DisposableEffect(lifecycleOwner) {
+        val obs = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) refreshKey++
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
+    val hasAccess = remember(refreshKey) { hasPolicyAccess(context) }
+
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (!hasAccess) {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Text(
+                    "يلزم منح إذن «عدم الإزعاج» ليعمل الكتم.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f),
+                )
+                FilledTonalButton(onClick = { openPolicyAccess(context) }) { Text("منح") }
+            }
+        }
+        MinutesSlider("يُكتم لمدّة", minutes, 5, 60, onChange)
+    }
+}
+
+private fun hasPolicyAccess(context: Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
+    val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+    return nm.isNotificationPolicyAccessGranted
+}
+
+private fun openPolicyAccess(context: Context) {
+    runCatching {
+        context.startActivity(
+            Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    }.onFailure { openAppDetails(context) }
 }
 
 @Composable

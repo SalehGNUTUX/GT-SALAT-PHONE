@@ -62,6 +62,8 @@ class SettingsViewModel @Inject constructor(
     fun setEnablePreNotify(v: Boolean) = viewModelScope.launch { settingsRepo.setEnablePreNotify(v); reschedule() }
     fun setUseApi(v: Boolean) = viewModelScope.launch { settingsRepo.setUseApi(v) }
     fun setDnd(v: Boolean) = viewModelScope.launch { settingsRepo.setDnd(v); reschedule() }
+    fun setAutoSilence(v: Boolean) = viewModelScope.launch { settingsRepo.setAutoSilence(v) }
+    fun setSilenceMinutes(m: Int) = viewModelScope.launch { settingsRepo.setSilenceMinutes(m) }
     fun setTheme(t: ThemeMode) = viewModelScope.launch { settingsRepo.setTheme(t) }
     fun setDynamicColor(v: Boolean) = viewModelScope.launch { settingsRepo.setDynamicColor(v) }
     fun redetectLocation() = viewModelScope.launch { repo.detectAndSaveLocation(); repo.prefetchMonths(3); reschedule() }

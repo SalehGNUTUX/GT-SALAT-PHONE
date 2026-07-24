@@ -29,8 +29,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <uses-permission android:name="android.permission.VIBRATE" />
-    <!-- للكاتم التلقائيّ أثناء الصلاة (مرحلة لاحقة) -->
+    <!-- الكاتم التلقائيّ أثناء الصلاة: تغيير وضع الرنين يتطلّب الوصول لسياسة الإشعارات -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
 
     <application
         android:name=".GtSalatApp"

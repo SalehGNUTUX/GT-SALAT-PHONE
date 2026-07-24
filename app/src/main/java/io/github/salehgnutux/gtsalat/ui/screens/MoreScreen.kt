@@ -45,7 +45,7 @@ fun MoreScreen(onOpen: (String) -> Unit) {
     val features = listOf(
         Feature("الأذكار والأدعية", Icons.Outlined.FavoriteBorder, "adhkar"),
         Feature("التسبيح", Icons.Outlined.Fingerprint, "tasbih"),
-        Feature("أسماء الله الحسنى", Icons.Outlined.AutoAwesome, null),
+        Feature("أسماء الله الحسنى", Icons.Outlined.AutoAwesome, "asma"),
         Feature("المصحف", Icons.Outlined.MenuBook, null),
         Feature("الإذاعات", Icons.Outlined.Radio, null),
     )

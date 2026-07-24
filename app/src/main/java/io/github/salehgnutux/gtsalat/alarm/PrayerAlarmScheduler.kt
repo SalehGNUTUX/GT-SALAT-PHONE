@@ -46,6 +46,12 @@ class PrayerAlarmScheduler @Inject constructor(
     fun cancelAll() {
         am.cancel(adhanIntent("", ""))
         am.cancel(preNotifyIntent("", 0))
+        // لا نُلغي إنذار استعادة الرنين هنا كي لا تنقطع نافذة كتمٍ جاريةٍ عند إعادة الجدولة.
+    }
+
+    /** جدولة استعادة وضع الرنين بعد انتهاء نافذة الكتم (يُستدعى من مُستقبِل الأذان). */
+    fun scheduleRestoreSound(triggerAt: Long) {
+        setExact(triggerAt, restoreIntent())
     }
 
     fun canScheduleExact(): Boolean =
@@ -78,9 +84,17 @@ class PrayerAlarmScheduler @Inject constructor(
         return PendingIntent.getBroadcast(context, RC_PRENOTIFY, i, FLAGS)
     }
 
+    private fun restoreIntent(): PendingIntent {
+        val i = Intent(context, PrayerAlarmReceiver::class.java).apply {
+            action = PrayerAlarmReceiver.ACTION_RESTORE_SOUND
+        }
+        return PendingIntent.getBroadcast(context, RC_RESTORE, i, FLAGS)
+    }
+
     companion object {
         private const val RC_ADHAN = 1001
         private const val RC_PRENOTIFY = 1002
+        private const val RC_RESTORE = 1003
         private val FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     }
 }

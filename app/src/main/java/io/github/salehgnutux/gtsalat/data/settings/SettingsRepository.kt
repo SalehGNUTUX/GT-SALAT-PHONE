@@ -41,6 +41,9 @@ class SettingsRepository @Inject constructor(
         val EN_PRE = booleanPreferencesKey("en_pre_notify")
         val USE_API = booleanPreferencesKey("use_api")
         val DND = booleanPreferencesKey("dnd")
+        val AUTO_SILENCE = booleanPreferencesKey("auto_silence")
+        val SILENCE_MIN = intPreferencesKey("silence_min")
+        val SAVED_RINGER = intPreferencesKey("saved_ringer_mode")
         val THEME = stringPreferencesKey("theme_mode")
         val DYNAMIC = booleanPreferencesKey("dynamic_color")
         val SETUP = booleanPreferencesKey("setup_completed")
@@ -73,6 +76,8 @@ class SettingsRepository @Inject constructor(
             enablePreNotify = this[Keys.EN_PRE] ?: true,
             useApiTimetables = this[Keys.USE_API] ?: true,
             doNotDisturb = this[Keys.DND] ?: false,
+            autoSilence = this[Keys.AUTO_SILENCE] ?: false,
+            silenceMinutes = this[Keys.SILENCE_MIN] ?: 15,
             themeMode = when (this[Keys.THEME]) {
                 "LIGHT" -> ThemeMode.LIGHT
                 "DARK" -> ThemeMode.DARK
@@ -108,6 +113,10 @@ class SettingsRepository @Inject constructor(
     suspend fun setEnablePreNotify(v: Boolean) = context.dataStore.edit { it[Keys.EN_PRE] = v }
     suspend fun setUseApi(v: Boolean) = context.dataStore.edit { it[Keys.USE_API] = v }
     suspend fun setDnd(v: Boolean) = context.dataStore.edit { it[Keys.DND] = v }
+    suspend fun setAutoSilence(v: Boolean) = context.dataStore.edit { it[Keys.AUTO_SILENCE] = v }
+    suspend fun setSilenceMinutes(m: Int) = context.dataStore.edit { it[Keys.SILENCE_MIN] = m }
+    suspend fun setSavedRingerMode(m: Int) = context.dataStore.edit { it[Keys.SAVED_RINGER] = m }
+    suspend fun savedRingerMode(): Int? = context.dataStore.data.first()[Keys.SAVED_RINGER]
     suspend fun setTheme(t: ThemeMode) = context.dataStore.edit { it[Keys.THEME] = t.name }
     suspend fun setDynamicColor(v: Boolean) = context.dataStore.edit { it[Keys.DYNAMIC] = v }
     suspend fun setSetupCompleted(v: Boolean) = context.dataStore.edit { it[Keys.SETUP] = v }

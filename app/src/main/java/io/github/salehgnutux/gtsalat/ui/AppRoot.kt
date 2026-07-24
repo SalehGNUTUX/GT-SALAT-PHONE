@@ -23,6 +23,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import io.github.salehgnutux.gtsalat.ui.screens.AdhkarScreen
+import io.github.salehgnutux.gtsalat.ui.screens.AsmaScreen
 import io.github.salehgnutux.gtsalat.ui.screens.DashboardScreen
 import io.github.salehgnutux.gtsalat.ui.screens.MoreScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QiblaScreen
@@ -81,6 +82,7 @@ fun AppRoot(setupCompleted: Boolean) {
             composable(Dest.MORE.route) { MoreScreen(onOpen = { nav.navigate(it) }) }
             composable("adhkar") { AdhkarScreen(onBack = { nav.popBackStack() }) }
             composable("tasbih") { TasbihScreen(onBack = { nav.popBackStack() }) }
+            composable("asma") { AsmaScreen(onBack = { nav.popBackStack() }) }
             composable(Dest.SETTINGS.route) { SettingsScreen() }
         }
     }

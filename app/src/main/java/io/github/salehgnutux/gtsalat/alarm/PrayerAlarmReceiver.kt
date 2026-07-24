@@ -6,6 +6,7 @@ import android.content.Intent
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.salehgnutux.gtsalat.audio.AdhanService
+import io.github.salehgnutux.gtsalat.audio.RingerController
 import io.github.salehgnutux.gtsalat.data.settings.SettingsRepository
 import io.github.salehgnutux.gtsalat.notification.NotificationHelper
 import kotlinx.coroutines.CoroutineScope
@@ -19,6 +20,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
     @Inject lateinit var notifications: NotificationHelper
     @Inject lateinit var scheduler: PrayerAlarmScheduler
     @Inject lateinit var settingsRepo: SettingsRepository
+    @Inject lateinit var ringer: RingerController
 
     override fun onReceive(context: Context, intent: Intent) {
         val pending = goAsync()
@@ -40,6 +42,13 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                         // جدولة الصلاة التالية أوّلاً (النمط الذاتيّ المتسلسل): لو قُتلت العمليّة
                         // أثناء التشغيل لا تنقطع السلسلة، فالإنذار التالي مُسلَّح قبل أيّ عملٍ قد يتأخّر.
                         scheduler.scheduleNext()
+                        // الكاتم التلقائيّ: نكتم الرنين ونجدول استعادته بعد مدّة الكتم (المنبّه/الأذان يبقى مسموعاً).
+                        if (s.autoSilence) {
+                            ringer.silence()
+                            scheduler.scheduleRestoreSound(
+                                System.currentTimeMillis() + s.silenceMinutes * 60_000L,
+                            )
+                        }
                         if (s.enableSalatNotify && !s.doNotDisturb) {
                             notifications.notify(
                                 NotificationHelper.ID_PRAYER,
@@ -55,6 +64,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                             }
                         }
                     }
+                    ACTION_RESTORE_SOUND -> ringer.restore()
                 }
             } finally {
                 pending.finish()
@@ -65,6 +75,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_ADHAN = "io.github.salehgnutux.gtsalat.ACTION_ADHAN"
         const val ACTION_PRENOTIFY = "io.github.salehgnutux.gtsalat.ACTION_PRENOTIFY"
+        const val ACTION_RESTORE_SOUND = "io.github.salehgnutux.gtsalat.ACTION_RESTORE_SOUND"
         const val EXTRA_PRAYER = "prayer"
         const val EXTRA_PRAYER_AR = "prayer_ar"
         const val EXTRA_MINUTES = "minutes"
