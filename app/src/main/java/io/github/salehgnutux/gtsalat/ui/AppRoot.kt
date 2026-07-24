@@ -2,6 +2,7 @@ package io.github.salehgnutux.gtsalat.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -10,14 +11,19 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -25,12 +31,14 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.navArgument
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import io.github.salehgnutux.gtsalat.ui.screens.AdhkarSessionScreen
 import io.github.salehgnutux.gtsalat.ui.screens.AsmaScreen
 import io.github.salehgnutux.gtsalat.ui.screens.DashboardScreen
@@ -46,11 +54,14 @@ import io.github.salehgnutux.gtsalat.ui.screens.SetupScreen
 import io.github.salehgnutux.gtsalat.ui.screens.TasbihScreen
 import io.github.salehgnutux.gtsalat.ui.screens.TimetableScreen
 
+private const val MORE_GRAPH = "more_graph"
+private const val MORE_HOME = "more"
+
 private enum class Dest(val route: String, val label: String, val icon: ImageVector) {
     DASHBOARD("dashboard", "الرئيسيّة", Icons.Outlined.Home),
     TIMETABLE("timetable", "المواقيت", Icons.Outlined.CalendarMonth),
     QIBLA("qibla", "القبلة", Icons.Outlined.Explore),
-    MORE("more", "المزيد", Icons.Outlined.Apps),
+    MORE(MORE_GRAPH, "المزيد", Icons.Outlined.Apps),
     SETTINGS("settings", "الإعدادات", Icons.Outlined.Settings),
 }
 
@@ -62,66 +73,110 @@ fun AppRoot(setupCompleted: Boolean) {
     }
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
-    val currentRoute = backStack?.destination
+    val currentDest = backStack?.destination
+    // رسالةٌ عند إعادة النقر على «المزيد» ونحن داخل أحد أقسامه.
+    var askReturnToMore by remember { mutableStateOf(false) }
 
     val cs = MaterialTheme.colorScheme
     val dark = isSystemInDarkTheme()
     // تدرّجٌ خفيفٌ مشتقٌّ من ألوان السِمة (يحترم الداكن/الفاتح وMaterial You).
     val gradient = Brush.verticalGradient(
-        listOf(
-            cs.background,
-            lerp(cs.background, cs.primary, if (dark) 0.14f else 0.06f),
-        ),
+        listOf(cs.background, lerp(cs.background, cs.primary, if (dark) 0.14f else 0.06f)),
     )
 
-    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(gradient)) {
-    Scaffold(
-        containerColor = Color.Transparent,
-        bottomBar = {
-            NavigationBar {
-                Dest.entries.forEach { d ->
-                    val selected = currentRoute?.hierarchy?.any { it.route == d.route } == true
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = {
-                            nav.navigate(d.route) {
-                                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = { Icon(d.icon, contentDescription = d.label) },
-                        label = { Text(d.label) },
-                    )
+    Box(Modifier.fillMaxSize().background(gradient)) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            bottomBar = {
+                NavigationBar {
+                    Dest.entries.forEach { d ->
+                        val selected = currentDest?.hierarchy?.any { it.route == d.route } == true
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = {
+                                onTabClick(nav, d, selected, currentDest?.route) { askReturnToMore = true }
+                            },
+                            icon = { Icon(d.icon, contentDescription = d.label) },
+                            label = { Text(d.label) },
+                        )
+                    }
+                }
+            },
+        ) { padding ->
+            NavHost(
+                navController = nav,
+                startDestination = Dest.DASHBOARD.route,
+                modifier = Modifier.padding(padding),
+            ) {
+                composable(Dest.DASHBOARD.route) { DashboardScreen() }
+                composable(Dest.TIMETABLE.route) { TimetableScreen() }
+                composable(Dest.QIBLA.route) { QiblaScreen() }
+                composable(Dest.SETTINGS.route) { SettingsScreen() }
+
+                // «المزيد» رسمٌ متداخل: تُحفظ حالته وتُستعاد عند العودة إليه من تبويبٍ آخر.
+                navigation(startDestination = MORE_HOME, route = MORE_GRAPH) {
+                    composable(MORE_HOME) { MoreScreen(onOpen = { nav.navigate(it) }) }
+                    composable("hisn") { HisnScreen(onOpen = { nav.navigate("hisn/$it") }, onBack = { nav.popBackStack() }) }
+                    composable(
+                        "hisn/{id}",
+                        arguments = listOf(navArgument("id") { type = NavType.StringType }),
+                    ) { HisnCategoryScreen(onBack = { nav.popBackStack() }) }
+                    composable(
+                        "adhkar_session/{type}",
+                        arguments = listOf(navArgument("type") { type = NavType.StringType }),
+                    ) { AdhkarSessionScreen(onBack = { nav.popBackStack() }) }
+                    composable("tasbih") { TasbihScreen(onBack = { nav.popBackStack() }) }
+                    composable("asma") { AsmaScreen(onBack = { nav.popBackStack() }) }
+                    composable("hadith") { HadithScreen(onBack = { nav.popBackStack() }) }
+                    composable("duas") { DuasScreen(onBack = { nav.popBackStack() }) }
+                    composable("hikam") { HikamScreen(onBack = { nav.popBackStack() }) }
                 }
             }
-        },
-    ) { padding ->
-        NavHost(
-            navController = nav,
-            startDestination = Dest.DASHBOARD.route,
-            modifier = Modifier.padding(padding),
-        ) {
-            composable(Dest.DASHBOARD.route) { DashboardScreen() }
-            composable(Dest.TIMETABLE.route) { TimetableScreen() }
-            composable(Dest.QIBLA.route) { QiblaScreen() }
-            composable(Dest.MORE.route) { MoreScreen(onOpen = { nav.navigate(it) }) }
-            composable("hisn") { HisnScreen(onOpen = { nav.navigate("hisn/$it") }, onBack = { nav.popBackStack() }) }
-            composable(
-                "hisn/{id}",
-                arguments = listOf(navArgument("id") { type = NavType.StringType }),
-            ) { HisnCategoryScreen(onBack = { nav.popBackStack() }) }
-            composable(
-                "adhkar_session/{type}",
-                arguments = listOf(navArgument("type") { type = NavType.StringType }),
-            ) { AdhkarSessionScreen(onBack = { nav.popBackStack() }) }
-            composable("tasbih") { TasbihScreen(onBack = { nav.popBackStack() }) }
-            composable("asma") { AsmaScreen(onBack = { nav.popBackStack() }) }
-            composable("hadith") { HadithScreen(onBack = { nav.popBackStack() }) }
-            composable("duas") { DuasScreen(onBack = { nav.popBackStack() }) }
-            composable("hikam") { HikamScreen(onBack = { nav.popBackStack() }) }
-            composable(Dest.SETTINGS.route) { SettingsScreen() }
         }
     }
+
+    if (askReturnToMore) {
+        AlertDialog(
+            onDismissRequest = { askReturnToMore = false },
+            title = { Text("المزيد") },
+            text = { Text("هل تريد العودة للمزيد أم البقاء؟") },
+            confirmButton = {
+                TextButton(onClick = {
+                    askReturnToMore = false
+                    nav.popBackStack(MORE_HOME, inclusive = false)
+                }) { Text("العودة للمزيد") }
+            },
+            dismissButton = {
+                TextButton(onClick = { askReturnToMore = false }) { Text("البقاء") }
+            },
+        )
+    }
+}
+
+/**
+ * سلوك أزرار الشريط السفليّ:
+ * - تبويبٌ غير محدَّد ← الانتقال إليه مع استعادة حالته السابقة (restoreState) — فيعود المستخدم لآخر قسمٍ كان فيه.
+ * - «المزيد» وهو محدَّد وداخل قسمٍ فرعيّ ← رسالةُ «العودة للبطاقات أم البقاء».
+ * - تبويبٌ آخر محدَّد ← الرجوع إلى جذره.
+ */
+private fun onTabClick(
+    nav: NavHostController,
+    dest: Dest,
+    selected: Boolean,
+    currentRoute: String?,
+    askReturnToMore: () -> Unit,
+) {
+    if (!selected) {
+        nav.navigate(dest.route) {
+            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+        return
+    }
+    if (dest == Dest.MORE) {
+        if (currentRoute != MORE_HOME) askReturnToMore()
+    } else {
+        nav.popBackStack(dest.route, inclusive = false)
     }
 }

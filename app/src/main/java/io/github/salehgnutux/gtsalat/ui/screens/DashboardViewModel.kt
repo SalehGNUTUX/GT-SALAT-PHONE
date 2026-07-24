@@ -32,6 +32,7 @@ data class DashboardUi(
     val today: DayTimetable? = null,
     val hijri: String? = null,
     val gregorian: String = "",
+    val clock: String = "",
     val next: NextPrayer? = null,
     val countdownText: String = "",
     val dhikr: String = "",
@@ -116,6 +117,7 @@ class DashboardViewModel @Inject constructor(
                 loading = false,
                 hasLocation = s.hasLocation,
                 gregorian = Format.gregorianArabic(),
+                clock = Format.clockNow(),
                 dhikr = dhikr,
                 hikmah = hikmah,
             )
@@ -130,6 +132,7 @@ class DashboardViewModel @Inject constructor(
             today = t,
             hijri = t.hijri,
             gregorian = Format.gregorianArabic(),
+            clock = Format.clockNow(),
             next = next,
             countdownText = next?.let { Format.countdown(it.remainingMillis) } ?: "",
             dhikr = dhikr,

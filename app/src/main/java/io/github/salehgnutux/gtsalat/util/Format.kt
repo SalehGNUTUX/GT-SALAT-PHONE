@@ -9,10 +9,14 @@ import java.util.Locale
 
 object Format {
     private val clockFmt = DateTimeFormatter.ofPattern("HH:mm", Locale.US)
+    private val clockSecFmt = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.US)
     private val dayFmt = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale("ar"))
 
     fun clock(epochMillis: Long): String =
         Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).format(clockFmt)
+
+    /** الساعة الحاليّة HH:mm:ss بأرقامٍ مغربيّة (0-9). */
+    fun clockNow(): String = java.time.LocalTime.now().format(clockSecFmt)
 
     fun weekdayDate(epochMillis: Long): String =
         Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).format(dayFmt)
