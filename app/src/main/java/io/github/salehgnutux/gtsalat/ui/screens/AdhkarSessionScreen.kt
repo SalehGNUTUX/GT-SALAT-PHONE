@@ -106,7 +106,7 @@ fun AdhkarSessionScreen(onBack: () -> Unit, vm: AdhkarSessionViewModel = hiltVie
 }
 
 @Composable
-private fun CounterBadge(left: Int, total: Int, done: Boolean) {
+internal fun CounterBadge(left: Int, total: Int, done: Boolean) {
     Box(
         Modifier.size(56.dp).clip(CircleShape)
             .background(if (done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer),

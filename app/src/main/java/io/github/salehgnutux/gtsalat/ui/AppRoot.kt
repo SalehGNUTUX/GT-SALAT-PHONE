@@ -31,13 +31,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import io.github.salehgnutux.gtsalat.ui.screens.AdhkarScreen
 import io.github.salehgnutux.gtsalat.ui.screens.AdhkarSessionScreen
 import io.github.salehgnutux.gtsalat.ui.screens.AsmaScreen
 import io.github.salehgnutux.gtsalat.ui.screens.DashboardScreen
 import io.github.salehgnutux.gtsalat.ui.screens.DuasScreen
 import io.github.salehgnutux.gtsalat.ui.screens.HadithScreen
 import io.github.salehgnutux.gtsalat.ui.screens.HikamScreen
+import io.github.salehgnutux.gtsalat.ui.screens.HisnCategoryScreen
+import io.github.salehgnutux.gtsalat.ui.screens.HisnScreen
 import io.github.salehgnutux.gtsalat.ui.screens.MoreScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QiblaScreen
 import io.github.salehgnutux.gtsalat.ui.screens.SettingsScreen
@@ -105,7 +106,11 @@ fun AppRoot(setupCompleted: Boolean) {
             composable(Dest.TIMETABLE.route) { TimetableScreen() }
             composable(Dest.QIBLA.route) { QiblaScreen() }
             composable(Dest.MORE.route) { MoreScreen(onOpen = { nav.navigate(it) }) }
-            composable("adhkar") { AdhkarScreen(onBack = { nav.popBackStack() }) }
+            composable("hisn") { HisnScreen(onOpen = { nav.navigate("hisn/$it") }, onBack = { nav.popBackStack() }) }
+            composable(
+                "hisn/{id}",
+                arguments = listOf(navArgument("id") { type = NavType.StringType }),
+            ) { HisnCategoryScreen(onBack = { nav.popBackStack() }) }
             composable(
                 "adhkar_session/{type}",
                 arguments = listOf(navArgument("type") { type = NavType.StringType }),

@@ -49,3 +49,20 @@ data class HikamCategory(val id: Int, val name: String, val items: List<Hikmah>)
 
 @Serializable
 data class HikamFile(val categories: List<HikamCategory>)
+
+/** حصن المسلم المصنّف: باب فيه أذكار، لكلّ ذكر عدد تكراره ورابط صوته (أونلاين). */
+@Serializable
+data class HisnDhikr(val n: Int, val text: String, val count: Int = 1, val audio: String = "")
+
+@Serializable
+data class HisnCategory(
+    val id: Int,
+    val name: String,
+    val icon: String = "",
+    val audio: String = "",
+    val count: Int = 0,
+    val items: List<HisnDhikr> = emptyList(),
+)
+
+@Serializable
+data class HisnFile(val categories: List<HisnCategory>)

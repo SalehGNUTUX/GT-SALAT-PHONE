@@ -12,6 +12,8 @@ import io.github.salehgnutux.gtsalat.domain.HadithFile
 import io.github.salehgnutux.gtsalat.domain.HikamCategory
 import io.github.salehgnutux.gtsalat.domain.HikamFile
 import io.github.salehgnutux.gtsalat.domain.Hikmah
+import io.github.salehgnutux.gtsalat.domain.HisnCategory
+import io.github.salehgnutux.gtsalat.domain.HisnFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -33,6 +35,7 @@ class ContentRepository @Inject constructor(
     private var duasCache: List<DuaCategory>? = null
     private var hikamCache: List<Hikmah>? = null
     private var hikamCatCache: List<HikamCategory>? = null
+    private var hisnCache: List<HisnCategory>? = null
 
     private suspend fun read(file: String): String = withContext(Dispatchers.IO) {
         context.assets.open("content/$file").bufferedReader().use { it.readText() }
@@ -53,6 +56,12 @@ class ContentRepository @Inject constructor(
     suspend fun hikamCategories(): List<HikamCategory> = hikamCatCache ?: run {
         json.decodeFromString<HikamFile>(read("hikam.json")).categories.also { hikamCatCache = it }
     }
+
+    suspend fun hisnCategories(): List<HisnCategory> = hisnCache ?: run {
+        json.decodeFromString<HisnFile>(read("hisn.json")).categories.also { hisnCache = it }
+    }
+
+    suspend fun hisnCategory(id: Int): HisnCategory? = hisnCategories().firstOrNull { it.id == id }
 
     private suspend fun allHikam(): List<Hikmah> = hikamCache ?: run {
         hikamCategories().flatMap { it.items }.also { hikamCache = it }

@@ -108,6 +108,7 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
   ✅ **أسماء الله الحسنى** (`domain/AsmaAllah` 99 اسماً + `AsmaScreen`) ·
   ✅ **الكاتم التلقائيّ** (`audio/RingerController` + جدولة استعادةٍ في المُستقبِل، يحتاج ACCESS_NOTIFICATION_POLICY) ·
   ✅ **محتوى مستورَد** (`data/ContentRepository` + `assets/content/*.json`): أحاديث (90) + أدعية (28) + حِكَم (32) + أسماء الله بالشواهد ·
+  ✅ **حصن المسلم المصنّف** (`assets/content/hisn.json`، 132 باباً/267 ذكراً + `HisnScreen`/`HisnCategoryScreen` بعدٍّ تنازليّ؛ بديل القائمة المسطّحة azkar.txt التي بقيت لذكر اليوم فقط) ·
   ✅ **إغناء الرئيسيّة** (ذكر/حكمة اليوم بتجديد ونسخ + تاريخ هجريّ/ميلاديّ) + **خلفيّة متدرّجة** (`AppRoot`) ·
   المتبقّي: ودجت (Glance). **مصدر المحتوى:** حُوِّل من `../GT-SQRM/GT-SIRM/GT-SIRM-WEB/*-data.js` عبر سكربت Node لمرّة (JS→JSON).
 - **م3:** المصحف بالروايات (تنزيل) + القرّاء (تلاوة) + تظليل + ورد + إشارات.
