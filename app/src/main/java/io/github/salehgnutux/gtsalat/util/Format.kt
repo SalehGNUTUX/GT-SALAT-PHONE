@@ -23,4 +23,7 @@ object Format {
         val s = total % 60
         return String.format(Locale.US, "%02d:%02d:%02d", h, m, s)
     }
+
+    /** زاوية بالدرجات بأرقام لاتينيّة، مثل «213°». */
+    fun degrees(deg: Float): String = String.format(Locale.US, "%.0f°", deg)
 }

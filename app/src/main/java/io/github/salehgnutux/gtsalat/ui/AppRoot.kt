@@ -3,6 +3,7 @@ package io.github.salehgnutux.gtsalat.ui
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
@@ -21,6 +22,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import io.github.salehgnutux.gtsalat.ui.screens.DashboardScreen
+import io.github.salehgnutux.gtsalat.ui.screens.QiblaScreen
 import io.github.salehgnutux.gtsalat.ui.screens.SettingsScreen
 import io.github.salehgnutux.gtsalat.ui.screens.SetupScreen
 import io.github.salehgnutux.gtsalat.ui.screens.TimetableScreen
@@ -28,6 +30,7 @@ import io.github.salehgnutux.gtsalat.ui.screens.TimetableScreen
 private enum class Dest(val route: String, val label: String, val icon: ImageVector) {
     DASHBOARD("dashboard", "الرئيسيّة", Icons.Outlined.Home),
     TIMETABLE("timetable", "المواقيت", Icons.Outlined.CalendarMonth),
+    QIBLA("qibla", "القبلة", Icons.Outlined.Explore),
     SETTINGS("settings", "الإعدادات", Icons.Outlined.Settings),
 }
 
@@ -69,6 +72,7 @@ fun AppRoot(setupCompleted: Boolean) {
         ) {
             composable(Dest.DASHBOARD.route) { DashboardScreen() }
             composable(Dest.TIMETABLE.route) { TimetableScreen() }
+            composable(Dest.QIBLA.route) { QiblaScreen() }
             composable(Dest.SETTINGS.route) { SettingsScreen() }
         }
     }

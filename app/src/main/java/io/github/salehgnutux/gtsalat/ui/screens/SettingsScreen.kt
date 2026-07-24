@@ -1,7 +1,13 @@
 package io.github.salehgnutux.gtsalat.ui.screens
 
+import android.app.AlarmManager
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
 import android.provider.OpenableColumns
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -29,13 +35,18 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -128,6 +139,8 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             SwitchRow("وضع عدم الإزعاج", settings.doNotDisturb) { vm.setDnd(it) }
         }
 
+        ReliabilityCard()
+
         SectionCard("المظهر") {
             LabeledRow("السِمة") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -153,6 +166,112 @@ private fun SectionCard(title: String, content: @Composable () -> Unit) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             content()
         }
+    }
+}
+
+/** بطاقة موثوقيّة التنبيهات: الإنذار الدقيق وإعفاء البطاريّة — أهمّ ما يضمن وصول الأذان. */
+@Composable
+private fun ReliabilityCard() {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    // مفتاحٌ يتغيّر عند العودة من إعدادات النظام لإعادة قراءة الحالة.
+    var refreshKey by remember { mutableIntStateOf(0) }
+    DisposableEffect(lifecycleOwner) {
+        val obs = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) refreshKey++
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
+
+    val exactOk = remember(refreshKey) { canScheduleExact(context) }
+    val batteryOk = remember(refreshKey) { isBatteryUnrestricted(context) }
+    if (exactOk && batteryOk) return // كلّ شيءٍ على ما يرام، لا نُزعِج المستخدم
+
+    SectionCard("موثوقيّة التنبيهات") {
+        Text(
+            "لضمان وصول الأذان في وقته حتى والتطبيق مغلق، فعّل ما يلي:",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.outline,
+        )
+        if (!exactOk) {
+            ReliabilityRow(
+                title = "الإنذارات الدقيقة",
+                desc = "يسمح بإطلاق الأذان في لحظته بالضبط.",
+                onFix = { openExactAlarmSettings(context) },
+            )
+        }
+        if (!batteryOk) {
+            ReliabilityRow(
+                title = "إعفاء من تحسين البطاريّة",
+                desc = "يمنع النظام من تعطيل التطبيق في الخلفيّة (مهمّ على أجهزة Xiaomi وHuawei وغيرها).",
+                onFix = { openBatteryExemption(context) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReliabilityRow(title: String, desc: String, onFix: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+            Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+        }
+        FilledTonalButton(onClick = onFix) { Text("تفعيل") }
+    }
+}
+
+private fun canScheduleExact(context: Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
+    val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    return am.canScheduleExactAlarms()
+}
+
+private fun isBatteryUnrestricted(context: Context): Boolean {
+    val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+    return pm.isIgnoringBatteryOptimizations(context.packageName)
+}
+
+private fun openExactAlarmSettings(context: Context) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+    runCatching {
+        context.startActivity(
+            Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                data = Uri.parse("package:${context.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            },
+        )
+    }.onFailure { openAppDetails(context) }
+}
+
+private fun openBatteryExemption(context: Context) {
+    runCatching {
+        @Suppress("BatteryLife")
+        context.startActivity(
+            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:${context.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            },
+        )
+    }.onFailure {
+        runCatching {
+            context.startActivity(
+                Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }.onFailure { openAppDetails(context) }
+    }
+}
+
+private fun openAppDetails(context: Context) {
+    runCatching {
+        context.startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:${context.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            },
+        )
     }
 }
 
