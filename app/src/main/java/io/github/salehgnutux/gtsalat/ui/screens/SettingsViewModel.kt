@@ -1,0 +1,50 @@
+package io.github.salehgnutux.gtsalat.ui.screens
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.salehgnutux.gtsalat.alarm.PrayerAlarmScheduler
+import io.github.salehgnutux.gtsalat.data.PrayerRepository
+import io.github.salehgnutux.gtsalat.data.settings.AdhanType
+import io.github.salehgnutux.gtsalat.data.settings.AppSettings
+import io.github.salehgnutux.gtsalat.data.settings.SettingsRepository
+import io.github.salehgnutux.gtsalat.data.settings.ThemeMode
+import io.github.salehgnutux.gtsalat.domain.AsrMadhab
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    private val settingsRepo: SettingsRepository,
+    private val repo: PrayerRepository,
+    private val scheduler: PrayerAlarmScheduler,
+) : ViewModel() {
+
+    val settings: StateFlow<AppSettings?> = settingsRepo.settings
+        .map { it }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val cachedMonths: StateFlow<Int> = settingsRepo.settings
+        .map { repo.cachedMonthsCount() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    private fun reschedule() = viewModelScope.launch { scheduler.scheduleNext() }
+
+    fun setMethod(id: Int) = viewModelScope.launch { settingsRepo.setMethod(id); repo.prefetchMonths(3); reschedule() }
+    fun setMadhab(m: AsrMadhab) = viewModelScope.launch { settingsRepo.setMadhab(m); reschedule() }
+    fun setPreNotify(min: Int) = viewModelScope.launch { settingsRepo.setPreNotify(min); reschedule() }
+    fun setAdhanType(t: AdhanType) = viewModelScope.launch { settingsRepo.setAdhanType(t) }
+    fun setEnableSalat(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableSalat(v); reschedule() }
+    fun setEnableAdhan(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableAdhan(v) }
+    fun setEnableDua(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableDua(v) }
+    fun setEnablePreNotify(v: Boolean) = viewModelScope.launch { settingsRepo.setEnablePreNotify(v); reschedule() }
+    fun setUseApi(v: Boolean) = viewModelScope.launch { settingsRepo.setUseApi(v) }
+    fun setDnd(v: Boolean) = viewModelScope.launch { settingsRepo.setDnd(v); reschedule() }
+    fun setTheme(t: ThemeMode) = viewModelScope.launch { settingsRepo.setTheme(t) }
+    fun setDynamicColor(v: Boolean) = viewModelScope.launch { settingsRepo.setDynamicColor(v) }
+    fun redetectLocation() = viewModelScope.launch { repo.detectAndSaveLocation(); repo.prefetchMonths(3); reschedule() }
+}
