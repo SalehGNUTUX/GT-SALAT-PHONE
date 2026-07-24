@@ -10,21 +10,30 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.salehgnutux.gtsalat.domain.PrayerId
+import io.github.salehgnutux.gtsalat.ui.theme.AmiriQuran
 import io.github.salehgnutux.gtsalat.ui.theme.CountdownStyle
 import io.github.salehgnutux.gtsalat.util.Format
 
@@ -46,15 +55,37 @@ fun DashboardScreen(vm: DashboardViewModel = hiltViewModel()) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        // ترويسة الموقع والتاريخ
+        // ترويسة الموقع والتاريخ (هجريّ + ميلاديّ)
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 if (ui.city.isNotBlank()) ui.city else "موقعك",
                 style = MaterialTheme.typography.titleMedium,
             )
             ui.hijri?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
+            if (ui.gregorian.isNotBlank()) {
+                Text(ui.gregorian, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+            }
+        }
+
+        // ذكر اليوم — قابل للتجديد والنسخ
+        DailyCard(
+            title = "ذكر اليوم",
+            body = ui.dhikr,
+            onRefresh = { vm.refreshDhikr() },
+            refreshLabel = "ذكر جديد",
+        )
+
+        // حكمة اليوم — قابلة للتجديد والنسخ
+        ui.hikmah?.takeIf { it.text.isNotBlank() }?.let { h ->
+            DailyCard(
+                title = "حكمة اليوم",
+                body = h.text,
+                caption = listOfNotNull(h.sayer.ifBlank { null }, h.source.ifBlank { null }).joinToString(" — "),
+                onRefresh = { vm.refreshHikmah() },
+                refreshLabel = "حكمة أخرى",
+            )
         }
 
         // بطاقة الصلاة القادمة
@@ -122,5 +153,51 @@ fun DashboardScreen(vm: DashboardViewModel = hiltViewModel()) {
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+}
+
+/** بطاقة محتوى يوميّ (ذكر/حكمة) بنصٍّ بخطّ أميري وأزرار تجديدٍ ونسخ. */
+@Composable
+private fun DailyCard(
+    title: String,
+    body: String,
+    onRefresh: () -> Unit,
+    refreshLabel: String,
+    caption: String? = null,
+) {
+    val clipboard = LocalClipboardManager.current
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { clipboard.setText(AnnotatedString(body)) }) {
+                        Icon(Icons.Filled.ContentCopy, contentDescription = "نسخ")
+                    }
+                    TextButton(onClick = onRefresh) {
+                        Icon(Icons.Filled.Refresh, contentDescription = refreshLabel)
+                        Text("  $refreshLabel")
+                    }
+                }
+            }
+            Text(
+                body.ifBlank { "…" },
+                fontFamily = AmiriQuran,
+                fontSize = 22.sp,
+                lineHeight = 38.sp,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (!caption.isNullOrBlank()) {
+                Text(
+                    caption,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
     }
 }

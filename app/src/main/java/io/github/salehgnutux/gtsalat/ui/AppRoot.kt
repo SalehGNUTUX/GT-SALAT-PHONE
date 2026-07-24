@@ -1,5 +1,8 @@
 package io.github.salehgnutux.gtsalat.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Apps
@@ -12,9 +15,13 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -28,6 +35,9 @@ import io.github.salehgnutux.gtsalat.ui.screens.AdhkarScreen
 import io.github.salehgnutux.gtsalat.ui.screens.AdhkarSessionScreen
 import io.github.salehgnutux.gtsalat.ui.screens.AsmaScreen
 import io.github.salehgnutux.gtsalat.ui.screens.DashboardScreen
+import io.github.salehgnutux.gtsalat.ui.screens.DuasScreen
+import io.github.salehgnutux.gtsalat.ui.screens.HadithScreen
+import io.github.salehgnutux.gtsalat.ui.screens.HikamScreen
 import io.github.salehgnutux.gtsalat.ui.screens.MoreScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QiblaScreen
 import io.github.salehgnutux.gtsalat.ui.screens.SettingsScreen
@@ -53,7 +63,19 @@ fun AppRoot(setupCompleted: Boolean) {
     val backStack by nav.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination
 
+    val cs = MaterialTheme.colorScheme
+    val dark = isSystemInDarkTheme()
+    // تدرّجٌ خفيفٌ مشتقٌّ من ألوان السِمة (يحترم الداكن/الفاتح وMaterial You).
+    val gradient = Brush.verticalGradient(
+        listOf(
+            cs.background,
+            lerp(cs.background, cs.primary, if (dark) 0.14f else 0.06f),
+        ),
+    )
+
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(gradient)) {
     Scaffold(
+        containerColor = Color.Transparent,
         bottomBar = {
             NavigationBar {
                 Dest.entries.forEach { d ->
@@ -90,7 +112,11 @@ fun AppRoot(setupCompleted: Boolean) {
             ) { AdhkarSessionScreen(onBack = { nav.popBackStack() }) }
             composable("tasbih") { TasbihScreen(onBack = { nav.popBackStack() }) }
             composable("asma") { AsmaScreen(onBack = { nav.popBackStack() }) }
+            composable("hadith") { HadithScreen(onBack = { nav.popBackStack() }) }
+            composable("duas") { DuasScreen(onBack = { nav.popBackStack() }) }
+            composable("hikam") { HikamScreen(onBack = { nav.popBackStack() }) }
             composable(Dest.SETTINGS.route) { SettingsScreen() }
         }
+    }
     }
 }

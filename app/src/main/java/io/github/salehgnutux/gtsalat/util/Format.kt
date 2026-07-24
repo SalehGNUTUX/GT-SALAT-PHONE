@@ -1,8 +1,10 @@
 package io.github.salehgnutux.gtsalat.util
 
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
 import java.util.Locale
 
 object Format {
@@ -26,4 +28,13 @@ object Format {
 
     /** زاوية بالدرجات بأرقام لاتينيّة، مثل «213°». */
     fun degrees(deg: Float): String = String.format(Locale.US, "%.0f°", deg)
+
+    private val ar = Locale("ar")
+
+    /** التاريخ الميلاديّ بالعربيّة وأرقامٍ مغربيّة (0-9)، مثل «الجمعة، 24 يوليو 2026». */
+    fun gregorianArabic(date: LocalDate = LocalDate.now()): String {
+        val weekday = date.dayOfWeek.getDisplayName(TextStyle.FULL, ar)
+        val month = date.month.getDisplayName(TextStyle.FULL, ar)
+        return "$weekday، ${date.dayOfMonth} $month ${date.year}"
+    }
 }

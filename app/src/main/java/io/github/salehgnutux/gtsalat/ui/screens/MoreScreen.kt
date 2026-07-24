@@ -16,11 +16,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material.icons.outlined.FormatQuote
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.NightsStay
 import androidx.compose.material.icons.outlined.Radio
+import androidx.compose.material.icons.outlined.VolunteerActivism
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -47,10 +50,13 @@ fun MoreScreen(onOpen: (String) -> Unit) {
     val features = listOf(
         Feature("أذكار الصباح", Icons.Outlined.WbSunny, "adhkar_session/morning"),
         Feature("أذكار المساء", Icons.Outlined.NightsStay, "adhkar_session/evening"),
-        Feature("الأذكار والأدعية", Icons.Outlined.FavoriteBorder, "adhkar"),
+        Feature("الأذكار العامّة", Icons.Outlined.FavoriteBorder, "adhkar"),
+        Feature("الأدعية المأثورة", Icons.Outlined.VolunteerActivism, "duas"),
+        Feature("الأربعون والأحاديث", Icons.Outlined.MenuBook, "hadith"),
+        Feature("حِكَم ومواعظ", Icons.Outlined.FormatQuote, "hikam"),
         Feature("التسبيح", Icons.Outlined.Fingerprint, "tasbih"),
         Feature("أسماء الله الحسنى", Icons.Outlined.AutoAwesome, "asma"),
-        Feature("المصحف", Icons.Outlined.MenuBook, null),
+        Feature("المصحف", Icons.Outlined.AutoStories, null),
         Feature("الإذاعات", Icons.Outlined.Radio, null),
     )
 
