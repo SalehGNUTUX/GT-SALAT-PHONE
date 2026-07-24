@@ -37,6 +37,9 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                         }
                     }
                     ACTION_ADHAN -> {
+                        // جدولة الصلاة التالية أوّلاً (النمط الذاتيّ المتسلسل): لو قُتلت العمليّة
+                        // أثناء التشغيل لا تنقطع السلسلة، فالإنذار التالي مُسلَّح قبل أيّ عملٍ قد يتأخّر.
+                        scheduler.scheduleNext()
                         if (s.enableSalatNotify && !s.doNotDisturb) {
                             notifications.notify(
                                 NotificationHelper.ID_PRAYER,
@@ -46,11 +49,11 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                                 val svc = Intent(context, AdhanService::class.java).apply {
                                     putExtra(AdhanService.EXTRA_PRAYER_AR, prayerAr)
                                 }
-                                ContextCompat.startForegroundService(context, svc)
+                                // في مسار السقوط (إنذار غير دقيق) قد تمنع أندرويد 12+ إطلاق خدمة
+                                // المقدّمة من الخلفيّة؛ نلتقط الاستثناء بدل الانهيار (الإشعار ظاهرٌ أصلاً).
+                                runCatching { ContextCompat.startForegroundService(context, svc) }
                             }
                         }
-                        // جدولة الصلاة التالية (النمط الذاتيّ المتسلسل)
-                        scheduler.scheduleNext()
                     }
                 }
             } finally {

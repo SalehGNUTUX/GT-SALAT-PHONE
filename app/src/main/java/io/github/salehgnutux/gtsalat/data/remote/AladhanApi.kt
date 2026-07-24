@@ -41,8 +41,13 @@ class AladhanApi @Inject constructor(
                 if (!res.isSuccessful) return@withContext null
                 val body = res.body?.string() ?: return@withContext null
                 val parsed = json.decodeFromString<AladhanResponse>(body)
-                val zone = ZoneId.systemDefault()
-                parsed.data.map { day -> day.toDayTimetable(zone) }
+                parsed.data.map { day ->
+                    // منطقة الموقع نفسه (من meta) لا منطقة الجهاز — وإلّا اختلّت الأوقات عند المسافر.
+                    val zone = day.meta?.timezone
+                        ?.let { runCatching { ZoneId.of(it) }.getOrNull() }
+                        ?: ZoneId.systemDefault()
+                    day.toDayTimetable(zone)
+                }
             }
         } catch (_: Exception) {
             null
@@ -78,7 +83,12 @@ class AladhanApi @Inject constructor(
 }
 
 @Serializable private data class AladhanResponse(val data: List<AladhanDay>)
-@Serializable private data class AladhanDay(val timings: AladhanTimings, val date: AladhanDate)
+@Serializable private data class AladhanDay(
+    val timings: AladhanTimings,
+    val date: AladhanDate,
+    val meta: AladhanMeta? = null,
+)
+@Serializable private data class AladhanMeta(val timezone: String? = null)
 @Serializable private data class AladhanTimings(
     @SerialName("Fajr") val Fajr: String,
     @SerialName("Sunrise") val Sunrise: String,

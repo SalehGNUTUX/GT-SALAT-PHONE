@@ -12,6 +12,8 @@ import javax.inject.Inject
 /**
  * تُمحى إنذارات AlarmManager عند إعادة التشغيل، لذا نعيد تسليحها هنا
  * ونعيد جدولة العامل الدوريّ بعد الإقلاع أو تحديث التطبيق.
+ * كذلك نعيد التسليح عند تغيير الوقت أو المنطقة الزمنيّة يدويّاً، فالإنذارات
+ * المُطلَقة قد تصبح على أساسٍ خاطئ (شبكة أمانٍ فوريّة قبل العامل الدوريّ).
  */
 @AndroidEntryPoint
 class BootReceiver : BroadcastReceiver() {
@@ -23,7 +25,9 @@ class BootReceiver : BroadcastReceiver() {
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED,
             "android.intent.action.LOCKED_BOOT_COMPLETED",
-            Intent.ACTION_MY_PACKAGE_REPLACED -> {
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED -> {
                 val pending = goAsync()
                 CoroutineScope(Dispatchers.Default).launch {
                     try {
