@@ -33,6 +33,8 @@ class SettingsRepository @Inject constructor(
         val MADHAB = stringPreferencesKey("madhab")
         val PRE_NOTIFY = intPreferencesKey("pre_notify_min")
         val ADHAN_TYPE = stringPreferencesKey("adhan_type")
+        val CUSTOM_ADHAN_URI = stringPreferencesKey("custom_adhan_uri")
+        val CUSTOM_ADHAN_NAME = stringPreferencesKey("custom_adhan_name")
         val EN_SALAT = booleanPreferencesKey("en_salat_notify")
         val EN_ADHAN = booleanPreferencesKey("en_adhan_sound")
         val EN_DUA = booleanPreferencesKey("en_dua_after")
@@ -58,7 +60,13 @@ class SettingsRepository @Inject constructor(
             methodId = this[Keys.METHOD] ?: 3,
             madhab = if (this[Keys.MADHAB] == "HANAFI") AsrMadhab.HANAFI else AsrMadhab.SHAFI,
             preNotifyMinutes = this[Keys.PRE_NOTIFY] ?: 15,
-            adhanType = if (this[Keys.ADHAN_TYPE] == "SHORT") AdhanType.SHORT else AdhanType.FULL,
+            adhanType = when (this[Keys.ADHAN_TYPE]) {
+                "SHORT" -> AdhanType.SHORT
+                "CUSTOM" -> AdhanType.CUSTOM
+                else -> AdhanType.FULL
+            },
+            customAdhanUri = this[Keys.CUSTOM_ADHAN_URI],
+            customAdhanName = this[Keys.CUSTOM_ADHAN_NAME] ?: "",
             enableSalatNotify = this[Keys.EN_SALAT] ?: true,
             enableAdhanSound = this[Keys.EN_ADHAN] ?: true,
             enableDuaAfterAdhan = this[Keys.EN_DUA] ?: false,
@@ -89,6 +97,11 @@ class SettingsRepository @Inject constructor(
     suspend fun setMadhab(m: AsrMadhab) = context.dataStore.edit { it[Keys.MADHAB] = m.name }
     suspend fun setPreNotify(min: Int) = context.dataStore.edit { it[Keys.PRE_NOTIFY] = min }
     suspend fun setAdhanType(t: AdhanType) = context.dataStore.edit { it[Keys.ADHAN_TYPE] = t.name }
+    suspend fun setCustomAdhan(uri: String, name: String) = context.dataStore.edit {
+        it[Keys.CUSTOM_ADHAN_URI] = uri
+        it[Keys.CUSTOM_ADHAN_NAME] = name
+        it[Keys.ADHAN_TYPE] = AdhanType.CUSTOM.name
+    }
     suspend fun setEnableSalat(v: Boolean) = context.dataStore.edit { it[Keys.EN_SALAT] = v }
     suspend fun setEnableAdhan(v: Boolean) = context.dataStore.edit { it[Keys.EN_ADHAN] = v }
     suspend fun setEnableDua(v: Boolean) = context.dataStore.edit { it[Keys.EN_DUA] = v }

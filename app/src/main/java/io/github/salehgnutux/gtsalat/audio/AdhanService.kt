@@ -57,10 +57,9 @@ class AdhanService : Service() {
         scope.launch {
             val s = settingsRepo.current()
             requestFocus()
-            val adhanRes = if (s.adhanType == AdhanType.SHORT) R.raw.adhan_short else R.raw.adhan_full
-            playResource(adhanRes) {
+            playUri(adhanUri(s)) {
                 if (s.enableDuaAfterAdhan) {
-                    playResource(R.raw.dua_after_adhan) { stopEverything() }
+                    playUri(resUri(R.raw.dua_after_adhan)) { stopEverything() }
                 } else {
                     stopEverything()
                 }
@@ -69,13 +68,24 @@ class AdhanService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun playResource(resId: Int, onComplete: () -> Unit) {
+    private fun resUri(resId: Int): Uri = Uri.parse("android.resource://$packageName/$resId")
+
+    /** مصدر الأذان حسب النوع؛ يسقط إلى الكامل إن تعذّر الأذان المخصّص. */
+    private fun adhanUri(s: io.github.salehgnutux.gtsalat.data.settings.AppSettings): Uri = when (s.adhanType) {
+        AdhanType.SHORT -> resUri(R.raw.adhan_short)
+        AdhanType.CUSTOM -> s.customAdhanUri?.let { runCatching { Uri.parse(it) }.getOrNull() }
+            ?: resUri(R.raw.adhan_full)
+        AdhanType.FULL -> resUri(R.raw.adhan_full)
+    }
+
+    private fun playUri(uri: Uri, onComplete: () -> Unit) {
         releasePlayer()
-        val uri = Uri.parse("android.resource://$packageName/$resId")
         player = MediaPlayer().apply {
             setAudioAttributes(audioAttributes)
             setWakeMode(this@AdhanService, PowerManager.PARTIAL_WAKE_LOCK)
-            setDataSource(this@AdhanService, uri)
+            // إن فشل المسار المخصّص (حُذف الملفّ/سُحب الإذن) نسقط إلى الأذان الكامل.
+            val ok = runCatching { setDataSource(this@AdhanService, uri) }.isSuccess
+            if (!ok) runCatching { setDataSource(this@AdhanService, resUri(R.raw.adhan_full)) }
             setOnCompletionListener { onComplete() }
             setOnErrorListener { _, _, _ -> stopEverything(); true }
             setOnPreparedListener { start() }

@@ -1,5 +1,9 @@
 package io.github.salehgnutux.gtsalat.ui.screens
 
+import android.content.Intent
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,11 +13,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -25,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -39,7 +50,27 @@ import io.github.salehgnutux.gtsalat.domain.CalculationMethods
 fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val months by vm.cachedMonths.collectAsStateWithLifecycle()
+    val previewing by vm.previewing.collectAsStateWithLifecycle()
     val settings = s ?: return
+    val context = LocalContext.current
+
+    // منتقي ملفّ صوتيّ لاستيراد أذانٍ مخصّص، مع تثبيت إذن القراءة الدائم.
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                )
+            }
+            val name = context.contentResolver.query(uri, null, null, null, null)?.use { c ->
+                val i = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (i >= 0 && c.moveToFirst()) c.getString(i) else null
+            } ?: "أذان مخصّص"
+            vm.setCustomAdhan(uri.toString(), name)
+        }
+    }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -64,18 +95,35 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             SwitchRow("تنبيه دخول وقت الصلاة", settings.enableSalatNotify) { vm.setEnableSalat(it) }
             SwitchRow("تشغيل صوت الأذان", settings.enableAdhanSound) { vm.setEnableAdhan(it) }
             LabeledRow("نوع الأذان") {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(settings.adhanType == AdhanType.FULL, { vm.setAdhanType(AdhanType.FULL) }, { Text("كامل") })
-                    FilterChip(settings.adhanType == AdhanType.SHORT, { vm.setAdhanType(AdhanType.SHORT) }, { Text("قصير") })
+                AdhanTypeRow(
+                    "كامل", settings.adhanType == AdhanType.FULL, previewing == AdhanType.FULL,
+                    onSelect = { vm.setAdhanType(AdhanType.FULL) },
+                    onPreview = { vm.previewAdhan(AdhanType.FULL) },
+                )
+                AdhanTypeRow(
+                    "قصير", settings.adhanType == AdhanType.SHORT, previewing == AdhanType.SHORT,
+                    onSelect = { vm.setAdhanType(AdhanType.SHORT) },
+                    onPreview = { vm.previewAdhan(AdhanType.SHORT) },
+                )
+                val hasCustom = settings.customAdhanUri != null
+                AdhanTypeRow(
+                    "مخصّص", settings.adhanType == AdhanType.CUSTOM, previewing == AdhanType.CUSTOM,
+                    onSelect = { if (hasCustom) vm.setAdhanType(AdhanType.CUSTOM) else importLauncher.launch(arrayOf("audio/*")) },
+                    onPreview = { vm.previewAdhan(AdhanType.CUSTOM) },
+                    previewEnabled = hasCustom,
+                    trailing = if (hasCustom) settings.customAdhanName else null,
+                )
+                FilledTonalButton(
+                    onClick = { importLauncher.launch(arrayOf("audio/*")) },
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                ) {
+                    Text(if (settings.customAdhanUri != null) "تغيير الأذان المخصّص" else "استيراد أذان مخصّص")
                 }
             }
             SwitchRow("دعاء بعد الأذان", settings.enableDuaAfterAdhan) { vm.setEnableDua(it) }
             SwitchRow("تنبيه الاقتراب قبل الصلاة", settings.enablePreNotify) { vm.setEnablePreNotify(it) }
             if (settings.enablePreNotify) {
-                LabeledRow("قبل الصلاة بـ ${settings.preNotifyMinutes} دقيقة") {
-                    var v by remember(settings.preNotifyMinutes) { mutableStateOf(settings.preNotifyMinutes.toFloat()) }
-                    Slider(v, { v = it }, valueRange = 1f..60f, onValueChangeFinished = { vm.setPreNotify(v.toInt()) }, modifier = Modifier.fillMaxWidth())
-                }
+                PreNotifySlider(settings.preNotifyMinutes) { vm.setPreNotify(it) }
             }
             SwitchRow("وضع عدم الإزعاج", settings.doNotDisturb) { vm.setDnd(it) }
         }
@@ -105,6 +153,58 @@ private fun SectionCard(title: String, content: @Composable () -> Unit) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             content()
         }
+    }
+}
+
+@Composable
+private fun AdhanTypeRow(
+    label: String,
+    selected: Boolean,
+    previewing: Boolean,
+    onSelect: () -> Unit,
+    onPreview: () -> Unit,
+    previewEnabled: Boolean = true,
+    trailing: String? = null,
+) {
+    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f),
+        ) {
+            FilterChip(selected, { onSelect() }, { Text(label) })
+            if (!trailing.isNullOrBlank()) {
+                Text(
+                    trailing,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                    maxLines = 1,
+                )
+            }
+        }
+        IconButton(onClick = onPreview, enabled = previewEnabled) {
+            Icon(
+                if (previewing) Icons.Filled.Stop else Icons.Filled.PlayArrow,
+                contentDescription = if (previewing) "إيقاف التجربة" else "تجربة",
+                tint = if (previewEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PreNotifySlider(minutes: Int, onChange: (Int) -> Unit) {
+    var v by remember(minutes) { mutableStateOf(minutes.toFloat()) }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // القيمة الحيّة تظهر أثناء السحب لا بعد تركه فقط.
+        Text("قبل الصلاة بـ ${v.toInt()} دقيقة", style = MaterialTheme.typography.bodyLarge)
+        Slider(
+            value = v,
+            onValueChange = { v = it },
+            valueRange = 1f..60f,
+            onValueChangeFinished = { onChange(v.toInt()) },
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 
