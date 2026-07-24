@@ -58,7 +58,7 @@ fun SetupScreen(vm: SetupViewModel = hiltViewModel()) {
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("١. الموقع", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("1. الموقع", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 if (ui.detecting) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         CircularProgressIndicator(Modifier.padding(2.dp))
@@ -82,7 +82,7 @@ fun SetupScreen(vm: SetupViewModel = hiltViewModel()) {
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("٢. طريقة الحساب", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("2. طريقة الحساب", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 var expanded by remember { mutableStateOf(false) }
                 val info = CalculationMethods.infoOf(ui.methodId)
                 Text(
