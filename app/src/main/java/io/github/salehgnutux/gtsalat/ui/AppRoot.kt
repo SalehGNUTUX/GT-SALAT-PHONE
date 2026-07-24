@@ -18,11 +18,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import io.github.salehgnutux.gtsalat.ui.screens.AdhkarScreen
+import io.github.salehgnutux.gtsalat.ui.screens.AdhkarSessionScreen
 import io.github.salehgnutux.gtsalat.ui.screens.AsmaScreen
 import io.github.salehgnutux.gtsalat.ui.screens.DashboardScreen
 import io.github.salehgnutux.gtsalat.ui.screens.MoreScreen
@@ -81,6 +84,10 @@ fun AppRoot(setupCompleted: Boolean) {
             composable(Dest.QIBLA.route) { QiblaScreen() }
             composable(Dest.MORE.route) { MoreScreen(onOpen = { nav.navigate(it) }) }
             composable("adhkar") { AdhkarScreen(onBack = { nav.popBackStack() }) }
+            composable(
+                "adhkar_session/{type}",
+                arguments = listOf(navArgument("type") { type = NavType.StringType }),
+            ) { AdhkarSessionScreen(onBack = { nav.popBackStack() }) }
             composable("tasbih") { TasbihScreen(onBack = { nav.popBackStack() }) }
             composable("asma") { AsmaScreen(onBack = { nav.popBackStack() }) }
             composable(Dest.SETTINGS.route) { SettingsScreen() }

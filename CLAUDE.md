@@ -101,7 +101,9 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 - **م1 (الحاليّة):** مواقيت + جدولة أذان + إعداد + إعدادات + سِمة. ✅ مكتملة الهيكلة.
   أُضيف: أذان مخصّص + تجربة الأنواع + بطاقة موثوقيّة التنبيهات (إنذار دقيق + إعفاء بطاريّة).
 - **م2:** ✅ **قبلة** (بوصلة حيّة: `sensor/Compass.kt` + `QiblaScreen`/`QiblaViewModel`، تصحيح انحراف مغناطيسيّ، رمز كعبة) ·
-  ✅ **أذكار** (`data/AzkarRepository` يقرأ azkar.txt + `AdhkarScreen`) · ✅ **تسبيح** (`TasbihScreen`/`TasbihViewModel`) ·
+  ✅ **أذكار** (`data/AzkarRepository` يقرأ azkar.txt + `AdhkarScreen`) ·
+  ✅ **أذكار الصباح/المساء** (`domain/MorningEveningAdhkar` بعدد التكرار + `AdhkarSessionScreen` عدٌّ تنازليّ، مسار `adhkar_session/{type}`) ·
+  ✅ **تسبيح** (`TasbihScreen`/`TasbihViewModel`) ·
   ✅ **محور «المزيد»** (`MoreScreen`، تبويبٌ خامس ببطاقات الأقسام) ·
   ✅ **أسماء الله الحسنى** (`domain/AsmaAllah` 99 اسماً + `AsmaScreen`) ·
   ✅ **الكاتم التلقائيّ** (`audio/RingerController` + جدولة استعادةٍ في المُستقبِل، يحتاج ACCESS_NOTIFICATION_POLICY) ·

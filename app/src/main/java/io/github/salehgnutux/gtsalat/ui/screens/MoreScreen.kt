@@ -19,7 +19,9 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.material.icons.outlined.NightsStay
 import androidx.compose.material.icons.outlined.Radio
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +45,8 @@ private data class Feature(
 @Composable
 fun MoreScreen(onOpen: (String) -> Unit) {
     val features = listOf(
+        Feature("أذكار الصباح", Icons.Outlined.WbSunny, "adhkar_session/morning"),
+        Feature("أذكار المساء", Icons.Outlined.NightsStay, "adhkar_session/evening"),
         Feature("الأذكار والأدعية", Icons.Outlined.FavoriteBorder, "adhkar"),
         Feature("التسبيح", Icons.Outlined.Fingerprint, "tasbih"),
         Feature("أسماء الله الحسنى", Icons.Outlined.AutoAwesome, "asma"),
