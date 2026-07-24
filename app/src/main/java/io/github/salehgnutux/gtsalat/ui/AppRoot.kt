@@ -2,6 +2,7 @@ package io.github.salehgnutux.gtsalat.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Home
@@ -21,16 +22,20 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import io.github.salehgnutux.gtsalat.ui.screens.AdhkarScreen
 import io.github.salehgnutux.gtsalat.ui.screens.DashboardScreen
+import io.github.salehgnutux.gtsalat.ui.screens.MoreScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QiblaScreen
 import io.github.salehgnutux.gtsalat.ui.screens.SettingsScreen
 import io.github.salehgnutux.gtsalat.ui.screens.SetupScreen
+import io.github.salehgnutux.gtsalat.ui.screens.TasbihScreen
 import io.github.salehgnutux.gtsalat.ui.screens.TimetableScreen
 
 private enum class Dest(val route: String, val label: String, val icon: ImageVector) {
     DASHBOARD("dashboard", "الرئيسيّة", Icons.Outlined.Home),
     TIMETABLE("timetable", "المواقيت", Icons.Outlined.CalendarMonth),
     QIBLA("qibla", "القبلة", Icons.Outlined.Explore),
+    MORE("more", "المزيد", Icons.Outlined.Apps),
     SETTINGS("settings", "الإعدادات", Icons.Outlined.Settings),
 }
 
@@ -73,6 +78,9 @@ fun AppRoot(setupCompleted: Boolean) {
             composable(Dest.DASHBOARD.route) { DashboardScreen() }
             composable(Dest.TIMETABLE.route) { TimetableScreen() }
             composable(Dest.QIBLA.route) { QiblaScreen() }
+            composable(Dest.MORE.route) { MoreScreen(onOpen = { nav.navigate(it) }) }
+            composable("adhkar") { AdhkarScreen(onBack = { nav.popBackStack() }) }
+            composable("tasbih") { TasbihScreen(onBack = { nav.popBackStack() }) }
             composable(Dest.SETTINGS.route) { SettingsScreen() }
         }
     }
