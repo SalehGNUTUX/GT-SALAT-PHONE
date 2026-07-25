@@ -41,11 +41,16 @@ fun TimetableScreen(vm: TimetableViewModel = hiltViewModel()) {
         ) {
             // في RTL: الزرّ الأيمن للشهر السابق
             IconButton(onClick = { vm.prevMonth() }) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "الشهر السابق")
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "الشهر السابق", tint = MaterialTheme.colorScheme.primary)
             }
-            Text(ui.monthLabel, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                ui.monthLabel,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
             IconButton(onClick = { vm.nextMonth() }) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "الشهر التالي")
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "الشهر التالي", tint = MaterialTheme.colorScheme.primary)
             }
         }
 

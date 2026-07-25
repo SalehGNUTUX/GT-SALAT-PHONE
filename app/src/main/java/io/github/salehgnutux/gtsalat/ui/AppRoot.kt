@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -68,7 +69,10 @@ private enum class Dest(val route: String, val label: String, val icon: ImageVec
 @Composable
 fun AppRoot(setupCompleted: Boolean) {
     if (!setupCompleted) {
-        SetupScreen()
+        // Surface يوفّر لون المحتوى الصحيح (onBackground) لشاشة الإعداد خارج الـScaffold.
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            SetupScreen()
+        }
         return
     }
     val nav = rememberNavController()
@@ -86,7 +90,10 @@ fun AppRoot(setupCompleted: Boolean) {
 
     Box(Modifier.fillMaxSize().background(gradient)) {
         Scaffold(
+            // الخلفيّة شفّافة لإظهار التدرّج؛ لكن يجب تحديد لون المحتوى صراحةً وإلّا
+            // سقط Material3 إلى الأسود للنصوص/الأيقونات غير المحدَّدة اللون (خلل الوضع الداكن).
             containerColor = Color.Transparent,
+            contentColor = cs.onBackground,
             bottomBar = {
                 NavigationBar {
                     Dest.entries.forEach { d ->
