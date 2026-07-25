@@ -14,6 +14,8 @@ import io.github.salehgnutux.gtsalat.domain.HikamFile
 import io.github.salehgnutux.gtsalat.domain.Hikmah
 import io.github.salehgnutux.gtsalat.domain.HisnCategory
 import io.github.salehgnutux.gtsalat.domain.HisnFile
+import io.github.salehgnutux.gtsalat.domain.TafsirFile
+import io.github.salehgnutux.gtsalat.domain.TafsirSurah
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -36,6 +38,7 @@ class ContentRepository @Inject constructor(
     private var hikamCache: List<Hikmah>? = null
     private var hikamCatCache: List<HikamCategory>? = null
     private var hisnCache: List<HisnCategory>? = null
+    private var tafsirCache: List<TafsirSurah>? = null
 
     private suspend fun read(file: String): String = withContext(Dispatchers.IO) {
         context.assets.open("content/$file").bufferedReader().use { it.readText() }
@@ -62,6 +65,13 @@ class ContentRepository @Inject constructor(
     }
 
     suspend fun hisnCategory(id: Int): HisnCategory? = hisnCategories().firstOrNull { it.id == id }
+
+    // ملفٌّ كبير (~4MB): تُجرى القراءة وفكّ الترميز على خيطٍ خلفيّ تفادياً لتجميد الواجهة.
+    suspend fun tafsirSurahs(): List<TafsirSurah> = tafsirCache ?: withContext(Dispatchers.Default) {
+        json.decodeFromString<TafsirFile>(read("tafsir.json")).surahs.also { tafsirCache = it }
+    }
+
+    suspend fun tafsirSurah(n: Int): TafsirSurah? = tafsirSurahs().firstOrNull { it.n == n }
 
     private suspend fun allHikam(): List<Hikmah> = hikamCache ?: run {
         hikamCategories().flatMap { it.items }.also { hikamCache = it }

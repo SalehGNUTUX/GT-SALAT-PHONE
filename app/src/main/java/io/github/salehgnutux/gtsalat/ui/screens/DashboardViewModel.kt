@@ -116,7 +116,7 @@ class DashboardViewModel @Inject constructor(
             _ui.value = _ui.value.copy(
                 loading = false,
                 hasLocation = s.hasLocation,
-                gregorian = Format.gregorianArabic(),
+                gregorian = Format.gregorianArabic(scheme = io.github.salehgnutux.gtsalat.domain.GregorianMonths.effective(s.monthScheme, s.country)),
                 clock = Format.clockNow(),
                 dhikr = dhikr,
                 hikmah = hikmah,
@@ -131,7 +131,7 @@ class DashboardViewModel @Inject constructor(
             city = s.city,
             today = t,
             hijri = t.hijri,
-            gregorian = Format.gregorianArabic(),
+            gregorian = Format.gregorianArabic(scheme = io.github.salehgnutux.gtsalat.domain.GregorianMonths.effective(s.monthScheme, s.country)),
             clock = Format.clockNow(),
             next = next,
             countdownText = next?.let { Format.countdown(it.remainingMillis) } ?: "",

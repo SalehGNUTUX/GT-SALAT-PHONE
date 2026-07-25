@@ -1,6 +1,8 @@
 package io.github.salehgnutux.gtsalat.data.settings
 
 import io.github.salehgnutux.gtsalat.domain.AsrMadhab
+import io.github.salehgnutux.gtsalat.domain.CalendarKind
+import io.github.salehgnutux.gtsalat.domain.MonthScheme
 
 enum class AdhanType { FULL, SHORT, CUSTOM }
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
@@ -28,6 +30,8 @@ data class AppSettings(
     val persistentNotification: Boolean = true,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
+    val monthScheme: MonthScheme = MonthScheme.AUTO,
+    val timetableCalendar: CalendarKind = CalendarKind.HIJRI,
     val setupCompleted: Boolean = false,
 ) {
     val hasLocation: Boolean get() = lat != null && lon != null

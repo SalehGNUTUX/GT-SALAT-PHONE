@@ -11,6 +11,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.salehgnutux.gtsalat.domain.AsrMadhab
+import io.github.salehgnutux.gtsalat.domain.CalendarKind
+import io.github.salehgnutux.gtsalat.domain.MonthScheme
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -47,6 +49,8 @@ class SettingsRepository @Inject constructor(
         val PERSISTENT_NOTIF = booleanPreferencesKey("persistent_notif")
         val THEME = stringPreferencesKey("theme_mode")
         val DYNAMIC = booleanPreferencesKey("dynamic_color")
+        val MONTH_SCHEME = stringPreferencesKey("month_scheme")
+        val CAL_KIND = stringPreferencesKey("timetable_calendar")
         val SETUP = booleanPreferencesKey("setup_completed")
     }
 
@@ -86,6 +90,8 @@ class SettingsRepository @Inject constructor(
                 else -> ThemeMode.SYSTEM
             },
             dynamicColor = this[Keys.DYNAMIC] ?: true,
+            monthScheme = runCatching { MonthScheme.valueOf(this[Keys.MONTH_SCHEME] ?: "AUTO") }.getOrDefault(MonthScheme.AUTO),
+            timetableCalendar = if (this[Keys.CAL_KIND] == "GREGORIAN") CalendarKind.GREGORIAN else CalendarKind.HIJRI,
             setupCompleted = this[Keys.SETUP] ?: false,
         )
     }
@@ -122,5 +128,7 @@ class SettingsRepository @Inject constructor(
     suspend fun savedRingerMode(): Int? = context.dataStore.data.first()[Keys.SAVED_RINGER]
     suspend fun setTheme(t: ThemeMode) = context.dataStore.edit { it[Keys.THEME] = t.name }
     suspend fun setDynamicColor(v: Boolean) = context.dataStore.edit { it[Keys.DYNAMIC] = v }
+    suspend fun setMonthScheme(s: MonthScheme) = context.dataStore.edit { it[Keys.MONTH_SCHEME] = s.name }
+    suspend fun setTimetableCalendar(k: CalendarKind) = context.dataStore.edit { it[Keys.CAL_KIND] = k.name }
     suspend fun setSetupCompleted(v: Boolean) = context.dataStore.edit { it[Keys.SETUP] = v }
 }

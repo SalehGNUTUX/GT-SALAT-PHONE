@@ -67,6 +67,8 @@ class SettingsViewModel @Inject constructor(
     fun setPersistentNotification(v: Boolean) = viewModelScope.launch { settingsRepo.setPersistentNotification(v); reschedule() }
     fun setTheme(t: ThemeMode) = viewModelScope.launch { settingsRepo.setTheme(t) }
     fun setDynamicColor(v: Boolean) = viewModelScope.launch { settingsRepo.setDynamicColor(v) }
+    fun setMonthScheme(s: io.github.salehgnutux.gtsalat.domain.MonthScheme) = viewModelScope.launch { settingsRepo.setMonthScheme(s) }
+    fun setTimetableCalendar(k: io.github.salehgnutux.gtsalat.domain.CalendarKind) = viewModelScope.launch { settingsRepo.setTimetableCalendar(k) }
     fun redetectLocation() = viewModelScope.launch { repo.detectAndSaveLocation(); repo.prefetchMonths(3); reschedule() }
 
     override fun onCleared() {

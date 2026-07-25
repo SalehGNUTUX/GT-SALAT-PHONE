@@ -66,3 +66,20 @@ data class HisnCategory(
 
 @Serializable
 data class HisnFile(val categories: List<HisnCategory>)
+
+/** التفسير الميسّر: آيةٌ بنصّها العثمانيّ وتفسيرها الموجز. */
+@Serializable
+data class TafsirAyah(val n: Int, val text: String, val tafsir: String = "")
+
+@Serializable
+data class TafsirSurah(
+    val n: Int,
+    val name: String,
+    val en: String = "",
+    val type: String = "",
+    val count: Int = 0,
+    val ayahs: List<TafsirAyah> = emptyList(),
+)
+
+@Serializable
+data class TafsirFile(val surahs: List<TafsirSurah>)

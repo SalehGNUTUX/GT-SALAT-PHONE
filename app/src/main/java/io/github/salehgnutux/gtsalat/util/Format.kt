@@ -35,10 +35,18 @@ object Format {
 
     private val ar = Locale("ar")
 
-    /** التاريخ الميلاديّ بالعربيّة وأرقامٍ مغربيّة (0-9)، مثل «الجمعة، 24 يوليو 2026». */
-    fun gregorianArabic(date: LocalDate = LocalDate.now()): String {
-        val weekday = date.dayOfWeek.getDisplayName(TextStyle.FULL, ar)
-        val month = date.month.getDisplayName(TextStyle.FULL, ar)
-        return "$weekday، ${date.dayOfMonth} $month ${date.year}"
+    fun weekdayName(date: LocalDate): String = date.dayOfWeek.getDisplayName(TextStyle.FULL, ar)
+
+    /** التاريخ الميلاديّ بالعربيّة وأرقامٍ مغربيّة (0-9) وفق مخطّط الأشهر الإقليميّ. */
+    fun gregorianArabic(
+        date: LocalDate = LocalDate.now(),
+        scheme: io.github.salehgnutux.gtsalat.domain.MonthScheme = io.github.salehgnutux.gtsalat.domain.MonthScheme.STANDARD,
+    ): String {
+        val month = io.github.salehgnutux.gtsalat.domain.GregorianMonths.monthName(date.monthValue, scheme)
+        return "${weekdayName(date)}، ${date.dayOfMonth} $month ${date.year}"
     }
+
+    /** «يوليوز 2026» — الشهر والسنة فقط وفق المخطّط. */
+    fun monthYear(year: Int, month: Int, scheme: io.github.salehgnutux.gtsalat.domain.MonthScheme): String =
+        "${io.github.salehgnutux.gtsalat.domain.GregorianMonths.monthName(month, scheme)} $year"
 }

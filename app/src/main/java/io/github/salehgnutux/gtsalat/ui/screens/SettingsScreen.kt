@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Card
@@ -56,6 +58,8 @@ import io.github.salehgnutux.gtsalat.data.settings.AdhanType
 import io.github.salehgnutux.gtsalat.data.settings.ThemeMode
 import io.github.salehgnutux.gtsalat.domain.AsrMadhab
 import io.github.salehgnutux.gtsalat.domain.CalculationMethods
+import io.github.salehgnutux.gtsalat.domain.CalendarKind
+import io.github.salehgnutux.gtsalat.domain.MonthScheme
 
 @Composable
 fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
@@ -83,11 +87,15 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         }
     }
 
+    // أكورديون: عنوان القسم المفتوح حاليّاً (null = الكلّ مطويّ). فتح قسمٍ يطوي غيره.
+    var openSection by remember { mutableStateOf<String?>("الموقع وطريقة الحساب") }
+    fun toggle(title: String) { openSection = if (openSection == title) null else title }
+
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        SectionCard("الموقع وطريقة الحساب") {
+        SectionCard("الموقع وطريقة الحساب", openSection == "الموقع وطريقة الحساب", { toggle("الموقع وطريقة الحساب") }) {
             InfoRow("الموقع الحاليّ", listOf(settings.city, settings.country).filter { it.isNotBlank() }.joinToString("، ").ifBlank { "غير محدّد" })
             ClickRow("إعادة اكتشاف الموقع") { vm.redetectLocation() }
             HorizontalDivider()
@@ -102,7 +110,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             InfoRow("أشهر مخزَّنة محليّاً", "$months")
         }
 
-        SectionCard("الأذان والتنبيهات") {
+        SectionCard("الأذان والتنبيهات", openSection == "الأذان والتنبيهات", { toggle("الأذان والتنبيهات") }) {
             SwitchRow("تنبيه دخول وقت الصلاة", settings.enableSalatNotify) { vm.setEnableSalat(it) }
             SwitchRow("تشغيل صوت الأذان", settings.enableAdhanSound) { vm.setEnableAdhan(it) }
             LabeledRow("نوع الأذان") {
@@ -144,9 +152,30 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             }
         }
 
-        ReliabilityCard()
+        ReliabilityCard(openSection == "موثوقيّة التنبيهات") { toggle("موثوقيّة التنبيهات") }
 
-        SectionCard("المظهر") {
+        SectionCard("التقويم والتواريخ", openSection == "التقويم والتواريخ", { toggle("التقويم والتواريخ") }) {
+            LabeledRow("تقويم عرض المواقيت") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(settings.timetableCalendar == CalendarKind.HIJRI, { vm.setTimetableCalendar(CalendarKind.HIJRI) }, { Text("هجريّ") })
+                    FilterChip(settings.timetableCalendar == CalendarKind.GREGORIAN, { vm.setTimetableCalendar(CalendarKind.GREGORIAN) }, { Text("ميلاديّ") })
+                }
+            }
+            LabeledRow("أسماء الأشهر الميلاديّة") {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(settings.monthScheme == MonthScheme.AUTO, { vm.setMonthScheme(MonthScheme.AUTO) }, { Text("تلقائيّ") })
+                        FilterChip(settings.monthScheme == MonthScheme.STANDARD, { vm.setMonthScheme(MonthScheme.STANDARD) }, { Text("قياسيّ") })
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(settings.monthScheme == MonthScheme.MAGHREB, { vm.setMonthScheme(MonthScheme.MAGHREB) }, { Text("مغاربيّ (يوليوز/غشت)") })
+                        FilterChip(settings.monthScheme == MonthScheme.LEVANT, { vm.setMonthScheme(MonthScheme.LEVANT) }, { Text("شاميّ (تمّوز/آب)") })
+                    }
+                }
+            }
+        }
+
+        SectionCard("المظهر", openSection == "المظهر", { toggle("المظهر") }) {
             LabeledRow("السِمة") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(settings.themeMode == ThemeMode.SYSTEM, { vm.setTheme(ThemeMode.SYSTEM) }, { Text("النظام") })
@@ -157,26 +186,45 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             SwitchRow("الألوان الديناميكيّة (Material You)", settings.dynamicColor) { vm.setDynamicColor(it) }
         }
 
-        SectionCard("حول") {
+        SectionCard("حول", openSection == "حول", { toggle("حول") }) {
             InfoRow("النسخة", "GT-SALAT ${BuildConfig.VERSION_NAME}")
             InfoRow("الإصدار", if (BuildConfig.USES_GMS) "كاملة (خدمات Google)" else "حرّة (بلا Google)")
         }
     }
 }
 
+/** قسم إعداداتٍ قابلٌ للطيّ ضمن أكورديون: فتح قسمٍ يطوي الباقي تلقائيّاً. */
 @Composable
-private fun SectionCard(title: String, content: @Composable () -> Unit) {
+private fun SectionCard(
+    title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable () -> Unit,
+) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-            content()
+            Row(
+                Modifier.fillMaxWidth().clickable { onToggle() },
+                Arrangement.SpaceBetween,
+                Alignment.CenterVertically,
+            ) {
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Icon(
+                    if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = if (expanded) "طيّ" else "فتح",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+            androidx.compose.animation.AnimatedVisibility(expanded) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
+            }
         }
     }
 }
 
 /** بطاقة موثوقيّة التنبيهات: الإنذار الدقيق وإعفاء البطاريّة — أهمّ ما يضمن وصول الأذان. */
 @Composable
-private fun ReliabilityCard() {
+private fun ReliabilityCard(expanded: Boolean, onToggle: () -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     // مفتاحٌ يتغيّر عند العودة من إعدادات النظام لإعادة قراءة الحالة.
@@ -193,7 +241,7 @@ private fun ReliabilityCard() {
     val batteryOk = remember(refreshKey) { isBatteryUnrestricted(context) }
     if (exactOk && batteryOk) return // كلّ شيءٍ على ما يرام، لا نُزعِج المستخدم
 
-    SectionCard("موثوقيّة التنبيهات") {
+    SectionCard("موثوقيّة التنبيهات", expanded, onToggle) {
         Text(
             "لضمان وصول الأذان في وقته حتى والتطبيق مغلق، فعّل ما يلي:",
             style = MaterialTheme.typography.bodyMedium,

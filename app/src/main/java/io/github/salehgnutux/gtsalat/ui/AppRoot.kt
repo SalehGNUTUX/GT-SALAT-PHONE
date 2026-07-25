@@ -52,6 +52,8 @@ import io.github.salehgnutux.gtsalat.ui.screens.MoreScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QiblaScreen
 import io.github.salehgnutux.gtsalat.ui.screens.SettingsScreen
 import io.github.salehgnutux.gtsalat.ui.screens.SetupScreen
+import io.github.salehgnutux.gtsalat.ui.screens.TafsirScreen
+import io.github.salehgnutux.gtsalat.ui.screens.TafsirSurahScreen
 import io.github.salehgnutux.gtsalat.ui.screens.TasbihScreen
 import io.github.salehgnutux.gtsalat.ui.screens.TimetableScreen
 
@@ -137,6 +139,11 @@ fun AppRoot(setupCompleted: Boolean) {
                     composable("hadith") { HadithScreen(onBack = { nav.popBackStack() }) }
                     composable("duas") { DuasScreen(onBack = { nav.popBackStack() }) }
                     composable("hikam") { HikamScreen(onBack = { nav.popBackStack() }) }
+                    composable("tafsir") { TafsirScreen(onOpen = { nav.navigate("tafsir/$it") }, onBack = { nav.popBackStack() }) }
+                    composable(
+                        "tafsir/{n}",
+                        arguments = listOf(navArgument("n") { type = NavType.StringType }),
+                    ) { TafsirSurahScreen(onBack = { nav.popBackStack() }) }
                 }
             }
         }
