@@ -79,6 +79,30 @@
             </intent-filter>
         </receiver>
 
+        <!-- ودجت سطح الهاتف: الصلاة القادمة (مدمج) ومواقيت اليوم (كامل) -->
+        <receiver
+            android:name=".widget.NextPrayerWidgetReceiver"
+            android:exported="false"
+            android:label="GT-SALAT — الصلاة القادمة">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_next_prayer" />
+        </receiver>
+        <receiver
+            android:name=".widget.TodayTimesWidgetReceiver"
+            android:exported="false"
+            android:label="GT-SALAT — مواقيت اليوم">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_today_times" />
+        </receiver>
+
         <!-- تعطيل مُهيّئ WorkManager الافتراضيّ (نستعمل Hilt) -->
         <provider
             android:name="androidx.startup.InitializationProvider"

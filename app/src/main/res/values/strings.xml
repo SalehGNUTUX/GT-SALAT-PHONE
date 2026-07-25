@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">GT-SALAT</string>
+    <string name="widget_next_prayer_desc">الصلاة القادمة ووقتها</string>
+    <string name="widget_today_times_desc">مواقيت اليوم الخمسة</string>
 </resources>

@@ -25,6 +25,7 @@ data class AppSettings(
     val doNotDisturb: Boolean = false,
     val autoSilence: Boolean = false,
     val silenceMinutes: Int = 15,
+    val persistentNotification: Boolean = true,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
     val setupCompleted: Boolean = false,

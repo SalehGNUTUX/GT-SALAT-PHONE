@@ -20,6 +20,7 @@ okhttp = "4.12.0"
 serialization = "1.7.3"
 work = "2.9.1"
 adhan = "1.2.1"
+glance = "1.1.1"
 splashscreen = "1.0.1"
 playLocation = "21.3.0"
 material = "1.12.0"
@@ -55,6 +56,8 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 adhan = { group = "com.batoulapps.adhan", name = "adhan", version.ref = "adhan" }
+glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
+glance-material3 = { group = "androidx.glance", name = "glance-material3", version.ref = "glance" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playLocation" }
 
 [plugins]

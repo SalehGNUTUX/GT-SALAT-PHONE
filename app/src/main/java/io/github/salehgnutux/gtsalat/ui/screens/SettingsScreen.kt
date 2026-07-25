@@ -137,6 +137,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 MinutesSlider("قبل الصلاة بـ", settings.preNotifyMinutes, 1, 60) { vm.setPreNotify(it) }
             }
             SwitchRow("وضع عدم الإزعاج", settings.doNotDisturb) { vm.setDnd(it) }
+            SwitchRow("إشعارٌ دائمٌ بالصلاة القادمة", settings.persistentNotification) { vm.setPersistentNotification(it) }
             SwitchRow("الكاتم التلقائيّ أثناء الصلاة", settings.autoSilence) { vm.setAutoSilence(it) }
             if (settings.autoSilence) {
                 SilenceControls(settings.silenceMinutes) { vm.setSilenceMinutes(it) }

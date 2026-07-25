@@ -8,6 +8,8 @@ import android.os.Build
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.salehgnutux.gtsalat.data.PrayerRepository
 import io.github.salehgnutux.gtsalat.data.settings.SettingsRepository
+import io.github.salehgnutux.gtsalat.notification.NotificationHelper
+import io.github.salehgnutux.gtsalat.util.Format
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,12 +23,15 @@ class PrayerAlarmScheduler @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repo: PrayerRepository,
     private val settingsRepo: SettingsRepository,
+    private val notifications: NotificationHelper,
 ) {
     private val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
     suspend fun scheduleNext() {
         cancelAll()
         val s = settingsRepo.current()
+        refreshStatus(s)   // الإشعار الدائم مستقلٌّ عن حارسات الأذان أدناه
+        refreshWidgets()   // وكذلك ودجتات سطح الهاتف
         if (!s.setupCompleted || !s.hasLocation || s.doNotDisturb || !s.enableSalatNotify) return
 
         val next = repo.nextPrayer() ?: return
@@ -52,6 +57,29 @@ class PrayerAlarmScheduler @Inject constructor(
     /** جدولة استعادة وضع الرنين بعد انتهاء نافذة الكتم (يُستدعى من مُستقبِل الأذان). */
     fun scheduleRestoreSound(triggerAt: Long) {
         setExact(triggerAt, restoreIntent())
+    }
+
+    /** تحديث الإشعار الدائم بالصلاة القادمة (عدٌّ تنازليّ حيّ)، أو إلغاؤه. */
+    private suspend fun refreshStatus(s: io.github.salehgnutux.gtsalat.data.settings.AppSettings) {
+        if (!s.persistentNotification || !s.hasLocation) {
+            notifications.cancelStatus()
+            return
+        }
+        val next = repo.nextPrayer()
+        if (next == null) {
+            notifications.cancelStatus()
+            return
+        }
+        notifications.showStatus(
+            next.prayer.id.arabic,
+            Format.clock(next.prayer.epochMillis),
+            next.prayer.epochMillis,
+        )
+    }
+
+    /** تحديث ودجتات سطح الهاتف (يُستدعى مع كلّ إعادة جدولة، فتبقى محدَّثة والشاشة مغلقة). */
+    suspend fun refreshWidgets() {
+        runCatching { io.github.salehgnutux.gtsalat.widget.updateAllPrayerWidgets(context) }
     }
 
     fun canScheduleExact(): Boolean =

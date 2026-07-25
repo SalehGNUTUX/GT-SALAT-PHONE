@@ -38,6 +38,13 @@ class NotificationHelper @Inject constructor(
                 setShowBadge(false)
             }
         )
+        nm.createNotificationChannel(
+            NotificationChannel(CH_STATUS, "الصلاة القادمة (دائم)", NotificationManager.IMPORTANCE_LOW).apply {
+                description = "إشعارٌ دائمٌ في القائمة المنسدلة بالصلاة القادمة وعدٍّ تنازليّ"
+                setShowBadge(false)
+                setSound(null, null)
+            }
+        )
     }
 
     private fun contentIntent(): PendingIntent {
@@ -77,15 +84,38 @@ class NotificationHelper @Inject constructor(
             .setContentIntent(contentIntent())
             .build()
 
+    /** إشعارٌ دائمٌ بالصلاة القادمة مع عدٍّ تنازليّ حيّ (chronometer) في القائمة المنسدلة. */
+    fun statusNotification(prayerName: String, timeText: String, nextEpochMillis: Long): Notification =
+        NotificationCompat.Builder(context, CH_STATUS)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("🕌 $prayerName • $timeText")
+            .setContentText("الوقت المتبقّي للصلاة")
+            .setWhen(nextEpochMillis)
+            .setShowWhen(true)
+            .setUsesChronometer(true)
+            .setChronometerCountDown(true)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setContentIntent(contentIntent())
+            .build()
+
+    fun showStatus(prayerName: String, timeText: String, nextEpochMillis: Long) =
+        nm.notify(ID_STATUS, statusNotification(prayerName, timeText, nextEpochMillis))
+
+    fun cancelStatus() = nm.cancel(ID_STATUS)
+
     fun notify(id: Int, n: Notification) = nm.notify(id, n)
 
     companion object {
         const val CH_ADHAN = "adhan"
         const val CH_PRENOTIFY = "prenotify"
         const val CH_SERVICE = "adhan_service"
+        const val CH_STATUS = "status"
         const val ID_PRAYER = 2001
         const val ID_PRENOTIFY = 2002
         const val ID_SERVICE = 2003
+        const val ID_STATUS = 2004
         val PI_FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     }
 }

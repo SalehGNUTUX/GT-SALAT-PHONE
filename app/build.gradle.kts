@@ -105,6 +105,10 @@ dependencies {
     // حساب المواقيت والقبلة محلّيّاً (بلا إنترنت)
     implementation(libs.adhan)
 
+    // ودجت سطح الهاتف (Jetpack Glance)
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
+
     // خدمات موقع Google — للنكهة الكاملة فقط
     "fullImplementation"(libs.play.services.location)
 
