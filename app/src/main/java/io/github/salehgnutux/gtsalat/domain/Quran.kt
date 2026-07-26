@@ -29,8 +29,9 @@ object Quran {
     /** رابط البسملة المنفصلة (تُشغَّل قبل الآية الأولى لكلّ سورةٍ عدا الفاتحة والتوبة). */
     fun basmalaUrl(folder: String): String = "$EVERYAYAH/$folder/001001.mp3"
 
-    /** تلاوة سورةٍ كاملة (القرآن المسموع). */
-    fun surahAudioUrl(folder: String, surah: Int): String = "$MP3QURAN/$folder/${p3(surah)}.mp3"
+    /** تلاوة سورةٍ كاملة من رابط خادمٍ كاملٍ (مثل `https://server11.mp3quran.net/qari/`). */
+    fun surahAudioUrl(server: String, surah: Int): String =
+        server.trimEnd('/') + "/${p3(surah)}.mp3"
 
     /** المصدر الأساسيّ لصورة صفحةٍ من المصحف. */
     fun pageImageUrl(page: Int): String =
@@ -83,6 +84,15 @@ data class Reciter(
     val hasSurahAudio: Boolean get() = mp3quran.isNotBlank()
 }
 
+/** قارئُ تلاوةٍ كاملةٍ (القرآن المسموع) برابط خادمٍ كامل من mp3quran. */
+@Serializable
+data class SurahReciter(
+    val id: String,
+    val ar: String,
+    val riwaya: String,   // hafs | warsh
+    val server: String,   // رابط الخادم الكامل (ينتهي بـ /)
+)
+
 @Serializable
 data class QuranMeta(
     val totalPages: Int = 604,
@@ -91,6 +101,7 @@ data class QuranMeta(
     val sajda: List<SajdaMeta> = emptyList(),
     val riwayat: List<Riwaya> = emptyList(),
     val reciters: List<Reciter> = emptyList(),
+    val surahReciters: List<SurahReciter> = emptyList(),
 )
 
 /** آيةٌ نصّيّة (رقم + نصّ) — تُشتقّ من tafsir.json. */

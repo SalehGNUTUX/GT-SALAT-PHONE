@@ -37,6 +37,7 @@ class QuranRepository @Inject constructor(
     suspend fun reciters(): List<Reciter> = meta().reciters
     suspend fun recitersByRiwaya(riwaya: String): List<Reciter> = meta().reciters.filter { it.riwaya == riwaya }
     suspend fun reciter(id: String): Reciter? = meta().reciters.firstOrNull { it.id == id }
+    suspend fun surahReciters(): List<io.github.salehgnutux.gtsalat.domain.SurahReciter> = meta().surahReciters
     suspend fun sajda() = meta().sajda
     suspend fun juz() = meta().juz
 

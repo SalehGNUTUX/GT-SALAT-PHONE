@@ -55,6 +55,10 @@ data class AppSettings(
     val monthScheme: MonthScheme = MonthScheme.AUTO,
     val timetableCalendar: CalendarKind = CalendarKind.HIJRI,
     val setupCompleted: Boolean = false,
+    // موضع القراءة الأخير في القرآن (للمتابعة) + آخر قارئٍ مختار
+    val lastReadSurah: Int = 0,      // 0 = لا يوجد
+    val lastReadAyah: Int = 1,
+    val lastReciterId: String = "",
 ) {
     val hasLocation: Boolean get() = lat != null && lon != null
 

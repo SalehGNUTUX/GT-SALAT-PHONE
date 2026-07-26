@@ -49,29 +49,36 @@ private data class Feature(
 
 @Composable
 fun MoreScreen(onOpen: (String) -> Unit) {
+    // مرتّبةٌ حسب الأولويّة: القرآن أوّلاً، ثمّ حصن المسلم، ثمّ الأذكار…
     val features = listOf(
+        Feature("القرآن الكريم", Icons.Outlined.AutoStories, "quran"),
         Feature("حصن المسلم", Icons.Outlined.Shield, "hisn"),
         Feature("أذكار الصباح", Icons.Outlined.WbSunny, "adhkar_session/morning"),
         Feature("أذكار المساء", Icons.Outlined.NightsStay, "adhkar_session/evening"),
-        Feature("الأدعية المأثورة", Icons.Outlined.VolunteerActivism, "duas"),
-        Feature("الأربعون والأحاديث", Icons.Outlined.MenuBook, "hadith"),
-        Feature("حِكَم ومواعظ", Icons.Outlined.FormatQuote, "hikam"),
-        Feature("القرآن الكريم", Icons.Outlined.AutoStories, "quran"),
-        Feature("التفسير الميسّر", Icons.Outlined.Notes, "tafsir"),
-        Feature("أحداثٌ تاريخيّة", Icons.Outlined.HistoryEdu, "events"),
         Feature("التسبيح", Icons.Outlined.Fingerprint, "tasbih"),
+        Feature("الأدعية المأثورة", Icons.Outlined.VolunteerActivism, "duas"),
+        Feature("التفسير الميسّر", Icons.Outlined.Notes, "tafsir"),
+        Feature("الأربعون والأحاديث", Icons.Outlined.MenuBook, "hadith"),
         Feature("أسماء الله الحسنى", Icons.Outlined.AutoAwesome, "asma"),
+        Feature("حِكَم ومواعظ", Icons.Outlined.FormatQuote, "hikam"),
+        Feature("أحداثٌ تاريخيّة", Icons.Outlined.HistoryEdu, "events"),
         Feature("الإذاعات", Icons.Outlined.Radio, null),
     )
 
     Column(Modifier.fillMaxSize()) {
-        Text(
-            "المزيد",
-            Modifier.fillMaxWidth().padding(20.dp),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-        )
+        Row(
+            Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "المزيد",
+                Modifier.weight(1f),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            ThemeToggleButton()
+        }
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),

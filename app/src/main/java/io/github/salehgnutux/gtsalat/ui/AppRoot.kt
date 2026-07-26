@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -58,6 +59,7 @@ import io.github.salehgnutux.gtsalat.ui.screens.MoreScreen
 import io.github.salehgnutux.gtsalat.ui.screens.MushafScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QiblaScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QuranHubScreen
+import io.github.salehgnutux.gtsalat.ui.screens.QuranMiniPlayer
 import io.github.salehgnutux.gtsalat.ui.screens.SurahIndexScreen
 import io.github.salehgnutux.gtsalat.ui.screens.TextReaderScreen
 import io.github.salehgnutux.gtsalat.ui.screens.SettingsScreen
@@ -131,17 +133,23 @@ fun AppRoot(setupCompleted: Boolean, gradientTop: Int = 0, gradientBottom: Int =
             containerColor = Color.Transparent,
             contentColor = cs.onBackground,
             bottomBar = {
-                NavigationBar {
-                    Dest.entries.forEach { d ->
-                        val selected = currentDest?.hierarchy?.any { it.route == d.route } == true
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = {
-                                onTabClick(nav, d, selected, currentDest?.route) { askReturnToMore = true }
-                            },
-                            icon = { Icon(d.icon, contentDescription = d.label) },
-                            label = { Text(d.label) },
-                        )
+                Column {
+                    // مشغّلٌ مصغّرٌ عائمٌ يعيد المستخدم إلى موضع التلاوة الجاريّة.
+                    QuranMiniPlayer(onOpen = { route ->
+                        nav.navigate(route) { launchSingleTop = true }
+                    })
+                    NavigationBar {
+                        Dest.entries.forEach { d ->
+                            val selected = currentDest?.hierarchy?.any { it.route == d.route } == true
+                            NavigationBarItem(
+                                selected = selected,
+                                onClick = {
+                                    onTabClick(nav, d, selected, currentDest?.route) { askReturnToMore = true }
+                                },
+                                icon = { Icon(d.icon, contentDescription = d.label) },
+                                label = { Text(d.label) },
+                            )
+                        }
                     }
                 }
             },

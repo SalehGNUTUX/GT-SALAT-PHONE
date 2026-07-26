@@ -68,6 +68,9 @@ class SettingsRepository @Inject constructor(
         val MONTH_SCHEME = stringPreferencesKey("month_scheme")
         val CAL_KIND = stringPreferencesKey("timetable_calendar")
         val SETUP = booleanPreferencesKey("setup_completed")
+        val LAST_READ_SURAH = intPreferencesKey("last_read_surah")
+        val LAST_READ_AYAH = intPreferencesKey("last_read_ayah")
+        val LAST_RECITER = stringPreferencesKey("last_reciter_id")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { p -> p.toSettings() }
@@ -126,8 +129,18 @@ class SettingsRepository @Inject constructor(
             monthScheme = runCatching { MonthScheme.valueOf(this[Keys.MONTH_SCHEME] ?: "AUTO") }.getOrDefault(MonthScheme.AUTO),
             timetableCalendar = if (this[Keys.CAL_KIND] == "GREGORIAN") CalendarKind.GREGORIAN else CalendarKind.HIJRI,
             setupCompleted = this[Keys.SETUP] ?: false,
+            lastReadSurah = this[Keys.LAST_READ_SURAH] ?: 0,
+            lastReadAyah = this[Keys.LAST_READ_AYAH] ?: 1,
+            lastReciterId = this[Keys.LAST_RECITER] ?: "",
         )
     }
+
+    /** حفظ موضع القراءة الأخير في القرآن (للمتابعة لاحقاً). */
+    suspend fun setLastRead(surah: Int, ayah: Int) = context.dataStore.edit {
+        it[Keys.LAST_READ_SURAH] = surah
+        it[Keys.LAST_READ_AYAH] = ayah
+    }
+    suspend fun setLastReciter(id: String) = context.dataStore.edit { it[Keys.LAST_RECITER] = id }
 
     suspend fun setLocation(lat: Double, lon: Double, city: String, country: String) {
         context.dataStore.edit {
