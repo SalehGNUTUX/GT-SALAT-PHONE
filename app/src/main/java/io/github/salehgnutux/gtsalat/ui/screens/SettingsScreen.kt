@@ -148,10 +148,17 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                     Text(if (settings.customAdhanUri != null) "تغيير الأذان المخصّص" else "استيراد أذان مخصّص")
                 }
             }
-            LabeledRow("نمط تنبيه دخول الوقت") {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(settings.adhanAlertMode == AdhanAlertMode.FULL, { vm.setAdhanAlertMode(AdhanAlertMode.FULL) }, { Text("أذان كامل") })
-                    FilterChip(settings.adhanAlertMode == AdhanAlertMode.TONE, { vm.setAdhanAlertMode(AdhanAlertMode.TONE) }, { Text("رنّة تنبيه") })
+            MinutesSlider("مستوى صوت الأذان:", settings.adhanVolume, 0, 100, suffix = "٪") { vm.setAdhanVolume(it) }
+            SwitchRow("تنبيهٌ مخصّصٌ لكلّ صلاة", settings.perPrayerAlerts) { vm.setPerPrayerAlerts(it) }
+            if (settings.perPrayerAlerts) {
+                io.github.salehgnutux.gtsalat.data.settings.AppSettings.ALERT_PRAYERS.forEachIndexed { i, pid ->
+                    LabeledRow(pid.arabic) {
+                        AlertModeChips(settings.prayerAlerts.getOrElse(i) { AdhanAlertMode.FULL }) { vm.setPrayerAlert(i, it) }
+                    }
+                }
+            } else {
+                LabeledRow("نمط تنبيه دخول الوقت") {
+                    AlertModeChips(settings.adhanAlertMode) { vm.setAdhanAlertMode(it) }
                 }
             }
             SwitchRow("دعاء بعد الأذان", settings.enableDuaAfterAdhan) { vm.setEnableDua(it) }
@@ -440,11 +447,20 @@ private fun AdhanTypeRow(
 }
 
 @Composable
-private fun MinutesSlider(prefix: String, minutes: Int, min: Int, max: Int, onChange: (Int) -> Unit) {
+private fun AlertModeChips(mode: AdhanAlertMode, onPick: (AdhanAlertMode) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(mode == AdhanAlertMode.FULL, { onPick(AdhanAlertMode.FULL) }, { Text("أذان") })
+        FilterChip(mode == AdhanAlertMode.TONE, { onPick(AdhanAlertMode.TONE) }, { Text("رنّة") })
+        FilterChip(mode == AdhanAlertMode.SILENT, { onPick(AdhanAlertMode.SILENT) }, { Text("صامت") })
+    }
+}
+
+@Composable
+private fun MinutesSlider(prefix: String, minutes: Int, min: Int, max: Int, suffix: String = "دقيقة", onChange: (Int) -> Unit) {
     var v by remember(minutes) { mutableStateOf(minutes.toFloat()) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         // القيمة الحيّة تظهر أثناء السحب لا بعد تركه فقط.
-        Text("$prefix ${v.toInt()} دقيقة", style = MaterialTheme.typography.bodyLarge)
+        Text("$prefix ${v.toInt()} $suffix", style = MaterialTheme.typography.bodyLarge)
         Slider(
             value = v,
             onValueChange = { v = it },
@@ -482,7 +498,7 @@ private fun SilenceControls(minutes: Int, onChange: (Int) -> Unit) {
                 FilledTonalButton(onClick = { openPolicyAccess(context) }) { Text("منح") }
             }
         }
-        MinutesSlider("يُكتم لمدّة", minutes, 5, 60, onChange)
+        MinutesSlider("يُكتم لمدّة", minutes, 5, 60, onChange = onChange)
     }
 }
 

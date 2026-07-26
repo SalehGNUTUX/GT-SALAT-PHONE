@@ -41,6 +41,9 @@ class SettingsRepository @Inject constructor(
         val EN_ADHAN = booleanPreferencesKey("en_adhan_sound")
         val EN_DUA = booleanPreferencesKey("en_dua_after")
         val ALERT_MODE = stringPreferencesKey("adhan_alert_mode")
+        val ADHAN_VOLUME = intPreferencesKey("adhan_volume")
+        val PER_PRAYER = booleanPreferencesKey("per_prayer_alerts")
+        val PRAYER_ALERTS = stringPreferencesKey("prayer_alerts_csv")
         val EN_PRE = booleanPreferencesKey("en_pre_notify")
         val EN_PRE_SOUND = booleanPreferencesKey("en_pre_notify_sound")
         val EN_POST_DHIKR = booleanPreferencesKey("en_post_dhikr")
@@ -83,7 +86,11 @@ class SettingsRepository @Inject constructor(
             enableSalatNotify = this[Keys.EN_SALAT] ?: true,
             enableAdhanSound = this[Keys.EN_ADHAN] ?: true,
             enableDuaAfterAdhan = this[Keys.EN_DUA] ?: false,
-            adhanAlertMode = if (this[Keys.ALERT_MODE] == "TONE") AdhanAlertMode.TONE else AdhanAlertMode.FULL,
+            adhanAlertMode = parseAlert(this[Keys.ALERT_MODE]),
+            adhanVolume = (this[Keys.ADHAN_VOLUME] ?: 100).coerceIn(0, 100),
+            perPrayerAlerts = this[Keys.PER_PRAYER] ?: false,
+            prayerAlerts = (this[Keys.PRAYER_ALERTS] ?: "").split(",")
+                .let { csv -> List(5) { i -> parseAlert(csv.getOrNull(i)) } },
             enablePreNotify = this[Keys.EN_PRE] ?: true,
             enablePreNotifySound = this[Keys.EN_PRE_SOUND] ?: true,
             enablePostDhikr = this[Keys.EN_POST_DHIKR] ?: true,
@@ -128,7 +135,20 @@ class SettingsRepository @Inject constructor(
     suspend fun setEnableSalat(v: Boolean) = context.dataStore.edit { it[Keys.EN_SALAT] = v }
     suspend fun setEnableAdhan(v: Boolean) = context.dataStore.edit { it[Keys.EN_ADHAN] = v }
     suspend fun setEnableDua(v: Boolean) = context.dataStore.edit { it[Keys.EN_DUA] = v }
+    private fun parseAlert(s: String?): AdhanAlertMode = when (s) {
+        "TONE" -> AdhanAlertMode.TONE
+        "SILENT" -> AdhanAlertMode.SILENT
+        else -> AdhanAlertMode.FULL
+    }
+
     suspend fun setAdhanAlertMode(m: AdhanAlertMode) = context.dataStore.edit { it[Keys.ALERT_MODE] = m.name }
+    suspend fun setAdhanVolume(v: Int) = context.dataStore.edit { it[Keys.ADHAN_VOLUME] = v.coerceIn(0, 100) }
+    suspend fun setPerPrayerAlerts(v: Boolean) = context.dataStore.edit { it[Keys.PER_PRAYER] = v }
+    suspend fun setPrayerAlert(index: Int, mode: AdhanAlertMode) = context.dataStore.edit { p ->
+        val cur = (p[Keys.PRAYER_ALERTS] ?: "").split(",").let { csv -> MutableList(5) { i -> (csv.getOrNull(i) ?: "FULL") } }
+        if (index in 0..4) cur[index] = mode.name
+        p[Keys.PRAYER_ALERTS] = cur.joinToString(",")
+    }
     suspend fun setEnablePreNotify(v: Boolean) = context.dataStore.edit { it[Keys.EN_PRE] = v }
     suspend fun setEnablePreNotifySound(v: Boolean) = context.dataStore.edit { it[Keys.EN_PRE_SOUND] = v }
     suspend fun setEnablePostDhikr(v: Boolean) = context.dataStore.edit { it[Keys.EN_POST_DHIKR] = v }

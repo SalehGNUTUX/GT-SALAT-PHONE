@@ -1,5 +1,6 @@
 package io.github.salehgnutux.gtsalat.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -82,6 +83,16 @@ fun AppRoot(setupCompleted: Boolean) {
     val currentDest = backStack?.destination
     // رسالةٌ عند إعادة النقر على «المزيد» ونحن داخل أحد أقسامه.
     var askReturnToMore by remember { mutableStateOf(false) }
+
+    // زرّ رجوع النظام: من أيّ قسمٍ يعود للرئيسيّة؛ ومن الرئيسيّة يخرج من التطبيق بلا رسالة تحذير.
+    val onDashboard = currentDest?.route == Dest.DASHBOARD.route
+    BackHandler(enabled = !onDashboard) {
+        nav.navigate(Dest.DASHBOARD.route) {
+            popUpTo(nav.graph.findStartDestination().id) { inclusive = false }
+            launchSingleTop = true
+        }
+        UiEvents.requestHomeTop()
+    }
 
     val cs = MaterialTheme.colorScheme
     val dark = isSystemInDarkTheme()

@@ -38,6 +38,7 @@ class AdhanService : Service() {
     private var player: MediaPlayer? = null
     private var audioManager: AudioManager? = null
     private var focusRequest: AudioFocusRequest? = null
+    private var volume: Float = 1f   // 0..1، مستوى صوت الأذان من الإعدادات
 
     private val audioAttributes = AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_ALARM)
@@ -53,6 +54,8 @@ class AdhanService : Service() {
         }
         val prayerAr = intent?.getStringExtra(EXTRA_PRAYER_AR) ?: "الصلاة"
         val sound = intent?.getStringExtra(EXTRA_SOUND) ?: SOUND_ADHAN
+        val alertMode = intent?.getStringExtra(EXTRA_ALERT_MODE) ?: "FULL"
+        volume = (intent?.getIntExtra(EXTRA_VOLUME, 100) ?: 100).coerceIn(0, 100) / 100f
         val title = when (sound) {
             SOUND_PRENOTIFY -> "⏰ اقترب وقت صلاة $prayerAr"
             SOUND_POST_DHIKR -> "📿 أذكار بعد صلاة $prayerAr"
@@ -67,8 +70,8 @@ class AdhanService : Service() {
                 SOUND_PRENOTIFY -> playUri(resUri(R.raw.prayer_approaching)) { stopEverything() }
                 SOUND_POST_DHIKR -> playUri(resUri(R.raw.post_prayer_dhikr)) { stopEverything() }
                 else -> {
-                    // نمط الرنّة: صوتٌ قصيرٌ بدل الأذان الكامل.
-                    if (s.adhanAlertMode == io.github.salehgnutux.gtsalat.data.settings.AdhanAlertMode.TONE) {
+                    // نمط الرنّة: صوتٌ قصيرٌ بدل الأذان الكامل (النمط مُمرَّرٌ من المُستقبِل: عامّ أو لكلّ صلاة).
+                    if (alertMode == "TONE") {
                         playUri(resUri(R.raw.prayer_approaching)) { stopEverything() }
                     } else {
                         playUri(adhanUri(s)) {
@@ -102,7 +105,7 @@ class AdhanService : Service() {
             if (!ok) runCatching { setDataSource(this@AdhanService, resUri(R.raw.adhan_full)) }
             setOnCompletionListener { onComplete() }
             setOnErrorListener { _, _, _ -> stopEverything(); true }
-            setOnPreparedListener { start() }
+            setOnPreparedListener { setVolume(volume, volume); start() }
             prepareAsync()
         }
     }
@@ -153,6 +156,8 @@ class AdhanService : Service() {
     companion object {
         const val EXTRA_PRAYER_AR = "prayer_ar"
         const val EXTRA_SOUND = "sound"
+        const val EXTRA_ALERT_MODE = "alert_mode"
+        const val EXTRA_VOLUME = "volume"
         const val SOUND_ADHAN = "adhan"
         const val SOUND_PRENOTIFY = "prenotify"
         const val SOUND_POST_DHIKR = "post_dhikr"

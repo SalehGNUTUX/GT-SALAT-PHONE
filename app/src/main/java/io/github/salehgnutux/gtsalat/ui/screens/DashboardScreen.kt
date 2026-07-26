@@ -58,7 +58,9 @@ fun DashboardScreen(vm: DashboardViewModel = hiltViewModel()) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
-    // إعادة النقر على «الرئيسيّة» → التمرير لرأس الصفحة.
+    // دخول الشاشة (أو العودة إليها من قسمٍ آخر) يبدأ من رأس الصفحة — لا من آخر موضعٍ محفوظ.
+    androidx.compose.runtime.LaunchedEffect(Unit) { listState.scrollToItem(0) }
+    // إعادة النقر على «الرئيسيّة» وهي ظاهرة → التمرير لرأس الصفحة.
     androidx.compose.runtime.LaunchedEffect(Unit) {
         io.github.salehgnutux.gtsalat.ui.UiEvents.scrollHomeToTop.collect {
             listState.animateScrollToItem(0)

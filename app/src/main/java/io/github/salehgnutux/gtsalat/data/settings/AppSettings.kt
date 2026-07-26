@@ -3,12 +3,13 @@ package io.github.salehgnutux.gtsalat.data.settings
 import io.github.salehgnutux.gtsalat.domain.AsrMadhab
 import io.github.salehgnutux.gtsalat.domain.CalendarKind
 import io.github.salehgnutux.gtsalat.domain.MonthScheme
+import io.github.salehgnutux.gtsalat.domain.PrayerId
 
 enum class AdhanType { FULL, SHORT, CUSTOM }
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
-/** نمط تنبيه دخول الوقت: أذانٌ كامل، أم رنّة تنبيهٍ قصيرة. */
-enum class AdhanAlertMode { FULL, TONE }
+/** نمط تنبيه دخول الوقت: أذانٌ كامل، أم رنّة تنبيهٍ قصيرة، أم صامتٌ (إشعارٌ بلا صوت). */
+enum class AdhanAlertMode { FULL, TONE, SILENT }
 
 /** كامل إعدادات التطبيق — تُخزَّن في DataStore وتُبثّ كـ Flow. */
 data class AppSettings(
@@ -26,6 +27,9 @@ data class AppSettings(
     val enableAdhanSound: Boolean = true,
     val enableDuaAfterAdhan: Boolean = false,
     val adhanAlertMode: AdhanAlertMode = AdhanAlertMode.FULL,
+    val adhanVolume: Int = 100,                // مستوى صوت الأذان 0..100
+    val perPrayerAlerts: Boolean = false,      // عند التفعيل تُخصَّص كلّ صلاة
+    val prayerAlerts: List<AdhanAlertMode> = List(5) { AdhanAlertMode.FULL }, // فجر/ظهر/عصر/مغرب/عشاء
     val enablePreNotify: Boolean = true,
     val enablePreNotifySound: Boolean = true,
     val enablePostDhikr: Boolean = true,
@@ -44,4 +48,23 @@ data class AppSettings(
     val setupCompleted: Boolean = false,
 ) {
     val hasLocation: Boolean get() = lat != null && lon != null
+
+    /** نمط التنبيه الفعّال لصلاةٍ ما: مخصّصٌ لكلّ صلاة إن فُعّل الخيار، وإلّا الإعداد العامّ. */
+    fun alertFor(id: PrayerId): AdhanAlertMode {
+        if (!perPrayerAlerts) return adhanAlertMode
+        val idx = when (id) {
+            PrayerId.FAJR -> 0
+            PrayerId.DHUHR -> 1
+            PrayerId.ASR -> 2
+            PrayerId.MAGHRIB -> 3
+            PrayerId.ISHA -> 4
+            else -> return adhanAlertMode
+        }
+        return prayerAlerts.getOrElse(idx) { AdhanAlertMode.FULL }
+    }
+
+    companion object {
+        /** ترتيب الصلوات الخمس في قائمة prayerAlerts. */
+        val ALERT_PRAYERS = listOf(PrayerId.FAJR, PrayerId.DHUHR, PrayerId.ASR, PrayerId.MAGHRIB, PrayerId.ISHA)
+    }
 }

@@ -60,6 +60,9 @@ class SettingsViewModel @Inject constructor(
     fun setEnableAdhan(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableAdhan(v) }
     fun setEnableDua(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableDua(v) }
     fun setAdhanAlertMode(m: io.github.salehgnutux.gtsalat.data.settings.AdhanAlertMode) = viewModelScope.launch { settingsRepo.setAdhanAlertMode(m) }
+    fun setAdhanVolume(v: Int) = viewModelScope.launch { settingsRepo.setAdhanVolume(v) }
+    fun setPerPrayerAlerts(v: Boolean) = viewModelScope.launch { settingsRepo.setPerPrayerAlerts(v) }
+    fun setPrayerAlert(index: Int, m: io.github.salehgnutux.gtsalat.data.settings.AdhanAlertMode) = viewModelScope.launch { settingsRepo.setPrayerAlert(index, m) }
     fun setEnablePreNotify(v: Boolean) = viewModelScope.launch { settingsRepo.setEnablePreNotify(v); reschedule() }
     fun setEnablePreNotifySound(v: Boolean) = viewModelScope.launch { settingsRepo.setEnablePreNotifySound(v) }
     fun setEnablePostDhikr(v: Boolean) = viewModelScope.launch { settingsRepo.setEnablePostDhikr(v) }

@@ -8,7 +8,9 @@ import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.salehgnutux.gtsalat.audio.AdhanService
 import io.github.salehgnutux.gtsalat.audio.RingerController
+import io.github.salehgnutux.gtsalat.data.settings.AdhanAlertMode
 import io.github.salehgnutux.gtsalat.data.settings.SettingsRepository
+import io.github.salehgnutux.gtsalat.domain.PrayerId
 import io.github.salehgnutux.gtsalat.notification.NotificationHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -65,8 +67,11 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                                 NotificationHelper.ID_PRAYER,
                                 notifications.prayerNotification(prayerAr),
                             )
-                            if (s.enableAdhanSound) {
-                                startAdhanService(context, prayerAr, AdhanService.SOUND_ADHAN)
+                            // النمط الفعّال لهذه الصلاة (مخصّصٌ أو عامّ). الصامت: إشعارٌ بلا صوت.
+                            val pid = runCatching { PrayerId.valueOf(intent.getStringExtra(EXTRA_PRAYER) ?: "") }.getOrNull()
+                            val mode = pid?.let { s.alertFor(it) } ?: s.adhanAlertMode
+                            if (s.enableAdhanSound && mode != AdhanAlertMode.SILENT) {
+                                startAdhanService(context, prayerAr, AdhanService.SOUND_ADHAN, mode, s.adhanVolume)
                             }
                         }
                     }
@@ -85,10 +90,18 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
     }
 
     /** إطلاق خدمة الأذان المقدّمة بنوع الصوت المطلوب (يعمل والشاشة مغلقة). */
-    private fun startAdhanService(context: Context, prayerAr: String, sound: String) {
+    private fun startAdhanService(
+        context: Context,
+        prayerAr: String,
+        sound: String,
+        mode: AdhanAlertMode = AdhanAlertMode.FULL,
+        volume: Int = 100,
+    ) {
         val svc = Intent(context, AdhanService::class.java).apply {
             putExtra(AdhanService.EXTRA_PRAYER_AR, prayerAr)
             putExtra(AdhanService.EXTRA_SOUND, sound)
+            putExtra(AdhanService.EXTRA_ALERT_MODE, mode.name)
+            putExtra(AdhanService.EXTRA_VOLUME, volume)
         }
         runCatching { ContextCompat.startForegroundService(context, svc) }
     }
