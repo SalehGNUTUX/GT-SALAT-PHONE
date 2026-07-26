@@ -25,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -228,10 +229,50 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             }
         }
 
+        SectionCard("المصادر المعتمَدة", openSection == "المصادر المعتمَدة", { toggle("المصادر المعتمَدة") }) {
+            Text(
+                "أُثري التطبيق بمحتوىً وبياناتٍ من مشاريعَ حرّةٍ ومفتوحةِ المصدر، بالشكر والتقدير:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.outline,
+            )
+            io.github.salehgnutux.gtsalat.domain.Credits.SOURCES.forEach { src ->
+                LinkRow(src.name, src.note) { openUrl(context, src.url) }
+            }
+        }
+
         SectionCard("حول", openSection == "حول", { toggle("حول") }) {
             InfoRow("النسخة", "GT-SALAT ${BuildConfig.VERSION_NAME}")
             InfoRow("الإصدار", if (BuildConfig.USES_GMS) "كاملة (خدمات Google)" else "حرّة (بلا Google)")
+            HorizontalDivider()
+            LinkRow("المطوّر", io.github.salehgnutux.gtsalat.domain.Credits.DEVELOPER) { openUrl(context, io.github.salehgnutux.gtsalat.domain.Credits.GITHUB) }
+            LinkRow("المستودع (GitHub)", "الشيفرة المصدريّة") { openUrl(context, io.github.salehgnutux.gtsalat.domain.Credits.REPO) }
+            LinkRow("موقع المشروع", "الصفحة التعريفيّة") { openUrl(context, io.github.salehgnutux.gtsalat.domain.Credits.WEBSITE) }
+            LinkRow("مشاريع GNUTUX", "بقيّة مشاريع المطوّر") { openUrl(context, io.github.salehgnutux.gtsalat.domain.Credits.PROJECTS) }
         }
+    }
+}
+
+private fun openUrl(context: Context, url: String) {
+    runCatching {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    }
+}
+
+/** صفٌّ قابلٌ للنقر يفتح رابطاً: عنوانٌ ووصفٌ وأيقونة فتح. */
+@Composable
+private fun LinkRow(title: String, subtitle: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
+        Arrangement.SpaceBetween,
+        Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+            if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+        }
+        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "فتح", tint = MaterialTheme.colorScheme.outline)
     }
 }
 

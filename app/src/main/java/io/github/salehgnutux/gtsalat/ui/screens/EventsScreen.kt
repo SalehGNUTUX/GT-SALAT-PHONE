@@ -11,12 +11,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -58,23 +67,45 @@ class EventsViewModel @Inject constructor(private val repo: ContentRepository) :
 @Composable
 fun EventsScreen(onBack: () -> Unit, vm: EventsViewModel = hiltViewModel()) {
     val ui by vm.ui.collectAsStateWithLifecycle()
+    var query by remember { mutableStateOf("") }
+    val q = query.trim()
+    val results = remember(q, ui.all) {
+        if (q.isBlank()) ui.all
+        else ui.all.filter { it.title.contains(q) || it.text.contains(q) || it.year.contains(q) }
+    }
+
     Column(Modifier.fillMaxSize()) {
         SubScreenHeader("أحداثٌ تاريخيّة", onBack)
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            placeholder = { Text("ابحث في الأحداث (اسمٌ أو سنة أو كلمة)…") },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            trailingIcon = {
+                if (q.isNotEmpty()) IconButton(onClick = { query = "" }) { Icon(Icons.Filled.Close, contentDescription = "مسح") }
+            },
+            singleLine = true,
+        )
         LazyColumn(
             Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            if (ui.today.isNotEmpty()) {
+            if (q.isBlank() && ui.today.isNotEmpty()) {
                 item {
                     Text("حدث اليوم في التاريخ", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
                 items(ui.today, key = { "t_${it.title}" }) { EventCard(it, highlight = true) }
                 item {
-                    Text("كلّ الأحداث", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 8.dp))
+                    Text("كلّ الأحداث (${ui.all.size})", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 8.dp))
+                }
+            } else if (q.isNotBlank()) {
+                item {
+                    Text(if (results.isEmpty()) "لا نتائج لـ«$q»" else "${results.size} نتيجة", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                 }
             }
-            items(ui.all, key = { "a_${it.title}" }) { EventCard(it, highlight = false) }
+            items(results, key = { "a_${it.title}" }) { EventCard(it, highlight = false) }
         }
     }
 }

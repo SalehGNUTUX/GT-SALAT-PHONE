@@ -116,7 +116,8 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
   ✅ **محور «المزيد»** (`MoreScreen`، تبويبٌ خامس ببطاقات الأقسام) ·
   ✅ **أسماء الله الحسنى** (99 من `assets/content/asma.json` بمعانٍ وشواهد + `AsmaScreen` كبطاقات Pager سلايد) ·
   ✅ **الكاتم التلقائيّ** (`audio/RingerController` + جدولة استعادةٍ في المُستقبِل، يحتاج ACCESS_NOTIFICATION_POLICY) ·
-  ✅ **محتوى مستورَد** (`data/ContentRepository` + `assets/content/*.json`): أحاديث (90) + أدعية (28) + حِكَم (32) + أسماء الله بالشواهد + **أحداث تاريخيّة** (events.json، 33 حدثاً + «حدث اليوم» عبر ICU) ·
+  ✅ **محتوى مستورَد** (`data/ContentRepository` + `assets/content/*.json`): أحاديث (90) + أدعية (28) + حِكَم (32) + أسماء الله بالشواهد + **أحداث تاريخيّة** (events.json، 59 حدثاً + بحث + «حدث اليوم» عبر ICU) ·
+  **المصادر:** `domain/Credits.kt` قائمةٌ صيانتها لازمةٌ **كلّما اعتمدنا مصدراً حرّاً** (تظهر في الإعدادات + الموقع). ·
   ✅ **حصن المسلم المصنّف** (`assets/content/hisn.json`، 132 باباً/267 ذكراً + `HisnScreen`/`HisnCategoryScreen` بعدٍّ تنازليّ؛ بديل القائمة المسطّحة azkar.txt التي بقيت لذكر اليوم فقط) ·
   ✅ **إغناء الرئيسيّة** (ذكر/حكمة اليوم بتجديد ونسخ + تاريخ هجريّ/ميلاديّ) + **خلفيّة متدرّجة** (`AppRoot`) ·
   ✅ **إشعار دائم** (القائمة المنسدلة، عدٌّ تنازليّ chronometer، `NotificationHelper.statusNotification`) ·
