@@ -60,6 +60,12 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
+        <!-- خدمة تلاوة القرآن (مقدّمة، وسائط) — تعمل في الخلفيّة والشاشة مغلقة -->
+        <service
+            android:name=".audio.QuranAudioService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
         <!-- مُستقبِل إطلاق الإنذار عند دخول وقت الصلاة -->
         <receiver
             android:name=".alarm.PrayerAlarmReceiver"

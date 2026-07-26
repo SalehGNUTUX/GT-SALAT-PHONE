@@ -56,11 +56,11 @@ fun MoreScreen(onOpen: (String) -> Unit) {
         Feature("الأدعية المأثورة", Icons.Outlined.VolunteerActivism, "duas"),
         Feature("الأربعون والأحاديث", Icons.Outlined.MenuBook, "hadith"),
         Feature("حِكَم ومواعظ", Icons.Outlined.FormatQuote, "hikam"),
+        Feature("القرآن الكريم", Icons.Outlined.AutoStories, "quran"),
         Feature("التفسير الميسّر", Icons.Outlined.Notes, "tafsir"),
         Feature("أحداثٌ تاريخيّة", Icons.Outlined.HistoryEdu, "events"),
         Feature("التسبيح", Icons.Outlined.Fingerprint, "tasbih"),
         Feature("أسماء الله الحسنى", Icons.Outlined.AutoAwesome, "asma"),
-        Feature("المصحف", Icons.Outlined.AutoStories, null),
         Feature("الإذاعات", Icons.Outlined.Radio, null),
     )
 

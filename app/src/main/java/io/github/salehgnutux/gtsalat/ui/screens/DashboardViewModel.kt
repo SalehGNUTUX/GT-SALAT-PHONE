@@ -41,6 +41,10 @@ data class DashboardUi(
     val showAyah: Boolean = true,
 )
 
+/** حالةٌ خفيفةٌ تتغيّر كلّ ثانية (الساعة والعدّاد) — معزولةٌ عن [DashboardUi]
+ *  حتّى لا يُعاد تركيب كامل بطاقات الرئيسيّة كلّ ثانية، بل نصوص الساعة/العدّاد فقط. */
+data class DashboardTick(val clock: String = "", val countdownText: String = "")
+
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val repo: PrayerRepository,
@@ -52,10 +56,15 @@ class DashboardViewModel @Inject constructor(
     private val _ui = MutableStateFlow(DashboardUi())
     val ui: StateFlow<DashboardUi> = _ui.asStateFlow()
 
+    // تدفّقٌ منفصلٌ للساعة/العدّاد (يتغيّر كلّ ثانية) — تقرؤه بطاقة البطل فقط.
+    private val _tick = MutableStateFlow(DashboardTick())
+    val tick: StateFlow<DashboardTick> = _tick.asStateFlow()
+
     private var settings: AppSettings? = null
     private var today: DayTimetable? = null
     private var tomorrowFajr: PrayerTime? = null
     private var loadedDate: LocalDate? = null   // لكشف تغيّر اليوم وإعادة التحميل
+    private var lastNextId: PrayerId? = null     // لإعادة بناء ui.next عند تبدّل الصلاة القادمة فقط
 
     private var azkarList: List<String> = emptyList()
     private var dhikr: String = ""
@@ -69,7 +78,7 @@ class DashboardViewModel @Inject constructor(
             if (azkarList.isNotEmpty()) dhikr = azkarList[dayOfYear % azkarList.size]
             hikmah = content.hikmah(dayOfYear)
             ayah = content.dailyAyah(dayOfYear)
-            tickUpdate()
+            rebuildUi()
         }
         viewModelScope.launch {
             settingsRepo.settings.collectLatest { s ->
@@ -82,7 +91,7 @@ class DashboardViewModel @Inject constructor(
                 // إعادة تحميل بيانات اليوم عند تجاوز منتصف الليل (وإلّا بقيت مواقيت الأمس والعدّاد 00:00:00).
                 val s = settings
                 if (s != null && loadedDate != LocalDate.now()) loadDay(s)
-                tickUpdate()
+                refreshTick()
                 delay(1000)
             }
         }
@@ -92,7 +101,7 @@ class DashboardViewModel @Inject constructor(
     fun refreshDhikr() {
         if (azkarList.isNotEmpty()) {
             dhikr = azkarList[Random.nextInt(azkarList.size)]
-            tickUpdate()
+            rebuildUi()
         }
     }
 
@@ -100,7 +109,7 @@ class DashboardViewModel @Inject constructor(
     fun refreshHikmah() {
         viewModelScope.launch {
             hikmah = content.hikmah(Random.nextInt(100000))
-            tickUpdate()
+            rebuildUi()
         }
     }
 
@@ -108,7 +117,7 @@ class DashboardViewModel @Inject constructor(
     fun refreshAyah() {
         viewModelScope.launch {
             ayah = content.dailyAyah(Random.nextInt(100000))
-            tickUpdate()
+            rebuildUi()
         }
     }
 
@@ -123,10 +132,10 @@ class DashboardViewModel @Inject constructor(
         tomorrowFajr = PrayerCalculator
             .computeDay(LocalDate.now().plusDays(1), s.lat!!, s.lon!!, s.methodId, s.madhab)
             .time(PrayerId.FAJR)
-        tickUpdate()
+        rebuildUi()
     }
 
-    private fun tickUpdate() {
+    private fun rebuildUi() {
         val s = settings ?: return
         val t = today
         if (!s.hasLocation || t == null) {
@@ -144,6 +153,7 @@ class DashboardViewModel @Inject constructor(
         }
         val now = System.currentTimeMillis()
         val next = PrayerCalculator.nextPrayer(t, tomorrowFajr, now)
+        lastNextId = next?.prayer?.id
         _ui.value = DashboardUi(
             loading = false,
             hasLocation = true,
@@ -159,5 +169,24 @@ class DashboardViewModel @Inject constructor(
             ayah = ayah,
             showAyah = s.enableDailyAyah,
         )
+    }
+
+    /** تحديثٌ خفيفٌ كلّ ثانية: الساعة والعدّاد فقط في [_tick]؛ ولا يُعاد بناء [_ui]
+     *  إلّا عند تبدّل الصلاة القادمة (لتجنّب إعادة تركيب كامل الرئيسيّة كلّ ثانية). */
+    private fun refreshTick() {
+        val s = settings ?: return
+        val t = today
+        val clock = Format.clockNow()
+        if (!s.hasLocation || t == null) {
+            _tick.value = DashboardTick(clock = clock, countdownText = "")
+            return
+        }
+        val now = System.currentTimeMillis()
+        val next = PrayerCalculator.nextPrayer(t, tomorrowFajr, now)
+        _tick.value = DashboardTick(
+            clock = clock,
+            countdownText = next?.let { Format.countdown(it.remainingMillis) } ?: "",
+        )
+        if (next?.prayer?.id != lastNextId) rebuildUi()
     }
 }

@@ -57,6 +57,7 @@ private const val I_AYAH = 5
 @Composable
 fun DashboardScreen(vm: DashboardViewModel = hiltViewModel()) {
     val ui by vm.ui.collectAsStateWithLifecycle()
+    val tick by vm.tick.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
@@ -76,7 +77,7 @@ fun DashboardScreen(vm: DashboardViewModel = hiltViewModel()) {
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         // 0 — البطاقة الرئيسيّة (ساعة + تاريخان + الصلاة القادمة) بخلفيّةٍ متدرّجة
-        item { HeroCard(ui) }
+        item { HeroCard(ui, tick) }
 
         // 1 — أزرار ذكر/حكمة/آية اليوم (تنزل للمحتوى أسفل الصفحة) — متّسقةٌ بسطرٍ واحد
         item {
@@ -163,15 +164,17 @@ private fun DailyNavButton(label: String, icon: androidx.compose.ui.graphics.vec
 }
 
 @Composable
-private fun HeroCard(ui: DashboardUi) {
+private fun HeroCard(ui: DashboardUi, tick: DashboardTick) {
     val cs = MaterialTheme.colorScheme
     val dark = isSystemInDarkTheme()
-    val brush = Brush.verticalGradient(
-        listOf(
-            lerp(cs.primaryContainer, cs.primary, if (dark) 0.35f else 0.14f),
-            cs.primaryContainer,
-        ),
-    )
+    val brush = androidx.compose.runtime.remember(cs.primaryContainer, cs.primary, dark) {
+        Brush.verticalGradient(
+            listOf(
+                lerp(cs.primaryContainer, cs.primary, if (dark) 0.35f else 0.14f),
+                cs.primaryContainer,
+            ),
+        )
+    }
     val onHero = cs.onPrimaryContainer
 
     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
@@ -190,7 +193,7 @@ private fun HeroCard(ui: DashboardUi) {
                         color = onHero,
                     )
                 }
-                Text(ui.clock, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = onHero)
+                Text(tick.clock, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = onHero)
             }
             // التاريخان
             ui.hijri?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = onHero, fontWeight = FontWeight.Bold) }
@@ -215,10 +218,10 @@ private fun HeroCard(ui: DashboardUi) {
                     color = onHero,
                 )
             }
-            if (ui.countdownText.isNotBlank()) {
+            if (tick.countdownText.isNotBlank()) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("المتبقّي", style = MaterialTheme.typography.labelMedium, color = onHero.copy(alpha = 0.85f))
-                    Text(ui.countdownText, style = CountdownStyle, fontWeight = FontWeight.Bold, color = onHero)
+                    Text(tick.countdownText, style = CountdownStyle, fontWeight = FontWeight.Bold, color = onHero)
                 }
             }
         }

@@ -15,8 +15,8 @@ android {
         applicationId = "io.github.salehgnutux.gtsalat"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.4.0-beta"
+        versionCode = 5
+        versionName = "0.5.0-beta"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -104,6 +104,9 @@ dependencies {
 
     // حساب المواقيت والقبلة محلّيّاً (بلا إنترنت)
     implementation(libs.adhan)
+
+    // تحميل صور صفحات المصحف (مع كاش قرص) — Coil
+    implementation(libs.coil.compose)
 
     // ودجت سطح الهاتف (Jetpack Glance)
     implementation(libs.glance.appwidget)

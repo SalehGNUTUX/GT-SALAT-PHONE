@@ -53,8 +53,13 @@ import io.github.salehgnutux.gtsalat.ui.screens.HadithScreen
 import io.github.salehgnutux.gtsalat.ui.screens.HikamScreen
 import io.github.salehgnutux.gtsalat.ui.screens.HisnCategoryScreen
 import io.github.salehgnutux.gtsalat.ui.screens.HisnScreen
+import io.github.salehgnutux.gtsalat.ui.screens.AudioRecitationScreen
 import io.github.salehgnutux.gtsalat.ui.screens.MoreScreen
+import io.github.salehgnutux.gtsalat.ui.screens.MushafScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QiblaScreen
+import io.github.salehgnutux.gtsalat.ui.screens.QuranHubScreen
+import io.github.salehgnutux.gtsalat.ui.screens.SurahIndexScreen
+import io.github.salehgnutux.gtsalat.ui.screens.TextReaderScreen
 import io.github.salehgnutux.gtsalat.ui.screens.SettingsScreen
 import io.github.salehgnutux.gtsalat.ui.screens.SetupScreen
 import io.github.salehgnutux.gtsalat.ui.screens.TafsirScreen
@@ -108,12 +113,15 @@ fun AppRoot(setupCompleted: Boolean, gradientTop: Int = 0, gradientBottom: Int =
     val cs = MaterialTheme.colorScheme
     val dark = isSystemInDarkTheme()
     // تدرّجٌ مخصّصٌ إن عُيّن، وإلّا مشتقٌّ من ألوان السِمة (يحترم الداكن/الفاتح وMaterial You).
-    val gradient = if (gradientTop != 0 && gradientBottom != 0) {
-        Brush.verticalGradient(listOf(Color(gradientTop), Color(gradientBottom)))
-    } else {
-        Brush.verticalGradient(
-            listOf(cs.background, lerp(cs.background, cs.primary, if (dark) 0.14f else 0.06f)),
-        )
+    // يُثبَّت بـ remember حتّى لا يُعاد توليد الشيدر مع كلّ إعادة تركيبٍ أثناء انتقالات التنقّل.
+    val gradient = remember(gradientTop, gradientBottom, dark, cs.background, cs.primary) {
+        if (gradientTop != 0 && gradientBottom != 0) {
+            Brush.verticalGradient(listOf(Color(gradientTop), Color(gradientBottom)))
+        } else {
+            Brush.verticalGradient(
+                listOf(cs.background, lerp(cs.background, cs.primary, if (dark) 0.14f else 0.06f)),
+            )
+        }
     }
 
     Box(Modifier.fillMaxSize().background(gradient)) {
@@ -171,6 +179,18 @@ fun AppRoot(setupCompleted: Boolean, gradientTop: Int = 0, gradientBottom: Int =
                         "tafsir/{n}",
                         arguments = listOf(navArgument("n") { type = NavType.StringType }),
                     ) { TafsirSurahScreen(onBack = { nav.popBackStack() }) }
+
+                    // القرآن الكريم: محورٌ بثلاثة أقسام.
+                    composable("quran") { QuranHubScreen(onOpen = { nav.navigate(it) }, onBack = { nav.popBackStack() }) }
+                    composable("quran_text") {
+                        SurahIndexScreen("القرآن النصّيّ", onOpen = { nav.navigate("quran_read/$it") }, onBack = { nav.popBackStack() })
+                    }
+                    composable(
+                        "quran_read/{n}",
+                        arguments = listOf(navArgument("n") { type = NavType.StringType }),
+                    ) { TextReaderScreen(onBack = { nav.popBackStack() }) }
+                    composable("quran_audio") { AudioRecitationScreen(onBack = { nav.popBackStack() }) }
+                    composable("quran_mushaf") { MushafScreen(onBack = { nav.popBackStack() }) }
                 }
             }
         }
