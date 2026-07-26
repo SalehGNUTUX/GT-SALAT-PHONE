@@ -46,40 +46,34 @@ class ContentRepository @Inject constructor(
         context.assets.open("content/$file").bufferedReader().use { it.readText() }
     }
 
-    suspend fun asma(): List<AsmaName> = asmaCache ?: run {
-        json.decodeFromString<AsmaFile>(read("asma.json")).items.also { asmaCache = it }
+    /** قراءةٌ وفكُّ ترميزٍ **على خيطٍ خلفيّ** (Default) دائماً — كي لا يُثقِل التنقّل الواجهة. */
+    private suspend inline fun <reified T> load(file: String): T = withContext(Dispatchers.Default) {
+        json.decodeFromString<T>(read(file))
     }
 
-    suspend fun hadithCollections(): List<HadithCollection> = hadithCache ?: run {
-        json.decodeFromString<HadithFile>(read("hadith.json")).collections.also { hadithCache = it }
-    }
+    suspend fun asma(): List<AsmaName> = asmaCache ?: load<AsmaFile>("asma.json").items.also { asmaCache = it }
 
-    suspend fun duas(): List<DuaCategory> = duasCache ?: run {
-        json.decodeFromString<DuasFile>(read("duas.json")).categories.also { duasCache = it }
-    }
+    suspend fun hadithCollections(): List<HadithCollection> = hadithCache
+        ?: load<HadithFile>("hadith.json").collections.also { hadithCache = it }
 
-    suspend fun hikamCategories(): List<HikamCategory> = hikamCatCache ?: run {
-        json.decodeFromString<HikamFile>(read("hikam.json")).categories.also { hikamCatCache = it }
-    }
+    suspend fun duas(): List<DuaCategory> = duasCache ?: load<DuasFile>("duas.json").categories.also { duasCache = it }
 
-    suspend fun hisnCategories(): List<HisnCategory> = hisnCache ?: run {
-        json.decodeFromString<HisnFile>(read("hisn.json")).categories.also { hisnCache = it }
-    }
+    suspend fun hikamCategories(): List<HikamCategory> = hikamCatCache
+        ?: load<HikamFile>("hikam.json").categories.also { hikamCatCache = it }
+
+    suspend fun hisnCategories(): List<HisnCategory> = hisnCache
+        ?: load<HisnFile>("hisn.json").categories.also { hisnCache = it }
 
     suspend fun hisnCategory(id: Int): HisnCategory? = hisnCategories().firstOrNull { it.id == id }
 
-    // ملفٌّ كبير (~4MB): تُجرى القراءة وفكّ الترميز على خيطٍ خلفيّ تفادياً لتجميد الواجهة.
-    suspend fun tafsirSurahs(): List<TafsirSurah> = tafsirCache ?: withContext(Dispatchers.Default) {
-        json.decodeFromString<TafsirFile>(read("tafsir.json")).surahs.also { tafsirCache = it }
-    }
+    // ملفٌّ كبير (~4MB) — يُفكّ على خيطٍ خلفيّ كالبقيّة.
+    suspend fun tafsirSurahs(): List<TafsirSurah> = tafsirCache ?: load<TafsirFile>("tafsir.json").surahs.also { tafsirCache = it }
 
     suspend fun tafsirSurah(n: Int): TafsirSurah? = tafsirSurahs().firstOrNull { it.n == n }
 
     private var ayatCache: List<DailyAyah>? = null
 
-    suspend fun dailyAyat(): List<DailyAyah> = ayatCache ?: run {
-        json.decodeFromString<DailyAyatFile>(read("daily_ayat.json")).items.also { ayatCache = it }
-    }
+    suspend fun dailyAyat(): List<DailyAyah> = ayatCache ?: load<DailyAyatFile>("daily_ayat.json").items.also { ayatCache = it }
 
     /** آية اليوم (ثابتةٌ لليوم عبر seed، أو عشوائيّة عند التجديد). */
     suspend fun dailyAyah(seed: Int): DailyAyah? {
