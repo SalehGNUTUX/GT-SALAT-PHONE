@@ -14,6 +14,8 @@ import io.github.salehgnutux.gtsalat.domain.HikamFile
 import io.github.salehgnutux.gtsalat.domain.Hikmah
 import io.github.salehgnutux.gtsalat.domain.DailyAyah
 import io.github.salehgnutux.gtsalat.domain.DailyAyatFile
+import io.github.salehgnutux.gtsalat.domain.HistoryEvent
+import io.github.salehgnutux.gtsalat.domain.HistoryFile
 import io.github.salehgnutux.gtsalat.domain.HisnCategory
 import io.github.salehgnutux.gtsalat.domain.HisnFile
 import io.github.salehgnutux.gtsalat.domain.TafsirFile
@@ -74,6 +76,16 @@ class ContentRepository @Inject constructor(
     private var ayatCache: List<DailyAyah>? = null
 
     suspend fun dailyAyat(): List<DailyAyah> = ayatCache ?: load<DailyAyatFile>("daily_ayat.json").items.also { ayatCache = it }
+
+    private var eventsCache: List<HistoryEvent>? = null
+
+    /** الأحداث التاريخيّة مرتّبةً زمنيّاً. */
+    suspend fun events(): List<HistoryEvent> = eventsCache
+        ?: load<HistoryFile>("events.json").events.sortedBy { it.sort }.also { eventsCache = it }
+
+    /** أحداثٌ تصادف يوم اليوم الهجريّ (شهر/يوم)، إن وُجدت. */
+    suspend fun eventsToday(hMonth: Int, hDay: Int): List<HistoryEvent> =
+        events().filter { it.hMonth == hMonth && it.hDay == hDay && hDay != 0 }
 
     /** آية اليوم (ثابتةٌ لليوم عبر seed، أو عشوائيّة عند التجديد). */
     suspend fun dailyAyah(seed: Int): DailyAyah? {

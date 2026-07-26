@@ -90,3 +90,17 @@ data class DailyAyah(val surah: String, val n: Int, val text: String)
 
 @Serializable
 data class DailyAyatFile(val items: List<DailyAyah>)
+
+/** حدثٌ تاريخيّ إسلاميّ. hMonth/hDay هجريّان (0 = غير محدّد) لمطابقة «حدث اليوم». */
+@Serializable
+data class HistoryEvent(
+    val title: String,
+    val year: String,
+    val sort: Int = 0,
+    val hMonth: Int = 0,
+    val hDay: Int = 0,
+    val text: String = "",
+)
+
+@Serializable
+data class HistoryFile(val events: List<HistoryEvent>)

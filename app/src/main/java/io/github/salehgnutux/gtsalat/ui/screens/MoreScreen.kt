@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.FormatQuote
+import androidx.compose.material.icons.outlined.HistoryEdu
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.NightsStay
 import androidx.compose.material.icons.outlined.Notes
@@ -56,6 +57,7 @@ fun MoreScreen(onOpen: (String) -> Unit) {
         Feature("الأربعون والأحاديث", Icons.Outlined.MenuBook, "hadith"),
         Feature("حِكَم ومواعظ", Icons.Outlined.FormatQuote, "hikam"),
         Feature("التفسير الميسّر", Icons.Outlined.Notes, "tafsir"),
+        Feature("أحداثٌ تاريخيّة", Icons.Outlined.HistoryEdu, "events"),
         Feature("التسبيح", Icons.Outlined.Fingerprint, "tasbih"),
         Feature("أسماء الله الحسنى", Icons.Outlined.AutoAwesome, "asma"),
         Feature("المصحف", Icons.Outlined.AutoStories, null),

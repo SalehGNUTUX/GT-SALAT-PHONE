@@ -48,6 +48,7 @@ import io.github.salehgnutux.gtsalat.ui.screens.AdhkarSessionScreen
 import io.github.salehgnutux.gtsalat.ui.screens.AsmaScreen
 import io.github.salehgnutux.gtsalat.ui.screens.DashboardScreen
 import io.github.salehgnutux.gtsalat.ui.screens.DuasScreen
+import io.github.salehgnutux.gtsalat.ui.screens.EventsScreen
 import io.github.salehgnutux.gtsalat.ui.screens.HadithScreen
 import io.github.salehgnutux.gtsalat.ui.screens.HikamScreen
 import io.github.salehgnutux.gtsalat.ui.screens.HisnCategoryScreen
@@ -164,6 +165,7 @@ fun AppRoot(setupCompleted: Boolean, gradientTop: Int = 0, gradientBottom: Int =
                     composable("hadith") { HadithScreen(onBack = { nav.popBackStack() }) }
                     composable("duas") { DuasScreen(onBack = { nav.popBackStack() }) }
                     composable("hikam") { HikamScreen(onBack = { nav.popBackStack() }) }
+                    composable("events") { EventsScreen(onBack = { nav.popBackStack() }) }
                     composable("tafsir") { TafsirScreen(onOpen = { nav.navigate("tafsir/$it") }, onBack = { nav.popBackStack() }) }
                     composable(
                         "tafsir/{n}",
