@@ -79,7 +79,7 @@ fun TafsirScreen(onOpen: (Int) -> Unit, onBack: () -> Unit, vm: TafsirViewModel 
                         }
                         Column(Modifier.weight(1f)) {
                             Text(s.name, fontFamily = AmiriQuran, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                            Text("${s.type} · ${s.count} آية", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                            Text("${s.type} · ${s.ayahs.size} آية", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                         }
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
                     }

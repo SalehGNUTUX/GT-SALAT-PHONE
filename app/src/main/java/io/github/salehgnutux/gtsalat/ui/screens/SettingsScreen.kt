@@ -10,6 +10,8 @@ import android.provider.OpenableColumns
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,9 +19,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PlayArrow
@@ -45,6 +51,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -54,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.salehgnutux.gtsalat.BuildConfig
+import io.github.salehgnutux.gtsalat.data.settings.AdhanAlertMode
 import io.github.salehgnutux.gtsalat.data.settings.AdhanType
 import io.github.salehgnutux.gtsalat.data.settings.ThemeMode
 import io.github.salehgnutux.gtsalat.domain.AsrMadhab
@@ -139,9 +148,17 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                     Text(if (settings.customAdhanUri != null) "تغيير الأذان المخصّص" else "استيراد أذان مخصّص")
                 }
             }
+            LabeledRow("نمط تنبيه دخول الوقت") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(settings.adhanAlertMode == AdhanAlertMode.FULL, { vm.setAdhanAlertMode(AdhanAlertMode.FULL) }, { Text("أذان كامل") })
+                    FilterChip(settings.adhanAlertMode == AdhanAlertMode.TONE, { vm.setAdhanAlertMode(AdhanAlertMode.TONE) }, { Text("رنّة تنبيه") })
+                }
+            }
             SwitchRow("دعاء بعد الأذان", settings.enableDuaAfterAdhan) { vm.setEnableDua(it) }
+            SwitchRow("صوت أذكار بعد الصلاة (بعد ${settings.postDhikrMinutes} دقيقة)", settings.enablePostDhikr) { vm.setEnablePostDhikr(it) }
             SwitchRow("تنبيه الاقتراب قبل الصلاة", settings.enablePreNotify) { vm.setEnablePreNotify(it) }
             if (settings.enablePreNotify) {
+                SwitchRow("صوت تنبيه الاقتراب", settings.enablePreNotifySound) { vm.setEnablePreNotifySound(it) }
                 MinutesSlider("قبل الصلاة بـ", settings.preNotifyMinutes, 1, 60) { vm.setPreNotify(it) }
             }
             SwitchRow("وضع عدم الإزعاج", settings.doNotDisturb) { vm.setDnd(it) }
@@ -184,6 +201,15 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 }
             }
             SwitchRow("الألوان الديناميكيّة (Material You)", settings.dynamicColor) { vm.setDynamicColor(it) }
+            if (!settings.dynamicColor) {
+                ColorPicker(settings.seedColor) { vm.setSeedColor(it) }
+            } else {
+                Text(
+                    "عطّل الألوان الديناميكيّة لتخصيص لونك.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
         }
 
         SectionCard("حول", openSection == "حول", { toggle("حول") }) {
@@ -324,6 +350,55 @@ private fun openAppDetails(context: Context) {
                 data = Uri.parse("package:${context.packageName}")
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             },
+        )
+    }
+}
+
+/** أداة تخصيص لون السِمة: سواترُ جاهزة + منزلق تدرّجٍ حرّ (Hue). يؤثّر في الوضعين والتدرّج. */
+@Composable
+private fun ColorPicker(seed: Int, onPick: (Int) -> Unit) {
+    val presets = listOf(
+        0 to "افتراضيّ",
+        0xFF1B6B4C.toInt() to "أخضر",
+        0xFF00796B.toInt() to "فيروزيّ",
+        0xFF1565C0.toInt() to "أزرق",
+        0xFF6A1B9A.toInt() to "أرجوانيّ",
+        0xFFC9A227.toInt() to "ذهبيّ",
+        0xFFB5651D.toInt() to "بنّيّ",
+        0xFFAD1457.toInt() to "توتيّ",
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("لون السِمة والتدرّج", style = MaterialTheme.typography.bodyLarge)
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(presets) { (argb, _) ->
+                val selected = seed == argb
+                val swatch = if (argb == 0) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color(argb)
+                androidx.compose.foundation.layout.Box(
+                    Modifier.size(38.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(swatch)
+                        .then(if (argb == 0) Modifier.border(1.dp, MaterialTheme.colorScheme.outline, androidx.compose.foundation.shape.CircleShape) else Modifier)
+                        .clickable { onPick(argb) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = androidx.compose.ui.graphics.Color.White)
+                    else if (argb == 0) Text("×", color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+        }
+        // منزلق تدرّجٍ حرّ: يولّد لوناً من زاوية الطيف.
+        var hue by remember(seed) {
+            val hsv = FloatArray(3)
+            if (seed != 0) android.graphics.Color.colorToHSV(seed, hsv) else hsv[0] = 150f
+            mutableStateOf(hsv[0])
+        }
+        Text("تدرّجٌ حرّ", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
+        Slider(
+            value = hue,
+            onValueChange = { hue = it },
+            valueRange = 0f..360f,
+            onValueChangeFinished = { onPick(androidx.compose.ui.graphics.Color.hsv(hue, 0.6f, 0.55f).toArgb()) },
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

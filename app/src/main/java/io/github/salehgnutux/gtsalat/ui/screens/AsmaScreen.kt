@@ -74,14 +74,21 @@ private fun AsmaCard(name: AsmaName) {
             ) {
                 Text("${name.index}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
+            // حجمٌ يتناسب مع طول الاسم لتفادي التداخل (الأسماء الطويلة كـ«ذو الجلال والإكرام»).
+            val nameSize = when {
+                name.arabic.length > 14 -> 30.sp
+                name.arabic.length > 9 -> 40.sp
+                else -> 52.sp
+            }
             Text(
                 name.arabic,
                 fontFamily = AmiriQuran,
-                fontSize = 52.sp,
+                fontSize = nameSize,
+                lineHeight = nameSize * 1.5f,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 20.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
             )
             Text(
                 name.meaning,

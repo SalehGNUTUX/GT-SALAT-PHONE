@@ -74,10 +74,10 @@ class NotificationHelper @Inject constructor(
             .setContentIntent(contentIntent())
             .build()
 
-    fun serviceNotification(prayerName: String, stopIntent: PendingIntent): Notification =
+    fun serviceNotification(title: String, stopIntent: PendingIntent): Notification =
         NotificationCompat.Builder(context, CH_SERVICE)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("🔊 يُشغَّل الآن أذان $prayerName")
+            .setContentTitle(title)
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .addAction(R.drawable.ic_notification, "إيقاف", stopIntent)

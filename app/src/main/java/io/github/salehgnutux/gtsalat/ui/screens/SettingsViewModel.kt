@@ -59,7 +59,10 @@ class SettingsViewModel @Inject constructor(
     fun setEnableSalat(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableSalat(v); reschedule() }
     fun setEnableAdhan(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableAdhan(v) }
     fun setEnableDua(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableDua(v) }
+    fun setAdhanAlertMode(m: io.github.salehgnutux.gtsalat.data.settings.AdhanAlertMode) = viewModelScope.launch { settingsRepo.setAdhanAlertMode(m) }
     fun setEnablePreNotify(v: Boolean) = viewModelScope.launch { settingsRepo.setEnablePreNotify(v); reschedule() }
+    fun setEnablePreNotifySound(v: Boolean) = viewModelScope.launch { settingsRepo.setEnablePreNotifySound(v) }
+    fun setEnablePostDhikr(v: Boolean) = viewModelScope.launch { settingsRepo.setEnablePostDhikr(v) }
     fun setUseApi(v: Boolean) = viewModelScope.launch { settingsRepo.setUseApi(v) }
     fun setDnd(v: Boolean) = viewModelScope.launch { settingsRepo.setDnd(v); reschedule() }
     fun setAutoSilence(v: Boolean) = viewModelScope.launch { settingsRepo.setAutoSilence(v) }
@@ -67,6 +70,7 @@ class SettingsViewModel @Inject constructor(
     fun setPersistentNotification(v: Boolean) = viewModelScope.launch { settingsRepo.setPersistentNotification(v); reschedule() }
     fun setTheme(t: ThemeMode) = viewModelScope.launch { settingsRepo.setTheme(t) }
     fun setDynamicColor(v: Boolean) = viewModelScope.launch { settingsRepo.setDynamicColor(v) }
+    fun setSeedColor(argb: Int) = viewModelScope.launch { settingsRepo.setSeedColor(argb) }
     fun setMonthScheme(s: io.github.salehgnutux.gtsalat.domain.MonthScheme) = viewModelScope.launch { settingsRepo.setMonthScheme(s) }
     fun setTimetableCalendar(k: io.github.salehgnutux.gtsalat.domain.CalendarKind) = viewModelScope.launch { settingsRepo.setTimetableCalendar(k) }
     fun redetectLocation() = viewModelScope.launch { repo.detectAndSaveLocation(); repo.prefetchMonths(3); reschedule() }

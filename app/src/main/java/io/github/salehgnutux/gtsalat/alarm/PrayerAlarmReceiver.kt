@@ -3,6 +3,7 @@ package io.github.salehgnutux.gtsalat.alarm
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.PowerManager
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.salehgnutux.gtsalat.audio.AdhanService
@@ -24,6 +25,10 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val pending = goAsync()
+        // قفل استيقاظ قصير يبقي المعالج حيّاً حتى تنطلق الخدمة وتبدأ الصوت (والشاشة مغلقة).
+        val wl = (context.getSystemService(Context.POWER_SERVICE) as PowerManager)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "gtsalat:alarm")
+            .apply { runCatching { acquire(60_000L) } }
         val prayerAr = intent.getStringExtra(EXTRA_PRAYER_AR) ?: "الصلاة"
         CoroutineScope(Dispatchers.Default).launch {
             try {
@@ -36,18 +41,24 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                                 NotificationHelper.ID_PRENOTIFY,
                                 notifications.preNotifyNotification(prayerAr, minutes),
                             )
+                            if (s.enablePreNotifySound) {
+                                startAdhanService(context, prayerAr, AdhanService.SOUND_PRENOTIFY)
+                            }
                         }
                     }
                     ACTION_ADHAN -> {
                         // جدولة الصلاة التالية أوّلاً (النمط الذاتيّ المتسلسل): لو قُتلت العمليّة
                         // أثناء التشغيل لا تنقطع السلسلة، فالإنذار التالي مُسلَّح قبل أيّ عملٍ قد يتأخّر.
                         scheduler.scheduleNext()
-                        // الكاتم التلقائيّ: نكتم الرنين ونجدول استعادته بعد مدّة الكتم (المنبّه/الأذان يبقى مسموعاً).
+                        val now = System.currentTimeMillis()
+                        // الكاتم التلقائيّ: نكتم الرنين ونجدول استعادته بعد مدّة الكتم.
                         if (s.autoSilence) {
                             ringer.silence()
-                            scheduler.scheduleRestoreSound(
-                                System.currentTimeMillis() + s.silenceMinutes * 60_000L,
-                            )
+                            scheduler.scheduleRestoreSound(now + s.silenceMinutes * 60_000L)
+                        }
+                        // ذكر ما بعد الصلاة: يُجدوَل بعد دخول الوقت بدقائق.
+                        if (s.enablePostDhikr) {
+                            scheduler.schedulePostDhikr(now + s.postDhikrMinutes * 60_000L)
                         }
                         if (s.enableSalatNotify && !s.doNotDisturb) {
                             notifications.notify(
@@ -55,27 +66,38 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                                 notifications.prayerNotification(prayerAr),
                             )
                             if (s.enableAdhanSound) {
-                                val svc = Intent(context, AdhanService::class.java).apply {
-                                    putExtra(AdhanService.EXTRA_PRAYER_AR, prayerAr)
-                                }
-                                // في مسار السقوط (إنذار غير دقيق) قد تمنع أندرويد 12+ إطلاق خدمة
-                                // المقدّمة من الخلفيّة؛ نلتقط الاستثناء بدل الانهيار (الإشعار ظاهرٌ أصلاً).
-                                runCatching { ContextCompat.startForegroundService(context, svc) }
+                                startAdhanService(context, prayerAr, AdhanService.SOUND_ADHAN)
                             }
                         }
                     }
                     ACTION_RESTORE_SOUND -> ringer.restore()
+                    ACTION_POST_DHIKR -> {
+                        if (s.enablePostDhikr && !s.doNotDisturb) {
+                            startAdhanService(context, prayerAr, AdhanService.SOUND_POST_DHIKR)
+                        }
+                    }
                 }
             } finally {
+                runCatching { if (wl.isHeld) wl.release() }
                 pending.finish()
             }
         }
+    }
+
+    /** إطلاق خدمة الأذان المقدّمة بنوع الصوت المطلوب (يعمل والشاشة مغلقة). */
+    private fun startAdhanService(context: Context, prayerAr: String, sound: String) {
+        val svc = Intent(context, AdhanService::class.java).apply {
+            putExtra(AdhanService.EXTRA_PRAYER_AR, prayerAr)
+            putExtra(AdhanService.EXTRA_SOUND, sound)
+        }
+        runCatching { ContextCompat.startForegroundService(context, svc) }
     }
 
     companion object {
         const val ACTION_ADHAN = "io.github.salehgnutux.gtsalat.ACTION_ADHAN"
         const val ACTION_PRENOTIFY = "io.github.salehgnutux.gtsalat.ACTION_PRENOTIFY"
         const val ACTION_RESTORE_SOUND = "io.github.salehgnutux.gtsalat.ACTION_RESTORE_SOUND"
+        const val ACTION_POST_DHIKR = "io.github.salehgnutux.gtsalat.ACTION_POST_DHIKR"
         const val EXTRA_PRAYER = "prayer"
         const val EXTRA_PRAYER_AR = "prayer_ar"
         const val EXTRA_MINUTES = "minutes"

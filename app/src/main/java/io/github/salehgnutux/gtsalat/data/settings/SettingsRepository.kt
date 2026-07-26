@@ -40,7 +40,11 @@ class SettingsRepository @Inject constructor(
         val EN_SALAT = booleanPreferencesKey("en_salat_notify")
         val EN_ADHAN = booleanPreferencesKey("en_adhan_sound")
         val EN_DUA = booleanPreferencesKey("en_dua_after")
+        val ALERT_MODE = stringPreferencesKey("adhan_alert_mode")
         val EN_PRE = booleanPreferencesKey("en_pre_notify")
+        val EN_PRE_SOUND = booleanPreferencesKey("en_pre_notify_sound")
+        val EN_POST_DHIKR = booleanPreferencesKey("en_post_dhikr")
+        val POST_DHIKR_MIN = intPreferencesKey("post_dhikr_min")
         val USE_API = booleanPreferencesKey("use_api")
         val DND = booleanPreferencesKey("dnd")
         val AUTO_SILENCE = booleanPreferencesKey("auto_silence")
@@ -49,6 +53,7 @@ class SettingsRepository @Inject constructor(
         val PERSISTENT_NOTIF = booleanPreferencesKey("persistent_notif")
         val THEME = stringPreferencesKey("theme_mode")
         val DYNAMIC = booleanPreferencesKey("dynamic_color")
+        val SEED_COLOR = intPreferencesKey("seed_color")
         val MONTH_SCHEME = stringPreferencesKey("month_scheme")
         val CAL_KIND = stringPreferencesKey("timetable_calendar")
         val SETUP = booleanPreferencesKey("setup_completed")
@@ -78,7 +83,11 @@ class SettingsRepository @Inject constructor(
             enableSalatNotify = this[Keys.EN_SALAT] ?: true,
             enableAdhanSound = this[Keys.EN_ADHAN] ?: true,
             enableDuaAfterAdhan = this[Keys.EN_DUA] ?: false,
+            adhanAlertMode = if (this[Keys.ALERT_MODE] == "TONE") AdhanAlertMode.TONE else AdhanAlertMode.FULL,
             enablePreNotify = this[Keys.EN_PRE] ?: true,
+            enablePreNotifySound = this[Keys.EN_PRE_SOUND] ?: true,
+            enablePostDhikr = this[Keys.EN_POST_DHIKR] ?: true,
+            postDhikrMinutes = this[Keys.POST_DHIKR_MIN] ?: 20,
             useApiTimetables = this[Keys.USE_API] ?: true,
             doNotDisturb = this[Keys.DND] ?: false,
             autoSilence = this[Keys.AUTO_SILENCE] ?: false,
@@ -90,6 +99,7 @@ class SettingsRepository @Inject constructor(
                 else -> ThemeMode.SYSTEM
             },
             dynamicColor = this[Keys.DYNAMIC] ?: true,
+            seedColor = this[Keys.SEED_COLOR] ?: 0,
             monthScheme = runCatching { MonthScheme.valueOf(this[Keys.MONTH_SCHEME] ?: "AUTO") }.getOrDefault(MonthScheme.AUTO),
             timetableCalendar = if (this[Keys.CAL_KIND] == "GREGORIAN") CalendarKind.GREGORIAN else CalendarKind.HIJRI,
             setupCompleted = this[Keys.SETUP] ?: false,
@@ -118,7 +128,10 @@ class SettingsRepository @Inject constructor(
     suspend fun setEnableSalat(v: Boolean) = context.dataStore.edit { it[Keys.EN_SALAT] = v }
     suspend fun setEnableAdhan(v: Boolean) = context.dataStore.edit { it[Keys.EN_ADHAN] = v }
     suspend fun setEnableDua(v: Boolean) = context.dataStore.edit { it[Keys.EN_DUA] = v }
+    suspend fun setAdhanAlertMode(m: AdhanAlertMode) = context.dataStore.edit { it[Keys.ALERT_MODE] = m.name }
     suspend fun setEnablePreNotify(v: Boolean) = context.dataStore.edit { it[Keys.EN_PRE] = v }
+    suspend fun setEnablePreNotifySound(v: Boolean) = context.dataStore.edit { it[Keys.EN_PRE_SOUND] = v }
+    suspend fun setEnablePostDhikr(v: Boolean) = context.dataStore.edit { it[Keys.EN_POST_DHIKR] = v }
     suspend fun setUseApi(v: Boolean) = context.dataStore.edit { it[Keys.USE_API] = v }
     suspend fun setDnd(v: Boolean) = context.dataStore.edit { it[Keys.DND] = v }
     suspend fun setAutoSilence(v: Boolean) = context.dataStore.edit { it[Keys.AUTO_SILENCE] = v }
@@ -128,6 +141,7 @@ class SettingsRepository @Inject constructor(
     suspend fun savedRingerMode(): Int? = context.dataStore.data.first()[Keys.SAVED_RINGER]
     suspend fun setTheme(t: ThemeMode) = context.dataStore.edit { it[Keys.THEME] = t.name }
     suspend fun setDynamicColor(v: Boolean) = context.dataStore.edit { it[Keys.DYNAMIC] = v }
+    suspend fun setSeedColor(argb: Int) = context.dataStore.edit { it[Keys.SEED_COLOR] = argb }
     suspend fun setMonthScheme(s: MonthScheme) = context.dataStore.edit { it[Keys.MONTH_SCHEME] = s.name }
     suspend fun setTimetableCalendar(k: CalendarKind) = context.dataStore.edit { it[Keys.CAL_KIND] = k.name }
     suspend fun setSetupCompleted(v: Boolean) = context.dataStore.edit { it[Keys.SETUP] = v }

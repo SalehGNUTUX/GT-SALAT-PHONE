@@ -40,23 +40,30 @@ class PrayerAlarmScheduler @Inject constructor(
         val now = System.currentTimeMillis()
         if (prayerAt <= now) return
 
-        setExact(prayerAt, adhanIntent(id.name, id.arabic))
+        // الأذان عبر setAlarmClock: لا يؤجّله Doze/توفير البطاريّة إطلاقاً (كإنذار المنبّه)،
+        // فيصدر في وقته والشاشة مغلقة، ولا يحتاج إذن SCHEDULE_EXACT_ALARM.
+        setAlarmClock(prayerAt, adhanIntent(id.name, id.arabic))
 
         if (s.enablePreNotify) {
             val preAt = prayerAt - s.preNotifyMinutes * 60_000L
-            if (preAt > now) setExact(preAt, preNotifyIntent(id.arabic, s.preNotifyMinutes))
+            if (preAt > now) setAlarmClock(preAt, preNotifyIntent(id.arabic, s.preNotifyMinutes))
         }
     }
 
     fun cancelAll() {
         am.cancel(adhanIntent("", ""))
         am.cancel(preNotifyIntent("", 0))
-        // لا نُلغي إنذار استعادة الرنين هنا كي لا تنقطع نافذة كتمٍ جاريةٍ عند إعادة الجدولة.
+        // لا نُلغي إنذارَي استعادة الرنين وذكر ما بعد الصلاة كي لا تنقطع نافذةٌ جاريةٌ عند إعادة الجدولة.
     }
 
     /** جدولة استعادة وضع الرنين بعد انتهاء نافذة الكتم (يُستدعى من مُستقبِل الأذان). */
     fun scheduleRestoreSound(triggerAt: Long) {
         setExact(triggerAt, restoreIntent())
+    }
+
+    /** جدولة ذكر ما بعد الصلاة (بعد دخول الوقت بدقائق). */
+    fun schedulePostDhikr(triggerAt: Long) {
+        setAlarmClock(triggerAt, postDhikrIntent())
     }
 
     /** تحديث الإشعار الدائم بالصلاة القادمة (عدٌّ تنازليّ حيّ)، أو إلغاؤه. */
@@ -94,6 +101,17 @@ class PrayerAlarmScheduler @Inject constructor(
         }
     }
 
+    /** أدقّ وأوثق من setExact: يُعامَل كإنذار منبّه فلا يُؤجَّل في Doze، بلا حاجة لإذنٍ خاصّ. */
+    private fun setAlarmClock(triggerAt: Long, pi: PendingIntent) {
+        val show = PendingIntent.getActivity(
+            context, RC_SHOW,
+            Intent(context, io.github.salehgnutux.gtsalat.MainActivity::class.java),
+            FLAGS,
+        )
+        runCatching { am.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, show), pi) }
+            .onFailure { setExact(triggerAt, pi) }
+    }
+
     private fun adhanIntent(prayerName: String, prayerAr: String): PendingIntent {
         val i = Intent(context, PrayerAlarmReceiver::class.java).apply {
             action = PrayerAlarmReceiver.ACTION_ADHAN
@@ -119,10 +137,19 @@ class PrayerAlarmScheduler @Inject constructor(
         return PendingIntent.getBroadcast(context, RC_RESTORE, i, FLAGS)
     }
 
+    private fun postDhikrIntent(): PendingIntent {
+        val i = Intent(context, PrayerAlarmReceiver::class.java).apply {
+            action = PrayerAlarmReceiver.ACTION_POST_DHIKR
+        }
+        return PendingIntent.getBroadcast(context, RC_POSTDHIKR, i, FLAGS)
+    }
+
     companion object {
         private const val RC_ADHAN = 1001
         private const val RC_PRENOTIFY = 1002
         private const val RC_RESTORE = 1003
+        private const val RC_POSTDHIKR = 1004
+        private const val RC_SHOW = 1005
         private val FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     }
 }

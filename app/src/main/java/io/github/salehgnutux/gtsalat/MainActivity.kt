@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
                     ThemeMode.DARK -> true
                     ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 }
-                GtSalatTheme(darkTheme = dark, dynamicColor = s.dynamicColor) {
+                GtSalatTheme(darkTheme = dark, dynamicColor = s.dynamicColor, seedColor = s.seedColor) {
                     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                         AppRoot(setupCompleted = s.setupCompleted)
                     }

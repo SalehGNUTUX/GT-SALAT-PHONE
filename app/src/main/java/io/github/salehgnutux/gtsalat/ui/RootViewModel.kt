@@ -14,6 +14,7 @@ import javax.inject.Inject
 data class RootState(
     val themeMode: ThemeMode,
     val dynamicColor: Boolean,
+    val seedColor: Int,
     val setupCompleted: Boolean,
 )
 
@@ -22,6 +23,6 @@ class RootViewModel @Inject constructor(
     settingsRepo: SettingsRepository,
 ) : ViewModel() {
     val state: StateFlow<RootState?> = settingsRepo.settings
-        .map { RootState(it.themeMode, it.dynamicColor, it.setupCompleted) }
+        .map { RootState(it.themeMode, it.dynamicColor, it.seedColor, it.setupCompleted) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 }

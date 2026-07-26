@@ -53,6 +53,7 @@ class DashboardViewModel @Inject constructor(
     private var settings: AppSettings? = null
     private var today: DayTimetable? = null
     private var tomorrowFajr: PrayerTime? = null
+    private var loadedDate: LocalDate? = null   // لكشف تغيّر اليوم وإعادة التحميل
 
     private var azkarList: List<String> = emptyList()
     private var dhikr: String = ""
@@ -74,6 +75,9 @@ class DashboardViewModel @Inject constructor(
         }
         viewModelScope.launch {
             while (true) {
+                // إعادة تحميل بيانات اليوم عند تجاوز منتصف الليل (وإلّا بقيت مواقيت الأمس والعدّاد 00:00:00).
+                val s = settings
+                if (s != null && loadedDate != LocalDate.now()) loadDay(s)
                 tickUpdate()
                 delay(1000)
             }
@@ -102,6 +106,7 @@ class DashboardViewModel @Inject constructor(
             today = null
             return
         }
+        loadedDate = LocalDate.now()
         today = repo.todayTimetable()
         tomorrowFajr = PrayerCalculator
             .computeDay(LocalDate.now().plusDays(1), s.lat!!, s.lon!!, s.methodId, s.madhab)

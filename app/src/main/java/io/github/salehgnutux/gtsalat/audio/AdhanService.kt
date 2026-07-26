@@ -52,16 +52,30 @@ class AdhanService : Service() {
             return START_NOT_STICKY
         }
         val prayerAr = intent?.getStringExtra(EXTRA_PRAYER_AR) ?: "الصلاة"
-        startForeground(NotificationHelper.ID_SERVICE, notifications.serviceNotification(prayerAr, stopPendingIntent()))
+        val sound = intent?.getStringExtra(EXTRA_SOUND) ?: SOUND_ADHAN
+        val title = when (sound) {
+            SOUND_PRENOTIFY -> "⏰ اقترب وقت صلاة $prayerAr"
+            SOUND_POST_DHIKR -> "📿 أذكار بعد صلاة $prayerAr"
+            else -> "🔊 يُشغَّل الآن أذان $prayerAr"
+        }
+        startForeground(NotificationHelper.ID_SERVICE, notifications.serviceNotification(title, stopPendingIntent()))
 
         scope.launch {
             val s = settingsRepo.current()
             requestFocus()
-            playUri(adhanUri(s)) {
-                if (s.enableDuaAfterAdhan) {
-                    playUri(resUri(R.raw.dua_after_adhan)) { stopEverything() }
-                } else {
-                    stopEverything()
+            when (sound) {
+                SOUND_PRENOTIFY -> playUri(resUri(R.raw.prayer_approaching)) { stopEverything() }
+                SOUND_POST_DHIKR -> playUri(resUri(R.raw.post_prayer_dhikr)) { stopEverything() }
+                else -> {
+                    // نمط الرنّة: صوتٌ قصيرٌ بدل الأذان الكامل.
+                    if (s.adhanAlertMode == io.github.salehgnutux.gtsalat.data.settings.AdhanAlertMode.TONE) {
+                        playUri(resUri(R.raw.prayer_approaching)) { stopEverything() }
+                    } else {
+                        playUri(adhanUri(s)) {
+                            if (s.enableDuaAfterAdhan) playUri(resUri(R.raw.dua_after_adhan)) { stopEverything() }
+                            else stopEverything()
+                        }
+                    }
                 }
             }
         }
@@ -138,6 +152,10 @@ class AdhanService : Service() {
 
     companion object {
         const val EXTRA_PRAYER_AR = "prayer_ar"
+        const val EXTRA_SOUND = "sound"
+        const val SOUND_ADHAN = "adhan"
+        const val SOUND_PRENOTIFY = "prenotify"
+        const val SOUND_POST_DHIKR = "post_dhikr"
         const val ACTION_STOP = "io.github.salehgnutux.gtsalat.ADHAN_STOP"
     }
 }

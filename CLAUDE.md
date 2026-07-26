@@ -36,6 +36,10 @@ Room 2.6.1 · DataStore 1.1.1 · WorkManager 2.9.1 · OkHttp 4.12 · kotlinx.ser
 ```
 الحزم في `app/build/outputs/apk/`. الـ SDK في `local.properties` (غير مُدرَج في git).
 الأصول الثنائيّة (الخطوط/الأصوات/azkar) منقولة من `../GT-SALAT/resources` و`src/assets`.
+**نمط العمل:** بعد كلّ دفعة → `compileFossDebugKotlin` (تحقّق) ثمّ (عند طلب المستخدم «حزّم») `assembleFossDebug`
++ نسخ الـAPK إلى جذر المشروع باسمٍ واضح، ثمّ commit عربيّ + `git push` (شبكة أمان؛ الـAPK مُتجاهَل في git).
+**محتوى `assets/content/*.json`** مُولَّد مرّةً بسكربت Node: أحاديث/أدعية/حِكَم/أسماء من `../GT-SQRM/GT-SIRM/GT-SIRM-WEB/*-data.js`،
+حصن المسلم من `../GT_HISNMUSLIM-main/assets/data/`، والتفسير الميسّر `tafsir.json` (~4MB، 6236 آية) نُزّل ودُمج من `api.alquran.cloud` (ar.muyassar + quran-uthmani).
 
 ---
 
@@ -47,30 +51,31 @@ Room 2.6.1 · DataStore 1.1.1 · WorkManager 2.9.1 · OkHttp 4.12 · kotlinx.ser
 ```
 app/src/main/java/io/github/salehgnutux/gtsalat/
 ├── domain/              ← نقيّة بلا Android (قابلة لإعادة الاستخدام لاحقاً)
-│   ├── PrayerModels.kt      PrayerId, PrayerTime, DayTimetable, NextPrayer, AsrMadhab
-│   ├── CalculationMethods.kt 22 طريقة + suggestByCountry + parametersOf (تحويل لـ adhan)
-│   └── PrayerCalculator.kt   computeDay/Month + qiblaDirection + nextPrayer (adhan)
+│   ├── PrayerModels.kt · CalculationMethods.kt (22 طريقة) · PrayerCalculator.kt (computeDay/Month + qibla + nextPrayer)
+│   ├── MorningEveningAdhkar.kt (أذكار الصباح/المساء بعدد التكرار) — [أسماء الله انتقلت إلى assets/content/asma.json]
+│   ├── IslamicContent.kt   نماذج @Serializable للمحتوى (أحاديث/أدعية/حِكَم/أسماء/حصن/تفسير)
+│   └── GregorianMonths.kt  أسماء الأشهر الإقليميّة (MAGHREB/LEVANT/STANDARD) + MonthScheme + CalendarKind
 ├── data/
 │   ├── PrayerRepository.kt   ★ سلسلة السقوط: Room → API → حساب محلّيّ + prefetchMonths + detectAndSaveLocation
-│   ├── local/               Room: TimetableEntity (مفتاح مركّب dateIso+methodId+locKey), TimetableDao, GtSalatDatabase
-│   ├── remote/              AladhanApi (جدول شهريّ+هجريّ), GeoClients (NominatimGeocoder + IpLocationClient)
-│   ├── location/            LocationModels (DetectedLocation + interface LocationProvider)
-│   └── settings/            AppSettings (data class) + SettingsRepository (DataStore، Flow)
+│   ├── ContentRepository.kt  يقرأ assets/content/*.json (أحاديث/أدعية/حِكَم/أسماء/حصن/تفسير) + حكمة يوميّة
+│   ├── AzkarRepository.kt     يقرأ azkar.txt (لذكر اليوم في الرئيسيّة)
+│   ├── local/ remote/ location/ settings/   (Room · AladhanApi+GeoClients · LocationProvider · AppSettings+SettingsRepository)
 ├── alarm/               ★ حلّ «الأذان في وقته والتطبيق مغلق»
-│   ├── PrayerAlarmScheduler.kt  setExactAndAllowWhileIdle(RTC_WAKEUP) + fallback عند رفض الإذن. نمط ذاتيّ التسلسل.
-│   ├── PrayerAlarmReceiver.kt   ACTION_ADHAN → أذان+إشعار+scheduleNext ; ACTION_PRENOTIFY → تنبيه اقتراب
-│   ├── BootReceiver.kt          يعيد التسليح بعد BOOT_COMPLETED / MY_PACKAGE_REPLACED
-│   ├── RescheduleWorker.kt      عامل دوريّ (6س): prefetch + scheduleNext (شبكة أمان)
-│   └── WorkScheduler.kt         enqueueUniquePeriodicWork
-├── audio/AdhanService.kt   خدمة مقدّمة (mediaPlayback): MediaPlayer بـ USAGE_ALARM + audio focus + wake + دعاء بعد الأذان + زرّ إيقاف
-├── notification/NotificationHelper.kt  3 قنوات (adhan/prenotify/service). صوت الأذان عبر الخدمة لا القناة.
-├── di/                  AppModule (OkHttp/Room/Dao) + LocationModule (@Binds حسب النكهة)
+│   ├── PrayerAlarmScheduler.kt  setExactAndAllowWhileIdle + fallback + refreshStatus (إشعار دائم) + refreshWidgets
+│   ├── PrayerAlarmReceiver.kt   ACTION_ADHAN/PRENOTIFY/RESTORE_SOUND (كتم تلقائيّ)
+│   ├── BootReceiver.kt (BOOT/MY_PACKAGE_REPLACED/TIME_SET/TIMEZONE_CHANGED) · RescheduleWorker (6س) · WorkScheduler
+├── audio/       AdhanService.kt (mediaPlayback + دعاء + أذان مخصّص) · AdhanPreviewer.kt (تجربة) · RingerController.kt (كتم)
+├── sensor/Compass.kt       بوصلة (TYPE_ROTATION_VECTOR) كـFlow — للقبلة
+├── notification/NotificationHelper.kt  ★ 4 قنوات (adhan/prenotify/service/status). صوت الأذان عبر الخدمة لا القناة.
+├── widget/      NextPrayerWidget + TodayTimesWidget (Glance، خلفيّة شفّافة) + WidgetData (Hilt EntryPoint، حساب محلّيّ)
+├── di/          AppModule + LocationModule (@Binds حسب النكهة)
 ├── ui/
-│   ├── RootViewModel + MainActivity + AppRoot (Scaffold + شريط سفليّ + بوّابة setupCompleted→Setup)
-│   ├── theme/           Color (أخضر/ذهبيّ) + Type (Ubuntu Arabic + Amiri) + Theme (Material You + RTL)
-│   └── screens/         Dashboard / Timetable / Settings / Setup (+ ViewModels)
-├── util/Format.kt       clock/countdown/weekdayDate بأرقام لاتينيّة (0-9)
-└── GtSalatApp.kt        @HiltAndroidApp + Configuration.Provider (HiltWorkerFactory) + ensureChannels + ensurePeriodic
+│   ├── MainActivity + RootViewModel + AppRoot (Box تدرّج + Scaffold + شريط سفليّ 5 تبويبات + المزيد nested-graph + بوّابة Setup)
+│   ├── theme/    Color (أخضر/ذهبيّ) + Type (Ubuntu Arabic + Amiri) + Theme (Material You + RTL)
+│   └── screens/  Dashboard · Timetable · Settings · Setup · Qibla · Tasbih · More ·
+│                 Asma (Pager سلايد) · Hisn (بحث) · AdhkarSession · Content(حديث/أدعية/حِكَم) · Tafsir (+ViewModels)
+├── util/Format.kt   clock/countdown/clockNow/gregorianArabic/monthYear (أرقام مغربيّة 0-9 + أشهر إقليميّة)
+└── GtSalatApp.kt    @HiltAndroidApp + Configuration.Provider + ensureChannels/ensurePeriodic + scheduleNext عند الإقلاع
 ```
 
 ### نمط الجدولة (الأهمّ — مستوحى من Five-Prayers + NoorUlHuda)
@@ -89,32 +94,38 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 
 ## مزالق مثبتة
 - **RTL:** الجسم Rtl عبر `LocalLayoutDirection`؛ في `Row` استعمل أيقونات `Icons.AutoMirrored`.
-- **الأرقام:** استعمل 0-9 اللاتينيّة في الواجهات (`Format` بـ `Locale.US`). التاريخ الهجريّ من API فقط.
-- **الأصوات:** في `res/raw` بأسماء lowercase (adhan_full/adhan_short/dua_after_adhan/...).
-- **الخطوط:** `res/font` بأسماء صالحة (amiri_quran, ubuntu_arabic).
-- **الأيقونات:** minSdk 26 → أيقونة تكيّفيّة `mipmap-anydpi-v26` تكفي بلا PNG. لا تكتب محلّل SVG يدويّاً (استعمل Vector/Material Icons).
+- **الأرقام:** استعمل **الأرقام المغربيّة 0-9 حصراً** في كامل المشروع (واجهة + توثيق + commits)، لا المشرقيّة ١-٩. (`Format` بـ`Locale.US`.) التاريخ الهجريّ من API فقط.
+- **الوضع الداكن + التدرّج:** `Scaffold` بخلفيّة `Color.Transparent` (لإظهار التدرّج) **يجب** أن يُمرَّر له `contentColor = onBackground` صراحةً، وإلّا سقط لون النصوص/الأيقونات الافتراضيّ إلى الأسود. أيّ شاشةٍ خارج الـScaffold تُلَفّ بـ`Surface`.
+- **الودجت (Glance):** احسب البيانات **محليّاً فوراً** (`PrayerCalculator`) داخل `runCatching` — لا تعتمد كاش/شبكة وإلّا فرغ الودجت لحظيّاً؛ واستعمل `SizeMode.Responsive` فلا يُقصّ المحتوى عند تغيير الحجم.
+- **الأصول الكبيرة:** فكّ ترميز JSON الكبير (tafsir ~4MB) على `Dispatchers.Default` لا الخيط الرئيسيّ.
+- **تنقّل «المزيد»:** رسمٌ متداخل (`navigation(route=more_graph)`) بـ`saveState`/`restoreState` ليحفظ/يستعيد القسم؛ إعادة النقر على «المزيد» داخل قسمٍ فرعيّ تُظهر رسالةً (العودة/البقاء).
+- **الإشعار الدائم:** على أندرويد 14+ يُزال بالسحب (قرار النظام)؛ يُعاد بثّه من `scheduleNext` وعند إقلاع التطبيق.
+- **الأصوات/الخطوط:** `res/raw` lowercase (adhan_full…) · `res/font` (amiri_quran, ubuntu_arabic).
+- **الأيقونات:** minSdk 26 → أيقونة تكيّفيّة `mipmap-anydpi-v26`. لا تكتب محلّل SVG يدويّاً (Vector/Material Icons).
 - **الكاش:** مفتاح Room المركّب (dateIso+methodId+locKey) يُبطِل الكاش تلقائيّاً عند تغيّر الطريقة أو الموقع.
 
 ---
 
 ## خريطة المراحل
-- **م1 (الحاليّة):** مواقيت + جدولة أذان + إعداد + إعدادات + سِمة. ✅ مكتملة الهيكلة.
-  أُضيف: أذان مخصّص + تجربة الأنواع + بطاقة موثوقيّة التنبيهات (إنذار دقيق + إعفاء بطاريّة).
+- **م1 ✅ مكتملة:** مواقيت + جدولة أذان + إعداد + إعدادات + سِمة + خلفيّة متدرّجة.
+  أذان مخصّص + تجربة الأنواع + بطاقة موثوقيّة التنبيهات + رئيسيّة متدرّجة (ساعة حيّة + تاريخان + الصلاة القادمة).
 - **م2:** ✅ **قبلة** (بوصلة حيّة: `sensor/Compass.kt` + `QiblaScreen`/`QiblaViewModel`، تصحيح انحراف مغناطيسيّ، رمز كعبة) ·
   ✅ **أذكار** (`data/AzkarRepository` يقرأ azkar.txt + `AdhkarScreen`) ·
   ✅ **أذكار الصباح/المساء** (`domain/MorningEveningAdhkar` بعدد التكرار + `AdhkarSessionScreen` عدٌّ تنازليّ، مسار `adhkar_session/{type}`) ·
   ✅ **تسبيح** (`TasbihScreen`/`TasbihViewModel`) ·
   ✅ **محور «المزيد»** (`MoreScreen`، تبويبٌ خامس ببطاقات الأقسام) ·
-  ✅ **أسماء الله الحسنى** (`domain/AsmaAllah` 99 اسماً + `AsmaScreen`) ·
+  ✅ **أسماء الله الحسنى** (99 من `assets/content/asma.json` بمعانٍ وشواهد + `AsmaScreen` كبطاقات Pager سلايد) ·
   ✅ **الكاتم التلقائيّ** (`audio/RingerController` + جدولة استعادةٍ في المُستقبِل، يحتاج ACCESS_NOTIFICATION_POLICY) ·
   ✅ **محتوى مستورَد** (`data/ContentRepository` + `assets/content/*.json`): أحاديث (90) + أدعية (28) + حِكَم (32) + أسماء الله بالشواهد ·
   ✅ **حصن المسلم المصنّف** (`assets/content/hisn.json`، 132 باباً/267 ذكراً + `HisnScreen`/`HisnCategoryScreen` بعدٍّ تنازليّ؛ بديل القائمة المسطّحة azkar.txt التي بقيت لذكر اليوم فقط) ·
   ✅ **إغناء الرئيسيّة** (ذكر/حكمة اليوم بتجديد ونسخ + تاريخ هجريّ/ميلاديّ) + **خلفيّة متدرّجة** (`AppRoot`) ·
   ✅ **إشعار دائم** (القائمة المنسدلة، عدٌّ تنازليّ chronometer، `NotificationHelper.statusNotification`) ·
   ✅ **ودجت Glance** (`widget/`: `NextPrayerWidget` + `TodayTimesWidget` بخلفيّةٍ شفّافة + `WidgetData` عبر Hilt EntryPoint، تُحدَّث من `scheduleNext`).
-  م2 مكتملة. **مصدر المحتوى:** حُوِّل من `../GT-SQRM/GT-SIRM/GT-SIRM-WEB/*-data.js` و`../GT_HISNMUSLIM-main/assets/data/` عبر سكربت Node لمرّة (JS→JSON).
-- **م3:** المصحف بالروايات (تنزيل) + القرّاء (تلاوة) + تظليل + ورد + إشارات.
-- **م4:** تفسير + قرآن مترجَم + تفسير مترجَم + لغات.
+  ✅ **بحث حصن المسلم** (تصفية عبر كلّ الأبواب) · ✅ **أكورديون الإعدادات** (قسمٌ واحدٌ مفتوح) ·
+  ✅ **تقويم المواقيت** (`domain/GregorianMonths`: أشهر إقليميّة تلقائيّة/يدويّة + تاريخان لكلّ يوم + اختيار هجريّ/ميلاديّ + عودة تلقائيّة لصلوات اليوم). **م2 مكتملة.**
+- **م3 (بدأت):** ✅ **التفسير الميسّر** (`assets/content/tafsir.json` + `TafsirScreen`/`TafsirSurahScreen`، 114 سورة/6236 آية بالنصّ العثمانيّ) ·
+  المتبقّي: المصحف بالروايات (تنزيل) + القرّاء (تلاوة everyayah آية-بآية) + تظليل متزامن + ورد + إشارات. **بيانات جاهزة في `../GT-QURANREADER`** (4 روايات alquran.cloud + 13 قارئاً + فهارس سور/أجزاء/سجدات).
+- **م4:** قرآن مترجَم + تفسير مترجَم + لغات.
 - **م5:** إذاعات + رمضان + آية اليوم + مشاركة.
 
 ## المصادر الحرّة المدروسة (للإلهام لا النسخ)

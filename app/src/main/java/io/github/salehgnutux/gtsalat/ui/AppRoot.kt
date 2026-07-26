@@ -188,9 +188,9 @@ private fun onTabClick(
         }
         return
     }
-    if (dest == Dest.MORE) {
-        if (currentRoute != MORE_HOME) askReturnToMore()
-    } else {
-        nav.popBackStack(dest.route, inclusive = false)
+    when (dest) {
+        Dest.MORE -> if (currentRoute != MORE_HOME) askReturnToMore()
+        Dest.DASHBOARD -> UiEvents.requestHomeTop()  // إعادة النقر على الرئيسيّة تعود لرأس الصفحة
+        else -> nav.popBackStack(dest.route, inclusive = false)
     }
 }

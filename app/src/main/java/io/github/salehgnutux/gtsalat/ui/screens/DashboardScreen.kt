@@ -58,6 +58,13 @@ fun DashboardScreen(vm: DashboardViewModel = hiltViewModel()) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
+    // إعادة النقر على «الرئيسيّة» → التمرير لرأس الصفحة.
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        io.github.salehgnutux.gtsalat.ui.UiEvents.scrollHomeToTop.collect {
+            listState.animateScrollToItem(0)
+        }
+    }
+
     LazyColumn(
         Modifier.fillMaxSize(),
         state = listState,
