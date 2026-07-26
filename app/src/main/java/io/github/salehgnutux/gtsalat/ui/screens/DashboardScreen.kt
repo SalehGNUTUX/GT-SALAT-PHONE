@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -51,6 +52,7 @@ import kotlinx.coroutines.launch
 
 private const val I_DHIKR = 3
 private const val I_HIKMAH = 4
+private const val I_AYAH = 5
 
 @Composable
 fun DashboardScreen(vm: DashboardViewModel = hiltViewModel()) {
@@ -93,6 +95,15 @@ fun DashboardScreen(vm: DashboardViewModel = hiltViewModel()) {
                     Icon(Icons.Outlined.AutoAwesome, contentDescription = null)
                     Text("  حكمة اليوم")
                 }
+                if (ui.showAyah) {
+                    FilledTonalButton(
+                        onClick = { scope.launch { listState.animateScrollToItem(I_AYAH) } },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Outlined.MenuBook, contentDescription = null)
+                        Text("  آية اليوم")
+                    }
+                }
             }
         }
 
@@ -121,7 +132,21 @@ fun DashboardScreen(vm: DashboardViewModel = hiltViewModel()) {
             )
         }
 
-        // 5 — تذييل
+        // 5 — آية اليوم (قابلة للتجديد والنسخ)
+        if (ui.showAyah) {
+            item {
+                val a = ui.ayah
+                DailyCard(
+                    title = "آية اليوم",
+                    body = a?.text ?: "…",
+                    caption = a?.let { "سورة ${it.surah} — الآية ${it.n}" },
+                    onRefresh = { vm.refreshAyah() },
+                    refreshLabel = "آية أخرى",
+                )
+            }
+        }
+
+        // 6 — تذييل
         item {
             Text(
                 "تعمل المواقيت والأذان دون إنترنت بعد الإعداد.",

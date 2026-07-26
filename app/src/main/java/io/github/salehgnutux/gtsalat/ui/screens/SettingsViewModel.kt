@@ -66,6 +66,10 @@ class SettingsViewModel @Inject constructor(
     fun setEnablePreNotify(v: Boolean) = viewModelScope.launch { settingsRepo.setEnablePreNotify(v); reschedule() }
     fun setEnablePreNotifySound(v: Boolean) = viewModelScope.launch { settingsRepo.setEnablePreNotifySound(v) }
     fun setEnablePostDhikr(v: Boolean) = viewModelScope.launch { settingsRepo.setEnablePostDhikr(v) }
+    fun setEnableDailyAyah(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableDailyAyah(v) }
+    fun setEnableRecitationReminder(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableRecitationReminder(v); reschedule() }
+    fun setEnableWhiteDaysReminder(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableWhiteDaysReminder(v); reschedule() }
+    fun setReminderHour(h: Int) = viewModelScope.launch { settingsRepo.setReminderHour(h); reschedule() }
     fun setUseApi(v: Boolean) = viewModelScope.launch { settingsRepo.setUseApi(v) }
     fun setDnd(v: Boolean) = viewModelScope.launch { settingsRepo.setDnd(v); reschedule() }
     fun setAutoSilence(v: Boolean) = viewModelScope.launch { settingsRepo.setAutoSilence(v) }

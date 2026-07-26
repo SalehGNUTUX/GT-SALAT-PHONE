@@ -12,6 +12,8 @@ import io.github.salehgnutux.gtsalat.domain.HadithFile
 import io.github.salehgnutux.gtsalat.domain.HikamCategory
 import io.github.salehgnutux.gtsalat.domain.HikamFile
 import io.github.salehgnutux.gtsalat.domain.Hikmah
+import io.github.salehgnutux.gtsalat.domain.DailyAyah
+import io.github.salehgnutux.gtsalat.domain.DailyAyatFile
 import io.github.salehgnutux.gtsalat.domain.HisnCategory
 import io.github.salehgnutux.gtsalat.domain.HisnFile
 import io.github.salehgnutux.gtsalat.domain.TafsirFile
@@ -72,6 +74,18 @@ class ContentRepository @Inject constructor(
     }
 
     suspend fun tafsirSurah(n: Int): TafsirSurah? = tafsirSurahs().firstOrNull { it.n == n }
+
+    private var ayatCache: List<DailyAyah>? = null
+
+    suspend fun dailyAyat(): List<DailyAyah> = ayatCache ?: run {
+        json.decodeFromString<DailyAyatFile>(read("daily_ayat.json")).items.also { ayatCache = it }
+    }
+
+    /** آية اليوم (ثابتةٌ لليوم عبر seed، أو عشوائيّة عند التجديد). */
+    suspend fun dailyAyah(seed: Int): DailyAyah? {
+        val all = dailyAyat()
+        return if (all.isEmpty()) null else all[(seed % all.size + all.size) % all.size]
+    }
 
     private suspend fun allHikam(): List<Hikmah> = hikamCache ?: run {
         hikamCategories().flatMap { it.items }.also { hikamCache = it }

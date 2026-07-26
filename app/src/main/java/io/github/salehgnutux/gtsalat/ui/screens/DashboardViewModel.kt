@@ -37,6 +37,8 @@ data class DashboardUi(
     val countdownText: String = "",
     val dhikr: String = "",
     val hikmah: Hikmah? = null,
+    val ayah: io.github.salehgnutux.gtsalat.domain.DailyAyah? = null,
+    val showAyah: Boolean = true,
 )
 
 @HiltViewModel
@@ -58,6 +60,7 @@ class DashboardViewModel @Inject constructor(
     private var azkarList: List<String> = emptyList()
     private var dhikr: String = ""
     private var hikmah: Hikmah? = null
+    private var ayah: io.github.salehgnutux.gtsalat.domain.DailyAyah? = null
 
     init {
         viewModelScope.launch {
@@ -65,6 +68,7 @@ class DashboardViewModel @Inject constructor(
             azkarList = azkar.all()
             if (azkarList.isNotEmpty()) dhikr = azkarList[dayOfYear % azkarList.size]
             hikmah = content.hikmah(dayOfYear)
+            ayah = content.dailyAyah(dayOfYear)
             tickUpdate()
         }
         viewModelScope.launch {
@@ -100,6 +104,14 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    /** آية أخرى عشوائيّة. */
+    fun refreshAyah() {
+        viewModelScope.launch {
+            ayah = content.dailyAyah(Random.nextInt(100000))
+            tickUpdate()
+        }
+    }
+
     private suspend fun loadDay(s: AppSettings) {
         if (!s.hasLocation) {
             _ui.value = DashboardUi(loading = false, hasLocation = false)
@@ -125,6 +137,8 @@ class DashboardViewModel @Inject constructor(
                 clock = Format.clockNow(),
                 dhikr = dhikr,
                 hikmah = hikmah,
+                ayah = ayah,
+                showAyah = s.enableDailyAyah,
             )
             return
         }
@@ -142,6 +156,8 @@ class DashboardViewModel @Inject constructor(
             countdownText = next?.let { Format.countdown(it.remainingMillis) } ?: "",
             dhikr = dhikr,
             hikmah = hikmah,
+            ayah = ayah,
+            showAyah = s.enableDailyAyah,
         )
     }
 }

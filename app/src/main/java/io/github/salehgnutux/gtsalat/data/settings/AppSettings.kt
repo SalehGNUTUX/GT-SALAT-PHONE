@@ -34,6 +34,10 @@ data class AppSettings(
     val enablePreNotifySound: Boolean = true,
     val enablePostDhikr: Boolean = true,
     val postDhikrMinutes: Int = 20,
+    val enableDailyAyah: Boolean = true,          // بطاقة آية اليوم في الرئيسيّة
+    val enableRecitationReminder: Boolean = true, // تذكير وِرد التلاوة
+    val enableWhiteDaysReminder: Boolean = true,  // تذكير الأيّام البيض (13/14/15 هجريّ)
+    val reminderHour: Int = 8,                    // ساعة التذكيرات اليوميّة
     val useApiTimetables: Boolean = true,
     val doNotDisturb: Boolean = false,
     val autoSilence: Boolean = false,

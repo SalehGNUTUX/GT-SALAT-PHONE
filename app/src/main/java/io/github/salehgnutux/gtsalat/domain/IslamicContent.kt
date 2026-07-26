@@ -83,3 +83,10 @@ data class TafsirSurah(
 
 @Serializable
 data class TafsirFile(val surahs: List<TafsirSurah>)
+
+/** آيةٌ منتقاة لـ«آية اليوم». */
+@Serializable
+data class DailyAyah(val surah: String, val n: Int, val text: String)
+
+@Serializable
+data class DailyAyatFile(val items: List<DailyAyah>)

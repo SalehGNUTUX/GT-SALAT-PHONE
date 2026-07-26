@@ -48,6 +48,10 @@ class SettingsRepository @Inject constructor(
         val EN_PRE_SOUND = booleanPreferencesKey("en_pre_notify_sound")
         val EN_POST_DHIKR = booleanPreferencesKey("en_post_dhikr")
         val POST_DHIKR_MIN = intPreferencesKey("post_dhikr_min")
+        val EN_DAILY_AYAH = booleanPreferencesKey("en_daily_ayah")
+        val EN_RECITATION = booleanPreferencesKey("en_recitation")
+        val EN_WHITEDAYS = booleanPreferencesKey("en_whitedays")
+        val REMINDER_HOUR = intPreferencesKey("reminder_hour")
         val USE_API = booleanPreferencesKey("use_api")
         val DND = booleanPreferencesKey("dnd")
         val AUTO_SILENCE = booleanPreferencesKey("auto_silence")
@@ -95,6 +99,10 @@ class SettingsRepository @Inject constructor(
             enablePreNotifySound = this[Keys.EN_PRE_SOUND] ?: true,
             enablePostDhikr = this[Keys.EN_POST_DHIKR] ?: true,
             postDhikrMinutes = this[Keys.POST_DHIKR_MIN] ?: 20,
+            enableDailyAyah = this[Keys.EN_DAILY_AYAH] ?: true,
+            enableRecitationReminder = this[Keys.EN_RECITATION] ?: true,
+            enableWhiteDaysReminder = this[Keys.EN_WHITEDAYS] ?: true,
+            reminderHour = (this[Keys.REMINDER_HOUR] ?: 8).coerceIn(0, 23),
             useApiTimetables = this[Keys.USE_API] ?: true,
             doNotDisturb = this[Keys.DND] ?: false,
             autoSilence = this[Keys.AUTO_SILENCE] ?: false,
@@ -152,6 +160,10 @@ class SettingsRepository @Inject constructor(
     suspend fun setEnablePreNotify(v: Boolean) = context.dataStore.edit { it[Keys.EN_PRE] = v }
     suspend fun setEnablePreNotifySound(v: Boolean) = context.dataStore.edit { it[Keys.EN_PRE_SOUND] = v }
     suspend fun setEnablePostDhikr(v: Boolean) = context.dataStore.edit { it[Keys.EN_POST_DHIKR] = v }
+    suspend fun setEnableDailyAyah(v: Boolean) = context.dataStore.edit { it[Keys.EN_DAILY_AYAH] = v }
+    suspend fun setEnableRecitationReminder(v: Boolean) = context.dataStore.edit { it[Keys.EN_RECITATION] = v }
+    suspend fun setEnableWhiteDaysReminder(v: Boolean) = context.dataStore.edit { it[Keys.EN_WHITEDAYS] = v }
+    suspend fun setReminderHour(h: Int) = context.dataStore.edit { it[Keys.REMINDER_HOUR] = h.coerceIn(0, 23) }
     suspend fun setUseApi(v: Boolean) = context.dataStore.edit { it[Keys.USE_API] = v }
     suspend fun setDnd(v: Boolean) = context.dataStore.edit { it[Keys.DND] = v }
     suspend fun setAutoSilence(v: Boolean) = context.dataStore.edit { it[Keys.AUTO_SILENCE] = v }

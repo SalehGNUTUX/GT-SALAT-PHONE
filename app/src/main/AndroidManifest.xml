@@ -78,6 +78,11 @@
             </intent-filter>
         </receiver>
 
+        <!-- مُستقبِل التذكيرات اليوميّة (وِرد/أيّام بيض/آية) -->
+        <receiver
+            android:name=".alarm.DailyReminderReceiver"
+            android:exported="false" />
+
         <!-- ودجت سطح الهاتف: الصلاة القادمة (مدمج) ومواقيت اليوم (كامل) -->
         <receiver
             android:name=".widget.NextPrayerWidgetReceiver"

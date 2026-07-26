@@ -45,7 +45,27 @@ class NotificationHelper @Inject constructor(
                 setSound(null, null)
             }
         )
+        nm.createNotificationChannel(
+            NotificationChannel(CH_REMINDERS, "التذكيرات اليوميّة", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "آية اليوم ووِرد التلاوة والأيّام البيض"
+            }
+        )
     }
+
+    private fun reminder(title: String, text: String): Notification =
+        NotificationCompat.Builder(context, CH_REMINDERS)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .setContentIntent(contentIntent())
+            .build()
+
+    fun showRecitationReminder() = nm.notify(ID_RECITATION, reminder("📖 وِرد التلاوة", "لا تنسَ وردك اليوميّ من تلاوة القرآن الكريم."))
+    fun showWhiteDaysReminder(text: String) = nm.notify(ID_WHITEDAYS, reminder("🌕 الأيّام البيض", text))
+    fun showDailyAyah(surah: String, n: Int, text: String) = nm.notify(ID_AYAH, reminder("آية اليوم — سورة $surah [$n]", text))
 
     private fun contentIntent(): PendingIntent {
         val i = Intent(context, MainActivity::class.java)
@@ -112,10 +132,14 @@ class NotificationHelper @Inject constructor(
         const val CH_PRENOTIFY = "prenotify"
         const val CH_SERVICE = "adhan_service"
         const val CH_STATUS = "status"
+        const val CH_REMINDERS = "reminders"
         const val ID_PRAYER = 2001
         const val ID_PRENOTIFY = 2002
         const val ID_SERVICE = 2003
         const val ID_STATUS = 2004
+        const val ID_RECITATION = 2005
+        const val ID_WHITEDAYS = 2006
+        const val ID_AYAH = 2007
         val PI_FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     }
 }

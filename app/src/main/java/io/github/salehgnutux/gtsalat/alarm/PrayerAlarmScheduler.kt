@@ -30,8 +30,9 @@ class PrayerAlarmScheduler @Inject constructor(
     suspend fun scheduleNext() {
         cancelAll()
         val s = settingsRepo.current()
-        refreshStatus(s)   // الإشعار الدائم مستقلٌّ عن حارسات الأذان أدناه
-        refreshWidgets()   // وكذلك ودجتات سطح الهاتف
+        refreshStatus(s)          // الإشعار الدائم مستقلٌّ عن حارسات الأذان أدناه
+        refreshWidgets()          // وكذلك ودجتات سطح الهاتف
+        scheduleDailyReminder()   // والتذكيرات اليوميّة (وِرد/أيّام بيض/آية)
         if (!s.setupCompleted || !s.hasLocation || s.doNotDisturb || !s.enableSalatNotify) return
 
         val next = repo.nextPrayer() ?: return
@@ -64,6 +65,23 @@ class PrayerAlarmScheduler @Inject constructor(
     /** جدولة ذكر ما بعد الصلاة (بعد دخول الوقت بدقائق). */
     fun schedulePostDhikr(triggerAt: Long) {
         setAlarmClock(triggerAt, postDhikrIntent())
+    }
+
+    /** جدولة التذكيرات اليوميّة (وِرد/أيّام بيض/آية) عند ساعةٍ محدّدة، تعيد جدولة نفسها. */
+    suspend fun scheduleDailyReminder() {
+        val hour = settingsRepo.current().reminderHour.coerceIn(0, 23)
+        val now = java.time.LocalDateTime.now()
+        var at = now.withHour(hour).withMinute(0).withSecond(0).withNano(0)
+        if (!at.isAfter(now)) at = at.plusDays(1)
+        val millis = at.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        setExact(millis, reminderIntent())
+    }
+
+    private fun reminderIntent(): PendingIntent {
+        val i = Intent(context, DailyReminderReceiver::class.java).apply {
+            action = DailyReminderReceiver.ACTION_DAILY_REMINDER
+        }
+        return PendingIntent.getBroadcast(context, RC_REMINDER, i, FLAGS)
     }
 
     /** تحديث الإشعار الدائم بالصلاة القادمة (عدٌّ تنازليّ حيّ)، أو إلغاؤه. */
@@ -150,6 +168,7 @@ class PrayerAlarmScheduler @Inject constructor(
         private const val RC_RESTORE = 1003
         private const val RC_POSTDHIKR = 1004
         private const val RC_SHOW = 1005
+        private const val RC_REMINDER = 1006
         private val FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     }
 }

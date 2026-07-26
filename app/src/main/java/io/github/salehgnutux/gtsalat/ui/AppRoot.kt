@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -83,15 +84,22 @@ fun AppRoot(setupCompleted: Boolean) {
     val currentDest = backStack?.destination
     // رسالةٌ عند إعادة النقر على «المزيد» ونحن داخل أحد أقسامه.
     var askReturnToMore by remember { mutableStateOf(false) }
+    // رسالة تأكيد الخروج عند الرجوع من الرئيسيّة.
+    var askExit by remember { mutableStateOf(false) }
+    val activity = LocalContext.current as? android.app.Activity
 
-    // زرّ رجوع النظام: من أيّ قسمٍ يعود للرئيسيّة؛ ومن الرئيسيّة يخرج من التطبيق بلا رسالة تحذير.
+    // زرّ رجوع النظام: من أيّ قسمٍ يعود للرئيسيّة؛ ومن الرئيسيّة يسأل قبل الخروج.
     val onDashboard = currentDest?.route == Dest.DASHBOARD.route
-    BackHandler(enabled = !onDashboard) {
-        nav.navigate(Dest.DASHBOARD.route) {
-            popUpTo(nav.graph.findStartDestination().id) { inclusive = false }
-            launchSingleTop = true
+    BackHandler {
+        if (onDashboard) {
+            askExit = true
+        } else {
+            nav.navigate(Dest.DASHBOARD.route) {
+                popUpTo(nav.graph.findStartDestination().id) { inclusive = false }
+                launchSingleTop = true
+            }
+            UiEvents.requestHomeTop()
         }
-        UiEvents.requestHomeTop()
     }
 
     val cs = MaterialTheme.colorScheme
@@ -173,6 +181,20 @@ fun AppRoot(setupCompleted: Boolean) {
             },
             dismissButton = {
                 TextButton(onClick = { askReturnToMore = false }) { Text("البقاء") }
+            },
+        )
+    }
+
+    if (askExit) {
+        AlertDialog(
+            onDismissRequest = { askExit = false },
+            title = { Text("مغادرة التطبيق") },
+            text = { Text("أنت على وشك مغادرة التطبيق. هل تريد الخروج أم البقاء؟") },
+            confirmButton = {
+                TextButton(onClick = { askExit = false; activity?.finish() }) { Text("خروج") }
+            },
+            dismissButton = {
+                TextButton(onClick = { askExit = false }) { Text("بقاء") }
             },
         )
     }

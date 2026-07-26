@@ -176,6 +176,13 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             }
         }
 
+        SectionCard("التذكيرات اليوميّة", openSection == "التذكيرات اليوميّة", { toggle("التذكيرات اليوميّة") }) {
+            SwitchRow("بطاقة آية اليوم في الرئيسيّة", settings.enableDailyAyah) { vm.setEnableDailyAyah(it) }
+            SwitchRow("تذكير وِرد التلاوة", settings.enableRecitationReminder) { vm.setEnableRecitationReminder(it) }
+            SwitchRow("تذكير الأيّام البيض (13/14/15 هجريّ)", settings.enableWhiteDaysReminder) { vm.setEnableWhiteDaysReminder(it) }
+            MinutesSlider("ساعة التذكير:", settings.reminderHour, 0, 23, suffix = "") { vm.setReminderHour(it) }
+        }
+
         ReliabilityCard(openSection == "موثوقيّة التنبيهات") { toggle("موثوقيّة التنبيهات") }
 
         SectionCard("التقويم والتواريخ", openSection == "التقويم والتواريخ", { toggle("التقويم والتواريخ") }) {
