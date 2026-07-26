@@ -61,6 +61,10 @@ class SettingsRepository @Inject constructor(
         val THEME = stringPreferencesKey("theme_mode")
         val DYNAMIC = booleanPreferencesKey("dynamic_color")
         val SEED_COLOR = intPreferencesKey("seed_color")
+        val GRAD_TOP_L = intPreferencesKey("grad_top_light")
+        val GRAD_BOT_L = intPreferencesKey("grad_bot_light")
+        val GRAD_TOP_D = intPreferencesKey("grad_top_dark")
+        val GRAD_BOT_D = intPreferencesKey("grad_bot_dark")
         val MONTH_SCHEME = stringPreferencesKey("month_scheme")
         val CAL_KIND = stringPreferencesKey("timetable_calendar")
         val SETUP = booleanPreferencesKey("setup_completed")
@@ -115,6 +119,10 @@ class SettingsRepository @Inject constructor(
             },
             dynamicColor = this[Keys.DYNAMIC] ?: true,
             seedColor = this[Keys.SEED_COLOR] ?: 0,
+            gradTopLight = this[Keys.GRAD_TOP_L] ?: 0,
+            gradBotLight = this[Keys.GRAD_BOT_L] ?: 0,
+            gradTopDark = this[Keys.GRAD_TOP_D] ?: 0,
+            gradBotDark = this[Keys.GRAD_BOT_D] ?: 0,
             monthScheme = runCatching { MonthScheme.valueOf(this[Keys.MONTH_SCHEME] ?: "AUTO") }.getOrDefault(MonthScheme.AUTO),
             timetableCalendar = if (this[Keys.CAL_KIND] == "GREGORIAN") CalendarKind.GREGORIAN else CalendarKind.HIJRI,
             setupCompleted = this[Keys.SETUP] ?: false,
@@ -174,6 +182,19 @@ class SettingsRepository @Inject constructor(
     suspend fun setTheme(t: ThemeMode) = context.dataStore.edit { it[Keys.THEME] = t.name }
     suspend fun setDynamicColor(v: Boolean) = context.dataStore.edit { it[Keys.DYNAMIC] = v }
     suspend fun setSeedColor(argb: Int) = context.dataStore.edit { it[Keys.SEED_COLOR] = argb }
+    /** تعيين لون طرف التدرّج للوضع المطلوب (dark) أو الفاتح، أعلى (top) أو أسفل. */
+    suspend fun setGradient(dark: Boolean, top: Boolean, argb: Int) = context.dataStore.edit {
+        it[when {
+            dark && top -> Keys.GRAD_TOP_D
+            dark && !top -> Keys.GRAD_BOT_D
+            !dark && top -> Keys.GRAD_TOP_L
+            else -> Keys.GRAD_BOT_L
+        }] = argb
+    }
+    suspend fun resetGradient(dark: Boolean) = context.dataStore.edit {
+        if (dark) { it[Keys.GRAD_TOP_D] = 0; it[Keys.GRAD_BOT_D] = 0 }
+        else { it[Keys.GRAD_TOP_L] = 0; it[Keys.GRAD_BOT_L] = 0 }
+    }
     suspend fun setMonthScheme(s: MonthScheme) = context.dataStore.edit { it[Keys.MONTH_SCHEME] = s.name }
     suspend fun setTimetableCalendar(k: CalendarKind) = context.dataStore.edit { it[Keys.CAL_KIND] = k.name }
     suspend fun setSetupCompleted(v: Boolean) = context.dataStore.edit { it[Keys.SETUP] = v }

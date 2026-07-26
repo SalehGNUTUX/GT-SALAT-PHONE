@@ -78,6 +78,8 @@ class SettingsViewModel @Inject constructor(
     fun setTheme(t: ThemeMode) = viewModelScope.launch { settingsRepo.setTheme(t) }
     fun setDynamicColor(v: Boolean) = viewModelScope.launch { settingsRepo.setDynamicColor(v) }
     fun setSeedColor(argb: Int) = viewModelScope.launch { settingsRepo.setSeedColor(argb) }
+    fun setGradient(dark: Boolean, top: Boolean, argb: Int) = viewModelScope.launch { settingsRepo.setGradient(dark, top, argb) }
+    fun resetGradient(dark: Boolean) = viewModelScope.launch { settingsRepo.resetGradient(dark) }
     fun setMonthScheme(s: io.github.salehgnutux.gtsalat.domain.MonthScheme) = viewModelScope.launch { settingsRepo.setMonthScheme(s) }
     fun setTimetableCalendar(k: io.github.salehgnutux.gtsalat.domain.CalendarKind) = viewModelScope.launch { settingsRepo.setTimetableCalendar(k) }
     fun redetectLocation() = viewModelScope.launch { repo.detectAndSaveLocation(); repo.prefetchMonths(3); reschedule() }

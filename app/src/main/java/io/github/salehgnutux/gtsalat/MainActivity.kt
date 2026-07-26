@@ -46,9 +46,11 @@ class MainActivity : ComponentActivity() {
                     ThemeMode.DARK -> true
                     ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 }
+                val gradTop = if (dark) s.gradTopDark else s.gradTopLight
+                val gradBot = if (dark) s.gradBotDark else s.gradBotLight
                 GtSalatTheme(darkTheme = dark, dynamicColor = s.dynamicColor, seedColor = s.seedColor) {
                     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                        AppRoot(setupCompleted = s.setupCompleted)
+                        AppRoot(setupCompleted = s.setupCompleted, gradientTop = gradTop, gradientBottom = gradBot)
                     }
                 }
             }

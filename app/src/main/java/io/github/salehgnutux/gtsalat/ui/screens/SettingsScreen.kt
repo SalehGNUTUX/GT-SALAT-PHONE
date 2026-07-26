@@ -64,6 +64,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.salehgnutux.gtsalat.BuildConfig
 import io.github.salehgnutux.gtsalat.data.settings.AdhanAlertMode
 import io.github.salehgnutux.gtsalat.data.settings.AdhanType
+import io.github.salehgnutux.gtsalat.data.settings.AppSettings
 import io.github.salehgnutux.gtsalat.data.settings.ThemeMode
 import io.github.salehgnutux.gtsalat.domain.AsrMadhab
 import io.github.salehgnutux.gtsalat.domain.CalculationMethods
@@ -216,10 +217,10 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             }
             SwitchRow("الألوان الديناميكيّة (Material You)", settings.dynamicColor) { vm.setDynamicColor(it) }
             if (!settings.dynamicColor) {
-                ColorPicker(settings.seedColor) { vm.setSeedColor(it) }
+                ColorTool(settings, vm)
             } else {
                 Text(
-                    "عطّل الألوان الديناميكيّة لتخصيص لونك.",
+                    "عطّل الألوان الديناميكيّة لتخصيص ألوانك.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
                 )
@@ -368,31 +369,24 @@ private fun openAppDetails(context: Context) {
     }
 }
 
-/** أداة تخصيص لون السِمة: سواترُ جاهزة + منزلق تدرّجٍ حرّ (Hue). يؤثّر في الوضعين والتدرّج. */
+/** أداة الألوان الكاملة: لون السِمة (HSV) + سواتر + تخصيص تدرّج الخلفيّة للوضع الحاليّ. */
 @Composable
-private fun ColorPicker(seed: Int, onPick: (Int) -> Unit) {
+private fun ColorTool(settings: AppSettings, vm: SettingsViewModel) {
+    val dark = androidx.compose.foundation.isSystemInDarkTheme()
     val presets = listOf(
-        0 to "افتراضيّ",
-        0xFF1B6B4C.toInt() to "أخضر",
-        0xFF00796B.toInt() to "فيروزيّ",
-        0xFF1565C0.toInt() to "أزرق",
-        0xFF6A1B9A.toInt() to "أرجوانيّ",
-        0xFFC9A227.toInt() to "ذهبيّ",
-        0xFFB5651D.toInt() to "بنّيّ",
-        0xFFAD1457.toInt() to "توتيّ",
+        0, 0xFF1B6B4C.toInt(), 0xFF00796B.toInt(), 0xFF1565C0.toInt(),
+        0xFF6A1B9A.toInt(), 0xFFC9A227.toInt(), 0xFFB5651D.toInt(), 0xFFAD1457.toInt(),
     )
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("لون السِمة والتدرّج", style = MaterialTheme.typography.bodyLarge)
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("لون السِمة", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
         androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(presets) { (argb, _) ->
-                val selected = seed == argb
+            items(presets) { argb ->
+                val selected = settings.seedColor == argb
                 val swatch = if (argb == 0) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color(argb)
                 androidx.compose.foundation.layout.Box(
-                    Modifier.size(38.dp)
-                        .clip(androidx.compose.foundation.shape.CircleShape)
-                        .background(swatch)
-                        .then(if (argb == 0) Modifier.border(1.dp, MaterialTheme.colorScheme.outline, androidx.compose.foundation.shape.CircleShape) else Modifier)
-                        .clickable { onPick(argb) },
+                    Modifier.size(38.dp).clip(CircleShape).background(swatch)
+                        .then(if (argb == 0) Modifier.border(1.dp, MaterialTheme.colorScheme.outline, CircleShape) else Modifier)
+                        .clickable { vm.setSeedColor(argb) },
                     contentAlignment = Alignment.Center,
                 ) {
                     if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = androidx.compose.ui.graphics.Color.White)
@@ -400,20 +394,44 @@ private fun ColorPicker(seed: Int, onPick: (Int) -> Unit) {
                 }
             }
         }
-        // منزلق تدرّجٍ حرّ: يولّد لوناً من زاوية الطيف.
-        var hue by remember(seed) {
-            val hsv = FloatArray(3)
-            if (seed != 0) android.graphics.Color.colorToHSV(seed, hsv) else hsv[0] = 150f
-            mutableStateOf(hsv[0])
+        HsvPicker(if (settings.seedColor != 0) settings.seedColor else MaterialTheme.colorScheme.primary.toArgb()) { vm.setSeedColor(it) }
+
+        HorizontalDivider()
+        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+            Text("تدرّج الخلفيّة (${if (dark) "داكن" else "فاتح"})", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+            androidx.compose.material3.TextButton(onClick = { vm.resetGradient(dark) }) { Text("تلقائيّ") }
         }
-        Text("تدرّجٌ حرّ", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
-        Slider(
-            value = hue,
-            onValueChange = { hue = it },
-            valueRange = 0f..360f,
-            onValueChangeFinished = { onPick(androidx.compose.ui.graphics.Color.hsv(hue, 0.6f, 0.55f).toArgb()) },
-            modifier = Modifier.fillMaxWidth(),
+        val gTop = if (dark) settings.gradTopDark else settings.gradTopLight
+        val gBot = if (dark) settings.gradBotDark else settings.gradBotLight
+        Text("أعلى التدرّج", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+        HsvPicker(if (gTop != 0) gTop else MaterialTheme.colorScheme.background.toArgb()) { vm.setGradient(dark, true, it) }
+        Text("أسفل التدرّج", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+        HsvPicker(if (gBot != 0) gBot else MaterialTheme.colorScheme.primary.toArgb()) { vm.setGradient(dark, false, it) }
+    }
+}
+
+/** منتقي لونٍ كامل: لون (Hue) + إشباع + إضاءة، مع معاينةٍ حيّة. يبثّ عند ترك المنزلق. */
+@Composable
+private fun HsvPicker(argb: Int, onChange: (Int) -> Unit) {
+    val init = remember(argb) {
+        FloatArray(3).also { android.graphics.Color.colorToHSV(argb, it) }
+    }
+    var h by remember(argb) { mutableStateOf(init[0]) }
+    var s by remember(argb) { mutableStateOf(init[1]) }
+    var v by remember(argb) { mutableStateOf(init[2]) }
+    fun emit() = onChange(androidx.compose.ui.graphics.Color.hsv(h, s.coerceIn(0f, 1f), v.coerceIn(0f, 1f)).toArgb())
+
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        androidx.compose.foundation.layout.Box(
+            Modifier.size(44.dp).clip(CircleShape)
+                .background(androidx.compose.ui.graphics.Color.hsv(h, s, v))
+                .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
         )
+        Column(Modifier.weight(1f)) {
+            Slider(value = h, onValueChange = { h = it }, valueRange = 0f..360f, onValueChangeFinished = { emit() })
+            Slider(value = s, onValueChange = { s = it }, valueRange = 0f..1f, onValueChangeFinished = { emit() })
+            Slider(value = v, onValueChange = { v = it }, valueRange = 0f..1f, onValueChangeFinished = { emit() })
+        }
     }
 }
 

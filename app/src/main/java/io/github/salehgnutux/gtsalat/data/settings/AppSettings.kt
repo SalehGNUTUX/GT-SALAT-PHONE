@@ -46,6 +46,11 @@ data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
     val seedColor: Int = 0,   // 0 = لون السِمة الافتراضيّ (أخضر)؛ غيره ARGB مخصّص
+    // تدرّج الخلفيّة المخصّص لكلّ وضع (0 = تلقائيّ مشتقٌّ من السِمة)
+    val gradTopLight: Int = 0,
+    val gradBotLight: Int = 0,
+    val gradTopDark: Int = 0,
+    val gradBotDark: Int = 0,
 
     val monthScheme: MonthScheme = MonthScheme.AUTO,
     val timetableCalendar: CalendarKind = CalendarKind.HIJRI,

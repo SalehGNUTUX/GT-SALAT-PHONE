@@ -71,7 +71,7 @@ private enum class Dest(val route: String, val label: String, val icon: ImageVec
 }
 
 @Composable
-fun AppRoot(setupCompleted: Boolean) {
+fun AppRoot(setupCompleted: Boolean, gradientTop: Int = 0, gradientBottom: Int = 0) {
     if (!setupCompleted) {
         // Surface يوفّر لون المحتوى الصحيح (onBackground) لشاشة الإعداد خارج الـScaffold.
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -104,10 +104,14 @@ fun AppRoot(setupCompleted: Boolean) {
 
     val cs = MaterialTheme.colorScheme
     val dark = isSystemInDarkTheme()
-    // تدرّجٌ خفيفٌ مشتقٌّ من ألوان السِمة (يحترم الداكن/الفاتح وMaterial You).
-    val gradient = Brush.verticalGradient(
-        listOf(cs.background, lerp(cs.background, cs.primary, if (dark) 0.14f else 0.06f)),
-    )
+    // تدرّجٌ مخصّصٌ إن عُيّن، وإلّا مشتقٌّ من ألوان السِمة (يحترم الداكن/الفاتح وMaterial You).
+    val gradient = if (gradientTop != 0 && gradientBottom != 0) {
+        Brush.verticalGradient(listOf(Color(gradientTop), Color(gradientBottom)))
+    } else {
+        Brush.verticalGradient(
+            listOf(cs.background, lerp(cs.background, cs.primary, if (dark) 0.14f else 0.06f)),
+        )
+    }
 
     Box(Modifier.fillMaxSize().background(gradient)) {
         Scaffold(

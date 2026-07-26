@@ -15,6 +15,10 @@ data class RootState(
     val themeMode: ThemeMode,
     val dynamicColor: Boolean,
     val seedColor: Int,
+    val gradTopLight: Int,
+    val gradBotLight: Int,
+    val gradTopDark: Int,
+    val gradBotDark: Int,
     val setupCompleted: Boolean,
 )
 
@@ -23,6 +27,12 @@ class RootViewModel @Inject constructor(
     settingsRepo: SettingsRepository,
 ) : ViewModel() {
     val state: StateFlow<RootState?> = settingsRepo.settings
-        .map { RootState(it.themeMode, it.dynamicColor, it.seedColor, it.setupCompleted) }
+        .map {
+            RootState(
+                it.themeMode, it.dynamicColor, it.seedColor,
+                it.gradTopLight, it.gradBotLight, it.gradTopDark, it.gradBotDark,
+                it.setupCompleted,
+            )
+        }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 }
