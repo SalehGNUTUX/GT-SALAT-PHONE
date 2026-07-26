@@ -78,30 +78,18 @@ fun DashboardScreen(vm: DashboardViewModel = hiltViewModel()) {
         // 0 — البطاقة الرئيسيّة (ساعة + تاريخان + الصلاة القادمة) بخلفيّةٍ متدرّجة
         item { HeroCard(ui) }
 
-        // 1 — زرّا ذكر اليوم وحكمة اليوم (ينزلان للمحتوى أسفل الصفحة)
+        // 1 — أزرار ذكر/حكمة/آية اليوم (تنزل للمحتوى أسفل الصفحة) — متّسقةٌ بسطرٍ واحد
         item {
-            Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(12.dp)) {
-                FilledTonalButton(
-                    onClick = { scope.launch { listState.animateScrollToItem(I_DHIKR) } },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(Icons.Outlined.FavoriteBorder, contentDescription = null)
-                    Text("  ذكر اليوم")
+            Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(10.dp)) {
+                DailyNavButton("ذكر اليوم", Icons.Outlined.FavoriteBorder, Modifier.weight(1f)) {
+                    scope.launch { listState.animateScrollToItem(I_DHIKR) }
                 }
-                FilledTonalButton(
-                    onClick = { scope.launch { listState.animateScrollToItem(I_HIKMAH) } },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(Icons.Outlined.AutoAwesome, contentDescription = null)
-                    Text("  حكمة اليوم")
+                DailyNavButton("حكمة اليوم", Icons.Outlined.AutoAwesome, Modifier.weight(1f)) {
+                    scope.launch { listState.animateScrollToItem(I_HIKMAH) }
                 }
                 if (ui.showAyah) {
-                    FilledTonalButton(
-                        onClick = { scope.launch { listState.animateScrollToItem(I_AYAH) } },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Icon(Icons.Outlined.MenuBook, contentDescription = null)
-                        Text("  آية اليوم")
+                    DailyNavButton("آية اليوم", Icons.Outlined.MenuBook, Modifier.weight(1f)) {
+                        scope.launch { listState.animateScrollToItem(I_AYAH) }
                     }
                 }
             }
@@ -155,6 +143,21 @@ fun DashboardScreen(vm: DashboardViewModel = hiltViewModel()) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+    }
+}
+
+/** زرُّ تنقّلٍ يوميّ متّسق: أيقونةٌ فوق نصٍّ بسطرٍ واحد (فلا يلتفّ ولا يصير دائرة). */
+@Composable
+private fun DailyNavButton(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier, onClick: () -> Unit) {
+    FilledTonalButton(
+        onClick = onClick,
+        modifier = modifier,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp, horizontal = 4.dp),
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Icon(icon, contentDescription = null)
+            Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
         }
     }
 }

@@ -70,9 +70,9 @@ class AdhanService : Service() {
                 SOUND_PRENOTIFY -> playUri(resUri(R.raw.prayer_approaching)) { stopEverything() }
                 SOUND_POST_DHIKR -> playUri(resUri(R.raw.post_prayer_dhikr)) { stopEverything() }
                 else -> {
-                    // نمط الرنّة: صوتٌ قصيرٌ بدل الأذان الكامل (النمط مُمرَّرٌ من المُستقبِل: عامّ أو لكلّ صلاة).
+                    // نمط الرنّة: رنّةُ إشعارٍ قصيرة (صوت الإشعار الافتراضيّ) بدل الأذان الطويل.
                     if (alertMode == "TONE") {
-                        playUri(resUri(R.raw.prayer_approaching)) { stopEverything() }
+                        playUri(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI) { stopEverything() }
                     } else {
                         playUri(adhanUri(s)) {
                             if (s.enableDuaAfterAdhan) playUri(resUri(R.raw.dua_after_adhan)) { stopEverything() }

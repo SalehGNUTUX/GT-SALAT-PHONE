@@ -52,6 +52,12 @@ class SettingsViewModel @Inject constructor(
 
     fun stopPreview() = previewer.stop()
 
+    /** معاينة أصوات التنبيهات في الإعدادات. */
+    fun previewTone() = previewer.previewTone()
+    fun previewPreNotifySound() = previewer.previewRes(io.github.salehgnutux.gtsalat.R.raw.prayer_approaching)
+    fun previewDua() = previewer.previewRes(io.github.salehgnutux.gtsalat.R.raw.dua_after_adhan)
+    fun previewPostDhikr() = previewer.previewRes(io.github.salehgnutux.gtsalat.R.raw.post_prayer_dhikr)
+
     /** حفظ أذانٍ مخصّص مستورَد (URI دائم + اسمٌ للعرض)، ويصير النوع «مخصّص». */
     fun setCustomAdhan(uri: String, name: String) = viewModelScope.launch {
         settingsRepo.setCustomAdhan(uri, name)

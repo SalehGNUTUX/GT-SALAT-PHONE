@@ -59,5 +59,22 @@ class AdhanPreviewer @Inject constructor(
         _playing.value = null
     }
 
+    /** معاينة صوتٍ بمساره (يتوقّف تلقائيّاً عند الانتهاء). */
+    fun previewSound(uri: Uri) {
+        stop()
+        player = MediaPlayer().apply {
+            setAudioAttributes(attrs)
+            val ok = runCatching { setDataSource(context, uri) }.isSuccess
+            if (!ok) { stop(); return }
+            setOnCompletionListener { stop() }
+            setOnErrorListener { _, _, _ -> stop(); true }
+            setOnPreparedListener { start() }
+            prepareAsync()
+        }
+    }
+
+    fun previewRes(resId: Int) = previewSound(resUri(resId))
+    fun previewTone() = previewSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI)
+
     private fun resUri(resId: Int): Uri = Uri.parse("android.resource://${context.packageName}/$resId")
 }

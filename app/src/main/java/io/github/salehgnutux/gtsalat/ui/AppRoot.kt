@@ -13,6 +13,8 @@ import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -178,13 +180,13 @@ fun AppRoot(setupCompleted: Boolean, gradientTop: Int = 0, gradientBottom: Int =
             title = { Text("المزيد") },
             text = { Text("هل تريد العودة للمزيد أم البقاء؟") },
             confirmButton = {
-                TextButton(onClick = {
+                Button(onClick = {
                     askReturnToMore = false
                     nav.popBackStack(MORE_HOME, inclusive = false)
                 }) { Text("العودة للمزيد") }
             },
             dismissButton = {
-                TextButton(onClick = { askReturnToMore = false }) { Text("البقاء") }
+                FilledTonalButton(onClick = { askReturnToMore = false }) { Text("البقاء") }
             },
         )
     }
@@ -195,10 +197,16 @@ fun AppRoot(setupCompleted: Boolean, gradientTop: Int = 0, gradientBottom: Int =
             title = { Text("مغادرة التطبيق") },
             text = { Text("أنت على وشك مغادرة التطبيق. هل تريد الخروج أم البقاء؟") },
             confirmButton = {
-                TextButton(onClick = { askExit = false; activity?.finish() }) { Text("خروج") }
+                Button(
+                    onClick = { askExit = false; activity?.finish() },
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = cs.error,
+                        contentColor = cs.onError,
+                    ),
+                ) { Text("خروج") }
             },
             dismissButton = {
-                TextButton(onClick = { askExit = false }) { Text("بقاء") }
+                FilledTonalButton(onClick = { askExit = false }) { Text("البقاء") }
             },
         )
     }

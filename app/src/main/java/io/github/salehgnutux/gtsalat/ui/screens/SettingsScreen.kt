@@ -162,11 +162,12 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                     AlertModeChips(settings.adhanAlertMode) { vm.setAdhanAlertMode(it) }
                 }
             }
-            SwitchRow("دعاء بعد الأذان", settings.enableDuaAfterAdhan) { vm.setEnableDua(it) }
-            SwitchRow("صوت أذكار بعد الصلاة (بعد ${settings.postDhikrMinutes} دقيقة)", settings.enablePostDhikr) { vm.setEnablePostDhikr(it) }
+            PreviewRow("معاينة رنّة التنبيه") { vm.previewTone() }
+            SwitchRowPreview("دعاء بعد الأذان", settings.enableDuaAfterAdhan, { vm.previewDua() }) { vm.setEnableDua(it) }
+            SwitchRowPreview("صوت أذكار بعد الصلاة (بعد ${settings.postDhikrMinutes} دقيقة)", settings.enablePostDhikr, { vm.previewPostDhikr() }) { vm.setEnablePostDhikr(it) }
             SwitchRow("تنبيه الاقتراب قبل الصلاة", settings.enablePreNotify) { vm.setEnablePreNotify(it) }
             if (settings.enablePreNotify) {
-                SwitchRow("صوت تنبيه الاقتراب", settings.enablePreNotifySound) { vm.setEnablePreNotifySound(it) }
+                SwitchRowPreview("صوت تنبيه الاقتراب", settings.enablePreNotifySound, { vm.previewPreNotifySound() }) { vm.setEnablePreNotifySound(it) }
                 MinutesSlider("قبل الصلاة بـ", settings.preNotifyMinutes, 1, 60) { vm.setPreNotify(it) }
             }
             SwitchRow("وضع عدم الإزعاج", settings.doNotDisturb) { vm.setDnd(it) }
@@ -540,6 +541,27 @@ private fun openPolicyAccess(context: Context) {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
     }.onFailure { openAppDetails(context) }
+}
+
+/** صفّ مفتاحٍ بزرّ معاينةٍ صوتيّة. */
+@Composable
+private fun SwitchRowPreview(label: String, checked: Boolean, onPreview: () -> Unit, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onPreview) { Icon(Icons.Filled.PlayArrow, contentDescription = "معاينة", tint = MaterialTheme.colorScheme.primary) }
+            Switch(checked, onChange)
+        }
+    }
+}
+
+/** صفّ معاينةٍ صوتيّة (زرّ تشغيلٍ فقط). */
+@Composable
+private fun PreviewRow(label: String, onPreview: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyLarge)
+        IconButton(onClick = onPreview) { Icon(Icons.Filled.PlayArrow, contentDescription = "تشغيل", tint = MaterialTheme.colorScheme.primary) }
+    }
 }
 
 @Composable
