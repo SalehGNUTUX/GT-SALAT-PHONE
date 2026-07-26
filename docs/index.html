@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GT-SALAT — تطبيق إسلاميّ شامل يعمل دون إنترنت</title>
+<meta name="description" content="GT-SALAT: مواقيت الصلاة والأذان والأذكار والقبلة وحصن المسلم والتفسير الميسّر — تطبيق أندرويد حرّ ومفتوح المصدر يعمل دون إنترنت." />
+<link rel="icon" href="logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --emerald:#134E37; --emerald-2:#1B6B4C; --emerald-lite:#2E8B63;
+    --cream:#F3EFE2; --gold:#C9A227; --gold-lite:#E8C766;
+    --bg:#0B1410; --bg-2:#0E1B14; --surface:#122019; --surface-2:#16281f;
+    --line:#243b30; --text:#EAF2EC; --muted:#9db6a8; --accent:#83D3AC;
+    --radius:20px; --maxw:1120px;
+    --shadow:0 18px 50px -22px rgba(0,0,0,.7);
+  }
+  :root[data-theme="light"]{
+    --bg:#F5F9F5; --bg-2:#EDF4EE; --surface:#FFFFFF; --surface-2:#F1F6F1;
+    --line:#dbe8e0; --text:#132018; --muted:#5b756a; --accent:#1B6B4C;
+    --shadow:0 18px 50px -26px rgba(19,78,55,.28);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:"Tajawal",system-ui,"Segoe UI",sans-serif; line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(1200px 600px at 50% -260px, color-mix(in srgb, var(--emerald-2) 26%, transparent), transparent 70%);
+  }
+  h1,h2,h3,.amiri{font-family:"Amiri",serif}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+  .muted{color:var(--muted)}
+  .gold{color:var(--gold-lite)}
+
+  /* زخرفة نجميّة إسلاميّة خفيفة كخلفيّة */
+  .pattern{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.045;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'><g fill='none' stroke='%23C9A227' stroke-width='1.1'><path d='M45 6 55 24 75 24 63 40 70 60 45 50 20 60 27 40 15 24 35 24z'/><circle cx='45' cy='40' r='26'/></g></svg>');
+    background-size:90px 90px}
+  .app{position:relative;z-index:1}
+
+  /* الشريط العلويّ */
+  header.nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(12px);
+    background:color-mix(in srgb, var(--bg) 82%, transparent);
+    border-bottom:1px solid var(--line)}
+  .nav-in{display:flex;align-items:center;gap:14px;height:66px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800}
+  .brand img{width:34px;height:34px;border-radius:9px}
+  .brand b{font-family:"Amiri",serif;font-size:1.25rem;letter-spacing:.5px}
+  .nav-links{margin-inline-start:auto;display:flex;gap:6px;align-items:center}
+  .nav-links a{padding:8px 12px;border-radius:10px;color:var(--muted);font-weight:500}
+  .nav-links a:hover{color:var(--text);background:var(--surface-2)}
+  .icon-btn{width:40px;height:40px;border-radius:11px;border:1px solid var(--line);
+    background:var(--surface);color:var(--text);cursor:pointer;font-size:1.05rem;display:grid;place-items:center}
+  .icon-btn:hover{border-color:var(--gold)}
+  @media(max-width:720px){.nav-links a.hide-sm{display:none}}
+
+  /* البطل */
+  .hero{text-align:center;padding:70px 0 30px}
+  .arch{width:190px;height:230px;margin:0 auto 8px;position:relative;display:grid;place-items:center;
+    /* شكل المحراب: قوسٌ مدبّب */
+    background:linear-gradient(180deg, color-mix(in srgb,var(--emerald-2) 30%, var(--surface)), var(--surface));
+    border:1.5px solid var(--gold);
+    border-radius:96px 96px 26px 26px/128px 128px 26px 26px;
+    box-shadow:var(--shadow)}
+  .arch img{width:120px;height:120px;border-radius:22px;box-shadow:0 10px 30px -10px rgba(0,0,0,.5)}
+  .hero h1{font-size:clamp(2.6rem,7vw,4.2rem);margin:.35em 0 .1em;letter-spacing:1px}
+  .tag{font-size:clamp(1.05rem,2.6vw,1.3rem);color:var(--muted);max-width:640px;margin:0 auto}
+  .badges{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:22px 0 8px}
+  .badge{font-size:.86rem;font-weight:500;padding:7px 13px;border-radius:999px;
+    border:1px solid var(--line);background:var(--surface);color:var(--muted)}
+  .badge b{color:var(--accent)}
+  .cta{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:26px}
+  .btn{display:inline-flex;align-items:center;gap:9px;padding:14px 24px;border-radius:14px;
+    font-weight:700;font-size:1.02rem;border:1px solid transparent;transition:.18s;cursor:pointer}
+  .btn.primary{background:linear-gradient(180deg,var(--emerald-lite),var(--emerald-2));color:#fff;
+    box-shadow:0 14px 34px -14px var(--emerald-2)}
+  .btn.primary:hover{transform:translateY(-2px)}
+  .btn.ghost{background:var(--surface);border-color:var(--line);color:var(--text)}
+  .btn.ghost:hover{border-color:var(--gold)}
+
+  /* فواصل بمحراب/هلال */
+  .rule{display:flex;align-items:center;gap:14px;justify-content:center;margin:8px 0 30px;color:var(--gold)}
+  .rule::before,.rule::after{content:"";height:1px;width:min(120px,22vw);
+    background:linear-gradient(90deg,transparent,var(--gold))}
+  .rule::after{background:linear-gradient(270deg,transparent,var(--gold))}
+
+  section{padding:56px 0;position:relative}
+  .sec-head{text-align:center;margin-bottom:8px}
+  .sec-head .eyebrow{color:var(--gold-lite);font-weight:700;letter-spacing:2px;font-size:.82rem}
+  .sec-head h2{font-size:clamp(1.9rem,4.5vw,2.6rem);margin:.15em 0 .1em}
+  .sec-head p{color:var(--muted);max-width:620px;margin:0 auto}
+
+  /* المميزات */
+  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px;
+    transition:.2s;position:relative;overflow:hidden}
+  .card:hover{border-color:color-mix(in srgb,var(--gold) 60%,var(--line));transform:translateY(-3px)}
+  .card .ic{font-size:1.7rem;width:52px;height:52px;border-radius:14px;display:grid;place-items:center;
+    background:color-mix(in srgb,var(--emerald-2) 22%,var(--surface-2));margin-bottom:12px}
+  .card h3{margin:.1em 0 .3em;font-size:1.3rem;color:var(--accent)}
+  .card p{margin:0;color:var(--muted);font-size:.96rem}
+
+  /* المبدأ */
+  .principle{background:linear-gradient(180deg,var(--bg-2),var(--surface));
+    border:1px solid var(--line);border-radius:26px;padding:38px;text-align:center}
+  .principle .amiri{font-size:clamp(1.5rem,4vw,2rem);color:var(--gold-lite);line-height:1.9}
+
+  /* التنزيل */
+  .download{background:
+    radial-gradient(600px 300px at 50% 0, color-mix(in srgb,var(--emerald-2) 30%,transparent),transparent 70%),
+    var(--surface);border:1px solid var(--line);border-radius:26px;padding:44px 30px;text-align:center}
+  .download .ver{display:inline-block;margin:10px 0 4px;padding:5px 14px;border-radius:999px;
+    background:color-mix(in srgb,var(--gold) 18%,transparent);color:var(--gold-lite);font-weight:700}
+  .note{margin-top:16px;font-size:.9rem;color:var(--muted)}
+
+  /* المصادر */
+  .src-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+  .src{display:block;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;transition:.18s}
+  .src:hover{border-color:var(--gold);transform:translateY(-2px)}
+  .src b{display:block;color:var(--text);font-weight:700}
+  .src span{color:var(--muted);font-size:.9rem}
+
+  /* المطوّر */
+  .dev{display:flex;flex-wrap:wrap;gap:26px;align-items:center;justify-content:center;
+    background:var(--surface);border:1px solid var(--line);border-radius:26px;padding:34px}
+  .dev .who{text-align:center}
+  .dev .who h3{font-size:1.7rem;margin:0}
+  .dev .links{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+
+  footer{border-top:1px solid var(--line);padding:30px 0;text-align:center;color:var(--muted);margin-top:20px}
+  footer .amiri{color:var(--gold-lite);font-size:1.2rem}
+  footer a{color:var(--accent)}
+
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto}}
+  .reveal{opacity:0;transform:translateY(16px)}
+  .reveal.in{opacity:1;transform:none;transition:opacity .6s ease,transform .6s ease}
+</style>
+</head>
+<body>
+<div class="pattern"></div>
+<div class="app">
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top"><img src="logo.png" alt="" /><b>GT‑SALAT</b></a>
+    <nav class="nav-links">
+      <a class="hide-sm" href="#features">المميزات</a>
+      <a class="hide-sm" href="#download">التنزيل</a>
+      <a class="hide-sm" href="#sources">المصادر</a>
+      <a class="hide-sm" href="#dev">المطوّر</a>
+      <button class="icon-btn" id="themeBtn" aria-label="تبديل الوضع">🌙</button>
+    </nav>
+  </div>
+</header>
+
+<a id="top"></a>
+<div class="wrap">
+  <section class="hero">
+    <div class="arch reveal"><img src="logo.png" alt="شعار GT‑SALAT" /></div>
+    <h1 class="reveal">GT‑SALAT</h1>
+    <p class="tag reveal">رفيقُك الإسلاميُّ الشامل — مواقيتُ الصلاة والأذانُ والأذكارُ والقبلةُ والقرآن، <b class="gold">يعمل دون إنترنت</b>.</p>
+    <div class="badges reveal">
+      <span class="badge">📿 <b>تطبيق شامل</b></span>
+      <span class="badge">📶 يعمل <b>دون إنترنت</b></span>
+      <span class="badge">🔓 حرٌّ ومفتوح المصدر</span>
+      <span class="badge">🛡️ بلا تتبُّع ولا إعلانات</span>
+      <span class="badge">🤖 أندرويد 8+</span>
+    </div>
+    <div class="cta reveal">
+      <a class="btn primary" href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE/releases/latest">⬇️ تنزيل الإصدار التجريبيّ</a>
+      <a class="btn ghost" href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE">‹/› المستودع على GitHub</a>
+    </div>
+  </section>
+</div>
+
+<div class="wrap">
+  <div class="rule">☾</div>
+
+  <section id="features">
+    <div class="sec-head reveal">
+      <div class="eyebrow">ما يقدّمه التطبيق</div>
+      <h2>مميّزاتٌ غنيّة في تطبيقٍ واحد</h2>
+      <p>كلُّ ما يحتاجه المسلم في يومه، بواجهةٍ عربيّةٍ أنيقةٍ تدعم الوضعين الداكن والفاتح.</p>
+    </div>
+    <div class="grid">
+      <div class="card reveal"><div class="ic">🕌</div><h3>مواقيت وأذان دقيق</h3><p>22 طريقة حساب محلّيّة، وأذانٌ يصدر في وقته حتى والتطبيق مغلق والشاشة مطفأة.</p></div>
+      <div class="card reveal"><div class="ic">🧭</div><h3>القبلة</h3><p>بوصلةٌ حيّة بتصحيح الانحراف المغناطيسيّ، تشير لاتّجاه القبلة من موقعك.</p></div>
+      <div class="card reveal"><div class="ic">🛡️</div><h3>حصن المسلم</h3><p>132 باباً بأعداد التكرار وبحثٍ سريع، وأذكار الصباح والمساء بعدٍّ تنازليّ.</p></div>
+      <div class="card reveal"><div class="ic">📖</div><h3>القرآن والتفسير</h3><p>التفسير الميسّر لكامل المصحف (6236 آية) بالنصّ العثمانيّ، يعمل محلّيّاً.</p></div>
+      <div class="card reveal"><div class="ic">ﷲ</div><h3>أسماء الله الحسنى</h3><p>الأسماء بمعانيها وشواهدها القرآنيّة، بطاقاتٌ تُمرَّر بخطّ أميري.</p></div>
+      <div class="card reveal"><div class="ic">📜</div><h3>أحداثٌ تاريخيّة</h3><p>أبرز أحداث التاريخ الإسلاميّ، مع «حدث اليوم في التاريخ» وفق التقويم الهجريّ.</p></div>
+      <div class="card reveal"><div class="ic">📿</div><h3>أحاديث وأدعية وحِكَم</h3><p>الأربعون النوويّة ورياض الصالحين، وأدعيةٌ مأثورةٌ ومواعظُ من السلف.</p></div>
+      <div class="card reveal"><div class="ic">🔔</div><h3>تذكيرات وودجت</h3><p>ذكر/حكمة/آية اليوم، تذكير الوِرد والأيّام البيض، ودجت سطح الهاتف وإشعار دائم.</p></div>
+      <div class="card reveal"><div class="ic">🎨</div><h3>تخصيصٌ كامل</h3><p>أداة ألوانٍ حرّة (HSV) وتدرّجٌ لكلّ وضع، مع دعم ألوان Material You الديناميكيّة.</p></div>
+    </div>
+  </section>
+
+  <div class="rule">☾</div>
+
+  <section>
+    <div class="principle reveal">
+      <div class="eyebrow gold" style="letter-spacing:2px;font-weight:700">مبدأ التصميم</div>
+      <p class="amiri">كلُّ ما يُمكن أن يعمل محلّيّاً يعمل محلّيّاً،<br />وما يحتاج إنترنت يُنزَّل مرّةً ليعمل بعدها دون اتّصال.</p>
+      <p class="muted">خصوصيّةٌ كاملة: لا حساباتٌ ولا تتبُّعٌ ولا إعلانات. حساب المواقيت والقبلة والأذكار والتفسير كلّه على جهازك.</p>
+    </div>
+  </section>
+
+  <div class="rule">☾</div>
+
+  <section id="download">
+    <div class="download reveal">
+      <div class="eyebrow gold" style="letter-spacing:2px;font-weight:700">للاختبار</div>
+      <h2 style="font-family:'Amiri',serif;font-size:clamp(1.8rem,4.5vw,2.5rem);margin:.1em 0">حمّل النسخة التجريبيّة</h2>
+      <span class="ver" id="verBadge">v0.3.0‑beta</span>
+      <p class="muted">النكهة الحرّة <b>foss</b> — بلا أيّ خدمات Google، مناسبةٌ للخصوصيّة ولـF‑Droid.</p>
+      <div class="cta" style="margin-top:18px">
+        <a class="btn primary" href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE/releases/latest">⬇️ أحدث حزمة APK</a>
+        <a class="btn ghost" href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE/releases">كلّ الإصدارات</a>
+      </div>
+      <p class="note">بعد التثبيت (فعّل «مصادر غير معروفة»)، فعّل <b>إعفاء البطاريّة</b> من بطاقة الموثوقيّة في الإعدادات لضمان وصول الأذان في وقته.</p>
+    </div>
+  </section>
+
+  <div class="rule">☾</div>
+
+  <section id="sources">
+    <div class="sec-head reveal">
+      <div class="eyebrow">قامت على أكتاف الحرّ والمفتوح</div>
+      <h2>المصادر المعتمَدة</h2>
+      <p>محتوىً وبياناتٌ من مشاريع GNUTUX ومصادرَ إسلاميّةٍ حرّة، بالشكر والتقدير.</p>
+    </div>
+    <div class="src-grid">
+      <a class="src" href="https://github.com/SalehGNUTUX/GT_HISNMUSLIM"><b>GT_HISNMUSLIM</b><span>حصن المسلم المصنّف (132 باباً)</span></a>
+      <a class="src" href="https://github.com/SalehGNUTUX"><b>GT‑SIRM</b><span>أحاديث · أدعية · حِكَم · أسماء الله</span></a>
+      <a class="src" href="https://github.com/SalehGNUTUX/GT-QURANREADER"><b>GT‑QURANREADER</b><span>بنية القرآن والقرّاء (المرحلة القادمة)</span></a>
+      <a class="src" href="https://alquran.cloud"><b>alquran.cloud</b><span>النصّ العثمانيّ والتفسير الميسّر</span></a>
+      <a class="src" href="https://aladhan.com"><b>AlAdhan API</b><span>المواقيت والتاريخ الهجريّ</span></a>
+      <a class="src" href="https://github.com/batoulapps/adhan-java"><b>Adhan (Batoul Apps)</b><span>حساب المواقيت والقبلة محلّيّاً</span></a>
+      <a class="src" href="https://www.openstreetmap.org"><b>OpenStreetMap · Nominatim</b><span>الموقع بلا خدمات Google</span></a>
+      <a class="src" href="https://quranpedia.net"><b>Quranpedia</b><span>تلاواتٌ بالروايات (ورش عن نافع — قادم)</span></a>
+      <a class="src" href="https://www.amirifont.org"><b>خطّ أميري</b><span>الخطّ القرآنيّ للنصوص</span></a>
+    </div>
+  </section>
+
+  <div class="rule">☾</div>
+
+  <section id="dev">
+    <div class="dev reveal">
+      <div class="who">
+        <div class="eyebrow gold" style="letter-spacing:2px;font-weight:700">المطوّر</div>
+        <h3 class="amiri">SalehGNUTUX</h3>
+        <p class="muted">مطوّرُ برمجيّاتٍ حرّةٍ ومفتوحةِ المصدر، عربيّة الهويّة.</p>
+        <div class="links">
+          <a class="btn ghost" href="https://github.com/SalehGNUTUX">GitHub</a>
+          <a class="btn ghost" href="https://salehgnutux.github.io/gnutux/">مشاريع GNUTUX</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <p class="amiri">﴾ وَقُلِ اعْمَلُوا فَسَيَرَى اللَّهُ عَمَلَكُمْ وَرَسُولُهُ وَالْمُؤْمِنُونَ ﴿</p>
+    <p>© GNUTUX 2026 · رخصة <a href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE/blob/main/LICENSE">GNU GPL v3</a> · <a href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE">المستودع</a></p>
+  </div>
+</footer>
+
+</div>
+
+<script>
+  (function(){
+    var root=document.documentElement, btn=document.getElementById('themeBtn');
+    var saved=localStorage.getItem('gt-theme');
+    if(saved){ root.setAttribute('data-theme',saved); }
+    else if(window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches){ root.setAttribute('data-theme','light'); }
+    function sync(){ btn.textContent = root.getAttribute('data-theme')==='light' ? '🌙' : '☀️'; }
+    sync();
+    btn.addEventListener('click',function(){
+      var next = root.getAttribute('data-theme')==='light' ? 'dark' : 'light';
+      root.setAttribute('data-theme',next); localStorage.setItem('gt-theme',next); sync();
+    });
+    // ظهورٌ تدريجيّ عند التمرير
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}})},{threshold:.12});
+    document.querySelectorAll('.reveal').forEach(function(el){io.observe(el)});
+  })();
+</script>
+</body>
+</html>
