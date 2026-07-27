@@ -32,12 +32,20 @@ Room 2.6.1 · DataStore 1.1.1 · WorkManager 2.9.1 · OkHttp 4.12 · kotlinx.ser
 ```bash
 ./gradlew assembleFossDebug        # APK النكهة الحرّة
 ./gradlew assembleFullDebug        # APK نكهة Google
-./gradlew :app:compileFossDebugKotlin   # تحقّق سريع من الترجمة
+./gradlew :app:compileFossDebugKotlin   # تحقّق سريع من الترجمة (استعمله بعد كلّ دفعة)
 ```
 الحزم في `app/build/outputs/apk/`. الـ SDK في `local.properties` (غير مُدرَج في git).
+لا اختبارات وحدة في المشروع؛ التحقّق عبر `compileFossDebugKotlin`. البناء الأوّل قد يبطؤ (تنزيل تبعيّات) — مهلة ≥ 9 دقائق.
 الأصول الثنائيّة (الخطوط/الأصوات/azkar) منقولة من `../GT-SALAT/resources` و`src/assets`.
-**نمط العمل:** بعد كلّ دفعة → `compileFossDebugKotlin` (تحقّق) ثمّ (عند طلب المستخدم «حزّم») `assembleFossDebug`
-+ نسخ الـAPK إلى جذر المشروع باسمٍ واضح، ثمّ commit عربيّ + `git push` (شبكة أمان؛ الـAPK مُتجاهَل في git).
+**نمط العمل:** بعد كلّ دفعة → `compileFossDebugKotlin` (تحقّق). التحزيم عند طلب المستخدم «حزّم» فقط.
+
+### طقس إصدارٍ تجريبيّ (يتكرّر كثيراً — نفّذه بالترتيب عند «حزّم/أصدر»)
+1. رفع `versionCode` (+1) و`versionName` في `app/build.gradle.kts`.
+2. إضافة مدخلٍ أعلى `CHANGELOG.md` (عربيّ)، وتحديث رقم النسخة في `README.md` و`docs/index.html` (سطر `.ver` + روابط تنزيل الـAPK المباشرة).
+3. `./gradlew assembleFossDebug` ثمّ نسخ الناتج إلى الجذر باسم `GT-SALAT-vX.Y.Z-beta-foss.apk` (الـAPK مُتجاهَلٌ في git؛ يُرفَع كأصل إصدار فقط). احذف APK الإصدار السابق من الجذر.
+4. commit عربيّ + `git tag vX.Y.Z-beta` + `git push origin main --tags`.
+5. `gh release create vX.Y.Z-beta "GT-SALAT-vX.Y.Z-beta-foss.apk" --prerelease --title … --notes …` (عربيّ).
+- المستودع البعيد قد يتقدّم برفعٍ من واجهة GitHub → عند رفض الدفع: `git pull --rebase origin main` ثمّ أعد الدفع.
 **محتوى `assets/content/*.json`** مُولَّد مرّةً بسكربت Node: أحاديث/أدعية/حِكَم/أسماء من `../GT-SQRM/GT-SIRM/GT-SIRM-WEB/*-data.js`،
 حصن المسلم من `../GT_HISNMUSLIM-main/assets/data/`، والتفسير الميسّر `tafsir.json` (~4MB، 6236 آية) نُزّل ودُمج من `api.alquran.cloud` (ar.muyassar + quran-uthmani).
 
@@ -54,36 +62,39 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 │   ├── PrayerModels.kt · CalculationMethods.kt (22 طريقة) · PrayerCalculator.kt (computeDay/Month + qibla + nextPrayer)
 │   ├── MorningEveningAdhkar.kt (أذكار الصباح/المساء بعدد التكرار) — [أسماء الله انتقلت إلى assets/content/asma.json]
 │   ├── IslamicContent.kt   نماذج @Serializable للمحتوى (أحاديث/أدعية/حِكَم/أسماء/حصن/تفسير)
+│   ├── Quran.kt            نماذج القرآن + بُناة روابط (everyayah/mp3quran/صور) + `normalize` (تطبيع عربيّ للبحث) + AyahHit
+│   ├── Credits.kt          ★ قائمة المصادر الحرّة — تُحدَّث كلّما اعتمدنا مصدراً (تظهر في الإعدادات + الموقع)
 │   └── GregorianMonths.kt  أسماء الأشهر الإقليميّة (MAGHREB/LEVANT/STANDARD) + MonthScheme + CalendarKind
 ├── data/
 │   ├── PrayerRepository.kt   ★ سلسلة السقوط: Room → API → حساب محلّيّ + prefetchMonths + detectAndSaveLocation
 │   ├── ContentRepository.kt  يقرأ assets/content/*.json (أحاديث/أدعية/حِكَم/أسماء/حصن/تفسير) + حكمة يوميّة
+│   ├── QuranRepository.kt     quran_meta.json + نصّ من tafsir + بُناة روابط + searchAyat (بحثٌ شاملٌ عبر 6236 آية) + surahRecitersOnline
+│   ├── QuranDownloader.kt     تنزيل المصحف/السور إلى filesDir للعمل دون إنترنت (StateFlow للتقدّم)
 │   ├── AzkarRepository.kt     يقرأ azkar.txt (لذكر اليوم في الرئيسيّة)
 │   ├── local/ remote/ location/ settings/   (Room · AladhanApi+GeoClients · LocationProvider · AppSettings+SettingsRepository)
 ├── alarm/               ★ حلّ «الأذان في وقته والتطبيق مغلق»
-│   ├── PrayerAlarmScheduler.kt  setExactAndAllowWhileIdle + fallback + refreshStatus (إشعار دائم) + refreshWidgets
-│   ├── PrayerAlarmReceiver.kt   ACTION_ADHAN/PRENOTIFY/RESTORE_SOUND (كتم تلقائيّ)
+│   ├── PrayerAlarmScheduler.kt  ★ الأذان بـ setAlarmClock (لا يؤجّله Doze) + scheduleTest + refreshStatus (إشعار دائم) + refreshWidgets
+│   ├── PrayerAlarmReceiver.kt   ACTION_ADHAN/PRENOTIFY/RESTORE_SOUND/POST_DHIKR/TEST (كتم تلقائيّ)
 │   ├── BootReceiver.kt (BOOT/MY_PACKAGE_REPLACED/TIME_SET/TIMEZONE_CHANGED) · RescheduleWorker (6س) · WorkScheduler
-├── audio/       AdhanService.kt (mediaPlayback + دعاء + أذان مخصّص) · AdhanPreviewer.kt (تجربة) · RingerController.kt (كتم)
+├── audio/       AdhanService.kt (mediaPlayback أذان) · QuranAudioService.kt (تلاوة القرآن، آية-بآية/سورة كاملة) + QuranPlayback (حالة StateFlow) + QuranAudio (أوامر) · AdhanPreviewer · RingerController (كتم)
 ├── sensor/Compass.kt       بوصلة (TYPE_ROTATION_VECTOR) كـFlow — للقبلة
-├── notification/NotificationHelper.kt  ★ 4 قنوات (adhan/prenotify/service/status). صوت الأذان عبر الخدمة لا القناة.
+├── notification/NotificationHelper.kt  ★ 5 قنوات (adhan/prenotify/service/status/reminders). صوت الأذان عبر الخدمة لا القناة.
 ├── widget/      NextPrayerWidget + TodayTimesWidget (Glance، خلفيّة شفّافة) + WidgetData (Hilt EntryPoint، حساب محلّيّ)
 ├── di/          AppModule + LocationModule (@Binds حسب النكهة)
 ├── ui/
 │   ├── MainActivity + RootViewModel + AppRoot (Box تدرّج + Scaffold + شريط سفليّ 5 تبويبات + المزيد nested-graph + بوّابة Setup)
 │   ├── theme/    Color (أخضر/ذهبيّ) + Type (Ubuntu Arabic + Amiri) + Theme (Material You + RTL)
-│   └── screens/  Dashboard · Timetable · Settings · Setup · Qibla · Tasbih · More ·
-│                 Asma (Pager سلايد) · Hisn (بحث) · AdhkarSession · Content(حديث/أدعية/حِكَم) · Tafsir (+ViewModels)
+│   └── screens/  Dashboard · Timetable · Settings · Setup · Qibla · Tasbih · More · Events(بحث) · ThemeToggle · DownloadsSettings ·
+│                 Asma (Pager) · Hisn(بحث) · AdhkarSession · Content(حديث/أدعية/حِكَم) · Tafsir ·
+│                 QuranScreens (Hub + SurahIndex + TextReader + AudioRecitation + QuranMiniPlayer) · MushafScreen (+ViewModels)
 ├── util/Format.kt   clock/countdown/clockNow/gregorianArabic/monthYear (أرقام مغربيّة 0-9 + أشهر إقليميّة)
 └── GtSalatApp.kt    @HiltAndroidApp + Configuration.Provider + ensureChannels/ensurePeriodic + scheduleNext عند الإقلاع
 ```
 
 ### نمط الجدولة (الأهمّ — مستوحى من Five-Prayers + NoorUlHuda)
-`scheduleNext()` يلغي القديم ويجدول إنذاراً دقيقاً **للصلاة القادمة فقط** (+ تنبيه اقتراب). عند إطلاق
-`ACTION_ADHAN` يُعاد استدعاء `scheduleNext()` للتالية (self-rescheduling). إنذارات AlarmManager تُمحى عند
-الإقلاع → `BootReceiver` يعيد التسليح. `RescheduleWorker` الدوريّ شبكة أمان + تحديث الكاش.
-عند رفض `SCHEDULE_EXACT_ALARM` (Android 12+): سقوط إلى `setAndAllowWhileIdle` بدل الصمت.
-إطلاق خدمة المقدّمة من مُستقبِل الإنذار الدقيق مسموح (استثناء الإنذار الدقيق من قيود FGS في الخلفيّة).
+الأذان والتنبيه المسبق يُجدولان بـ **`setAlarmClock`** (يُعامَل كإنذار منبّه، **لا يؤجّله Doze/توفير البطاريّة** ولا يحتاج إذن `SCHEDULE_EXACT_ALARM`)؛ باقي الإنذارات (استعادة الرنين/ذكر بعد الصلاة/التذكيرات) بـ `setExactAndAllowWhileIdle` مع سقوطٍ إلى `setAndAllowWhileIdle` عند رفض الإذن.
+`scheduleNext()` يلغي القديم ويجدول **للصلاة القادمة فقط**. عند إطلاق `ACTION_ADHAN` يُعاد استدعاء `scheduleNext()` للتالية (self-rescheduling). إنذارات AlarmManager تُمحى عند الإقلاع → `BootReceiver` يعيد التسليح؛ `RescheduleWorker` الدوريّ (6س) شبكة أمان + تحديث الكاش. إطلاق خدمة المقدّمة من مُستقبِل الإنذار مسموح (استثناء الإنذار من قيود FGS في الخلفيّة).
+**تأخّر الإشعارات حتى فتح الشاشة** ليس خللاً في الكود بل **إدارة بطاريّة عدوانيّة** (Xiaomi/Oppo…) تجمّد التطبيق؛ العلاج من المستخدم: إعفاء البطاريّة + التشغيل التلقائيّ (بطاقة الموثوقيّة). زرّ «اختبار التنبيه» (`scheduleTest`) يشخّص ذلك.
 
 ---
 
@@ -136,7 +147,9 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
   ② **المسموع** (سور كاملة، mp3quran، شريط تحكّم + تتابع تلقائيّ) ·
   ③ **المصوَّر** (604 صفحة، `SalehGNUTUX/Quran-PNG` + بدائل عبر Coil، قلب ليليّ).
   الصوت عبر **`audio/QuranAudioService`** (خدمة مقدّمة mediaPlayback، تعمل الشاشة مغلقة) + **`QuranPlayback`** (حالة عالميّة StateFlow للتظليل) + **`QuranAudio`** (أوامر) + **`data/QuranRepository`** + **`domain/Quran`** (نماذج + بُناة روابط).
-  الروايات: **ورش عن نافع** (المغرب) · حفص · قالون · الدوري. المتبقّي: ورد + إشارات + تنزيل روايةٍ كاملةٍ للنصّ.
+  الروايات: **ورش عن نافع** (المغرب) · حفص · قالون · الدوري.
+  ✅ **بحثٌ شاملٌ داخل الآيات** (كلمة/عبارة عبر 6236 آية بتطبيعٍ عربيّ، مسار `quran_read/{n}?ayah=`) · ✅ **متابعة القراءة** (حفظ موضع سورة/آية + مشغّل مصغّر عالميّ) · ✅ **تنزيل** (مصحف مصوَّر + سور صوتيّة، `filesDir`) · ✅ **زرّ تبديل السِمة** في الترويسات.
+  المتبقّي: اختيار الرواية داخل القارئ + تنزيل النصّ بالرواية + **المصاحف بالروايات (صور)** (لا مصدر ورش مؤكّد بعد) + وِرد + إشارات + قارئ يونس اسويلص (من quranpedia). النسخة الحاليّة v0.9.0-beta.
 - **م4:** قرآن مترجَم + تفسير مترجَم + لغات.
 - **م5:** إذاعات + رمضان + آية اليوم + مشاركة.
 
