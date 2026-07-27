@@ -63,6 +63,18 @@ class NotificationHelper @Inject constructor(
             .setContentIntent(contentIntent())
             .build()
 
+    /** تنبيهٌ اختباريٌّ (لقياس وصول التنبيهات والشاشة مغلقة) — على قناة الأذان ليُسمَع كالأذان. */
+    fun testNotification(): Notification =
+        NotificationCompat.Builder(context, CH_PRENOTIFY)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("✅ تنبيهٌ اختباريّ")
+            .setContentText("وصلك هذا التنبيه بنجاح — التنبيهات تعمل والشاشة مغلقة.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setAutoCancel(true)
+            .setContentIntent(contentIntent())
+            .build()
+
     fun showRecitationReminder() = nm.notify(ID_RECITATION, reminder("📖 وِرد التلاوة", "لا تنسَ وردك اليوميّ من تلاوة القرآن الكريم."))
     fun showWhiteDaysReminder(text: String) = nm.notify(ID_WHITEDAYS, reminder("🌕 الأيّام البيض", text))
     fun showDailyAyah(surah: String, n: Int, text: String) = nm.notify(ID_AYAH, reminder("آية اليوم — سورة $surah [$n]", text))
@@ -140,6 +152,7 @@ class NotificationHelper @Inject constructor(
         const val ID_RECITATION = 2005
         const val ID_WHITEDAYS = 2006
         const val ID_AYAH = 2007
+        const val ID_TEST = 2008
         val PI_FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     }
 }

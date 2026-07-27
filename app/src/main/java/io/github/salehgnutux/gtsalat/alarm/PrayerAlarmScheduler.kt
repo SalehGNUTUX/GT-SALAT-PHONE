@@ -62,6 +62,21 @@ class PrayerAlarmScheduler @Inject constructor(
         setExact(triggerAt, restoreIntent())
     }
 
+    /**
+     * تنبيهٌ اختباريٌّ بعد دقيقة (عبر setAlarmClock كالأذان تماماً) — ليتحقّق المستخدم
+     * أنّ التنبيه يصل والشاشة مغلقة/التطبيق في الخلفيّة (تشخيص إدارة البطاريّة).
+     */
+    fun scheduleTest() {
+        setAlarmClock(System.currentTimeMillis() + 60_000L, testIntent())
+    }
+
+    private fun testIntent(): PendingIntent {
+        val i = Intent(context, PrayerAlarmReceiver::class.java).apply {
+            action = PrayerAlarmReceiver.ACTION_TEST
+        }
+        return PendingIntent.getBroadcast(context, RC_TEST, i, FLAGS)
+    }
+
     /** جدولة ذكر ما بعد الصلاة (بعد دخول الوقت بدقائق). */
     fun schedulePostDhikr(triggerAt: Long) {
         setAlarmClock(triggerAt, postDhikrIntent())
@@ -169,6 +184,7 @@ class PrayerAlarmScheduler @Inject constructor(
         private const val RC_POSTDHIKR = 1004
         private const val RC_SHOW = 1005
         private const val RC_REMINDER = 1006
+        private const val RC_TEST = 1007
         private val FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     }
 }

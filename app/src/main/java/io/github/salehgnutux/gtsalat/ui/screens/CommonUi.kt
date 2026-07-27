@@ -16,9 +16,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-/** شريطٌ علويٌّ بسيطٌ لشاشةٍ فرعيّة: عنوانٌ وزرّ رجوعٍ (متوافقٌ مع RTL) + زرّ تبديل السِمة. مشترَكٌ بين الشاشات. */
+/** شريطٌ علويٌّ بسيطٌ لشاشةٍ فرعيّة: عنوانٌ وزرّ رجوعٍ (متوافقٌ مع RTL) + أزرارٌ اختياريّة + زرّ تبديل السِمة. */
 @Composable
-fun SubScreenHeader(title: String, onBack: () -> Unit) {
+fun SubScreenHeader(title: String, onBack: () -> Unit, actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {}) {
     Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
@@ -34,6 +34,7 @@ fun SubScreenHeader(title: String, onBack: () -> Unit) {
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 8.dp).weight(1f),
             )
+            actions()
             ThemeToggleButton()
         }
     }

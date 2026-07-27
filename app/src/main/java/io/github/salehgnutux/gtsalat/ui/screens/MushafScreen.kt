@@ -54,11 +54,31 @@ import io.github.salehgnutux.gtsalat.ui.theme.AmiriQuran
 @Composable
 fun MushafScreen(onBack: () -> Unit, vm: QuranMetaViewModel = hiltViewModel()) {
     val surahs by vm.surahs.collectAsStateWithLifecycle()
+    val lastPage by vm.lastMushafPage.collectAsStateWithLifecycle()
     // صفحة 1 = فهرس الصفحة 0. التصفّح لأعلى المصحف من اليمين (RTL افتراضيّ).
     val pager = rememberPagerState(pageCount = { Quran.TOTAL_PAGES })
     // يتبع سِمة التطبيق الفعليّة (لا وضع النظام) — وإلّا قُلبت صور المصحف خطأً عند فرض وضعٍ مخالفٍ للنظام.
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     var jumpOpen by remember { mutableStateOf(false) }
+
+    // استئنافٌ من آخر صفحةٍ محفوظة (مرّةً واحدةً عند التحميل).
+    var restored by remember { mutableStateOf(false) }
+    LaunchedEffect(lastPage) {
+        if (!restored && lastPage in 1..604) {
+            restored = true
+            if (lastPage > 1) pager.scrollToPage(lastPage - 1)
+        }
+    }
+    // حفظ الصفحة الجاريّة عند الاستقرار.
+    LaunchedEffect(pager.currentPage, restored) {
+        if (restored) vm.saveMushafPage(pager.currentPage + 1)
+    }
+
+    // اسم السورة الحاليّة (أكبر سورةٍ تبدأ صفحتُها ≤ الصفحة الجاريّة).
+    val currentPage = pager.currentPage + 1
+    val currentSurah = remember(surahs, currentPage) {
+        surahs.lastOrNull { it.page <= currentPage }
+    }
 
     Column(Modifier.fillMaxSize()) {
         SubScreenHeader("المصحف المصوَّر", onBack)
@@ -81,11 +101,15 @@ fun MushafScreen(onBack: () -> Unit, vm: QuranMetaViewModel = hiltViewModel()) {
                         }
                     }
                 }
-                Text(
-                    "صفحة ${pager.currentPage + 1} / ${Quran.TOTAL_PAGES}",
-                    Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End,
-                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                    currentSurah?.let {
+                        Text("سورة ${it.ar}", fontFamily = AmiriQuran, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Text(
+                        "صفحة $currentPage / ${Quran.TOTAL_PAGES}",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
         HorizontalPager(state = pager, modifier = Modifier.fillMaxSize().background(if (dark) MaterialTheme.colorScheme.surface else androidx.compose.ui.graphics.Color.White)) { index ->

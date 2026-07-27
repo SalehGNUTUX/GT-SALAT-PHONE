@@ -82,6 +82,9 @@ class SettingsViewModel @Inject constructor(
     fun setSilenceMinutes(m: Int) = viewModelScope.launch { settingsRepo.setSilenceMinutes(m) }
     fun setPersistentNotification(v: Boolean) = viewModelScope.launch { settingsRepo.setPersistentNotification(v); reschedule() }
     fun setTheme(t: ThemeMode) = viewModelScope.launch { settingsRepo.setTheme(t) }
+
+    /** يجدول تنبيهاً اختباريّاً بعد دقيقة (لقياس وصول التنبيهات والشاشة مغلقة). */
+    fun testNotification() = scheduler.scheduleTest()
     fun setDynamicColor(v: Boolean) = viewModelScope.launch { settingsRepo.setDynamicColor(v) }
     fun setSeedColor(argb: Int) = viewModelScope.launch { settingsRepo.setSeedColor(argb) }
     fun setGradient(dark: Boolean, top: Boolean, argb: Int) = viewModelScope.launch { settingsRepo.setGradient(dark, top, argb) }

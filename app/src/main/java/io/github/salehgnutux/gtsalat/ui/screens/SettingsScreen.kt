@@ -36,6 +36,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
+import android.widget.Toast
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -186,7 +187,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             MinutesSlider("ساعة التذكير:", settings.reminderHour, 0, 23, suffix = "") { vm.setReminderHour(it) }
         }
 
-        ReliabilityCard(openSection == "موثوقيّة التنبيهات") { toggle("موثوقيّة التنبيهات") }
+        ReliabilityCard(openSection == "موثوقيّة التنبيهات", { toggle("موثوقيّة التنبيهات") }, { vm.testNotification() })
 
         SectionCard("التقويم والتواريخ", openSection == "التقويم والتواريخ", { toggle("التقويم والتواريخ") }) {
             LabeledRow("تقويم عرض المواقيت") {
@@ -311,7 +312,7 @@ private fun SectionCard(
 
 /** بطاقة موثوقيّة التنبيهات: الإنذار الدقيق وإعفاء البطاريّة — أهمّ ما يضمن وصول الأذان. */
 @Composable
-private fun ReliabilityCard(expanded: Boolean, onToggle: () -> Unit) {
+private fun ReliabilityCard(expanded: Boolean, onToggle: () -> Unit, onTest: () -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     // مفتاحٌ يتغيّر عند العودة من إعدادات النظام لإعادة قراءة الحالة.
@@ -326,11 +327,12 @@ private fun ReliabilityCard(expanded: Boolean, onToggle: () -> Unit) {
 
     val exactOk = remember(refreshKey) { canScheduleExact(context) }
     val batteryOk = remember(refreshKey) { isBatteryUnrestricted(context) }
-    if (exactOk && batteryOk) return // كلّ شيءٍ على ما يرام، لا نُزعِج المستخدم
+    val allOk = exactOk && batteryOk
 
-    SectionCard("موثوقيّة التنبيهات", expanded, onToggle) {
+    SectionCard(if (allOk) "موثوقيّة التنبيهات ✓" else "موثوقيّة التنبيهات", expanded, onToggle) {
         Text(
-            "لضمان وصول الأذان في وقته حتى والتطبيق مغلق، فعّل ما يلي:",
+            if (allOk) "التنبيهات الأساسيّة مفعّلة. إن لم يصلك الأذان والشاشة مغلقة، فالسبب غالباً «التشغيل التلقائيّ» أو تقييد الخلفيّة في نظامك."
+            else "لضمان وصول الأذان في وقته حتى والتطبيق مغلق، فعّل ما يلي:",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.outline,
         )
@@ -347,6 +349,24 @@ private fun ReliabilityCard(expanded: Boolean, onToggle: () -> Unit) {
                 desc = "يمنع النظام من تعطيل التطبيق في الخلفيّة (مهمّ على أجهزة Xiaomi وHuawei وغيرها).",
                 onFix = { openBatteryExemption(context) },
             )
+        }
+        // التشغيل التلقائيّ (autostart) — إعدادٌ خاصٌّ ببعض الأنظمة لا يُقرأ برمجيّاً؛ نوجّه له.
+        ReliabilityRow(
+            title = "التشغيل التلقائيّ وتقييد الخلفيّة",
+            desc = "بعض الأنظمة (Xiaomi/MIUI، Oppo، Vivo، Samsung…) توقف التطبيق رغم إعفاء البطاريّة. فعّل «التشغيل التلقائيّ» واجعل البطاريّة «بلا قيود» لهذا التطبيق.",
+            onFix = { openAppDetails(context) },
+        )
+        HorizontalDivider()
+        // زرّ اختبارٍ عمليّ: يجدول تنبيهاً بعد دقيقة ليتحقّق المستخدم والشاشة مغلقة.
+        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("اختبار التنبيه", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                Text("يصلك تنبيهٌ بعد دقيقة. اقفل الشاشة الآن للتحقّق من وصوله في الخلفيّة.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+            }
+            FilledTonalButton(onClick = {
+                onTest()
+                Toast.makeText(context, "سيصلك تنبيهٌ اختباريٌّ بعد دقيقة — اقفل الشاشة", Toast.LENGTH_LONG).show()
+            }) { Text("جرّب") }
         }
     }
 }

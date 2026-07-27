@@ -75,6 +75,10 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                             }
                         }
                     }
+                    ACTION_TEST -> notifications.notify(
+                        NotificationHelper.ID_TEST,
+                        notifications.testNotification(),
+                    )
                     ACTION_RESTORE_SOUND -> ringer.restore()
                     ACTION_POST_DHIKR -> {
                         if (s.enablePostDhikr && !s.doNotDisturb) {
@@ -111,6 +115,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
         const val ACTION_PRENOTIFY = "io.github.salehgnutux.gtsalat.ACTION_PRENOTIFY"
         const val ACTION_RESTORE_SOUND = "io.github.salehgnutux.gtsalat.ACTION_RESTORE_SOUND"
         const val ACTION_POST_DHIKR = "io.github.salehgnutux.gtsalat.ACTION_POST_DHIKR"
+        const val ACTION_TEST = "io.github.salehgnutux.gtsalat.ACTION_TEST"
         const val EXTRA_PRAYER = "prayer"
         const val EXTRA_PRAYER_AR = "prayer_ar"
         const val EXTRA_MINUTES = "minutes"

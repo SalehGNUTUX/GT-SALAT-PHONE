@@ -71,6 +71,7 @@ class SettingsRepository @Inject constructor(
         val LAST_READ_SURAH = intPreferencesKey("last_read_surah")
         val LAST_READ_AYAH = intPreferencesKey("last_read_ayah")
         val LAST_RECITER = stringPreferencesKey("last_reciter_id")
+        val LAST_MUSHAF_PAGE = intPreferencesKey("last_mushaf_page")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { p -> p.toSettings() }
@@ -132,8 +133,11 @@ class SettingsRepository @Inject constructor(
             lastReadSurah = this[Keys.LAST_READ_SURAH] ?: 0,
             lastReadAyah = this[Keys.LAST_READ_AYAH] ?: 1,
             lastReciterId = this[Keys.LAST_RECITER] ?: "",
+            lastMushafPage = this[Keys.LAST_MUSHAF_PAGE] ?: 1,
         )
     }
+
+    suspend fun setLastMushafPage(page: Int) = context.dataStore.edit { it[Keys.LAST_MUSHAF_PAGE] = page }
 
     /** حفظ موضع القراءة الأخير في القرآن (للمتابعة لاحقاً). */
     suspend fun setLastRead(surah: Int, ayah: Int) = context.dataStore.edit {

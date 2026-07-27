@@ -21,9 +21,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -84,8 +86,13 @@ import javax.inject.Inject
 class QuranMetaViewModel @Inject constructor(
     private val repo: QuranRepository,
     private val downloader: io.github.salehgnutux.gtsalat.data.QuranDownloader,
-    settingsRepo: io.github.salehgnutux.gtsalat.data.settings.SettingsRepository,
+    private val settingsRepo: io.github.salehgnutux.gtsalat.data.settings.SettingsRepository,
 ) : ViewModel() {
+
+    /** آخر صفحة مصحفٍ محفوظة (للاستئناف عند فتح المصحف المصوَّر). */
+    private val _lastMushafPage = MutableStateFlow(0)  // 0 = لم يُحمَّل بعد
+    val lastMushafPage: StateFlow<Int> = _lastMushafPage.asStateFlow()
+    fun saveMushafPage(page: Int) { viewModelScope.launch { settingsRepo.setLastMushafPage(page) } }
 
     /** ملفّ صفحة المصحف المحلّيّ إن نُزِّل. */
     fun localPage(page: Int): java.io.File? = downloader.localPage(page)
@@ -119,6 +126,7 @@ class QuranMetaViewModel @Inject constructor(
             _surahReciters.value = repo.surahReciters()
             _surahReciters.value = repo.surahRecitersOnline()
             val s = settingsRepo.current()
+            _lastMushafPage.value = s.lastMushafPage.coerceIn(1, 604)
             if (s.lastReadSurah in 1..114) {
                 val name = repo.surah(s.lastReadSurah)?.ar ?: "سورة ${s.lastReadSurah}"
                 _resume.value = Triple(s.lastReadSurah, name, s.lastReadAyah)
@@ -200,14 +208,22 @@ fun SurahIndexScreen(
     vm: QuranMetaViewModel = hiltViewModel(),
 ) {
     val surahs by vm.surahs.collectAsStateWithLifecycle()
+    var showSearch by remember { mutableStateOf(false) }
+    var q by remember { mutableStateOf("") }
+    val shown = remember(surahs, q) { filterSurahs(surahs, q) }
     Column(Modifier.fillMaxSize()) {
-        SubScreenHeader(title, onBack)
+        SubScreenHeader(title, onBack, actions = {
+            IconButton(onClick = { showSearch = !showSearch; if (!showSearch) q = "" }) {
+                Icon(if (showSearch) Icons.Filled.Close else Icons.Filled.Search, contentDescription = "بحث")
+            }
+        })
+        if (showSearch) SurahSearchField(q) { q = it }
         LazyColumn(
             Modifier.fillMaxSize(),
             contentPadding = PaddingValues(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(surahs, key = { it.n }) { s ->
+            items(shown, key = { it.n }) { s ->
                 Card(Modifier.fillMaxWidth().clickable { onOpen(s.n) }) {
                     Row(
                         Modifier.fillMaxWidth().padding(12.dp),
@@ -406,10 +422,18 @@ fun AudioRecitationScreen(vm: QuranMetaViewModel = hiltViewModel(), onBack: () -
     val shown = remember(reciters, riwayaFilter) {
         if (riwayaFilter == "all") reciters else reciters.filter { it.riwaya == riwayaFilter }
     }
+    var showSearch by remember { mutableStateOf(false) }
+    var q by remember { mutableStateOf("") }
+    val shownSurahs = remember(surahs, q) { filterSurahs(surahs, q) }
     LaunchedEffect(reciters) { if (selected == null) selected = reciters.firstOrNull() }
 
     Column(Modifier.fillMaxSize()) {
-        SubScreenHeader("القرآن المسموع", onBack)
+        SubScreenHeader("القرآن المسموع", onBack, actions = {
+            IconButton(onClick = { showSearch = !showSearch; if (!showSearch) q = "" }) {
+                Icon(if (showSearch) Icons.Filled.Close else Icons.Filled.Search, contentDescription = "بحث")
+            }
+        })
+        if (showSearch) SurahSearchField(q) { q = it }
         Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
             Column(Modifier.fillMaxWidth().padding(12.dp)) {
                 // مرشِّح الرواية (يجعل قائمة قرّاء المصدر الكاملة قابلةً للاستعمال).
@@ -442,7 +466,7 @@ fun AudioRecitationScreen(vm: QuranMetaViewModel = hiltViewModel(), onBack: () -
             contentPadding = PaddingValues(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(surahs, key = { it.n }) { s ->
+            items(shownSurahs, key = { it.n }) { s ->
                 val playingThis = play.active && play.mode == QuranMode.SURAH && play.surah == s.n
                 val rid = selected?.id
                 // حالة التنزيل: 0=غير مُنزَّل · 1=جارٍ · 2=مُنزَّل. تُحدَّث بمفتاح selected.
@@ -556,6 +580,40 @@ private fun PickerButton(label: String, modifier: Modifier = Modifier, items: @C
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             items { open = false }
         }
+    }
+}
+
+/** حقل بحث السور (يظهر عند النقر على زرّ البحث). */
+@Composable
+private fun SurahSearchField(q: String, onChange: (String) -> Unit) {
+    androidx.compose.material3.OutlinedTextField(
+        value = q,
+        onValueChange = onChange,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        placeholder = { Text("ابحث بالاسم أو رقم السورة…", maxLines = 1) },
+        textStyle = MaterialTheme.typography.bodyMedium,
+        leadingIcon = { Icon(Icons.Filled.Search, null) },
+        trailingIcon = { if (q.isNotEmpty()) IconButton(onClick = { onChange("") }) { Icon(Icons.Filled.Close, "مسح") } },
+        singleLine = true,
+        shape = RoundedCornerShape(28.dp),
+    )
+}
+
+/** تطبيعٌ خفيفٌ للعربيّة ليكون البحث شاملاً (إزالة تشكيل + توحيد الألف/الياء/التاء المربوطة). */
+private fun normalizeAr(s: String): String = s
+    .replace("[\\u064B-\\u0652\\u0640]".toRegex(), "")
+    .replace('أ', 'ا').replace('إ', 'ا').replace('آ', 'ا').replace('ى', 'ي').replace('ة', 'ه')
+    .trim().lowercase()
+
+/** تصفية السور بالاسم أو الأسماء البديلة أو الاسم الإنجليزيّ أو الرقم. */
+private fun filterSurahs(list: List<SurahMeta>, q: String): List<SurahMeta> {
+    val query = normalizeAr(q)
+    if (query.isBlank()) return list
+    return list.filter { s ->
+        normalizeAr(s.ar).contains(query) ||
+            s.en.lowercase().contains(query) ||
+            s.n.toString() == q.trim() ||
+            s.aliases.any { normalizeAr(it).contains(query) }
     }
 }
 
