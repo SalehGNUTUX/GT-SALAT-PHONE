@@ -117,6 +117,26 @@ class QuranMetaViewModel @Inject constructor(
     private val _resume = MutableStateFlow<Triple<Int, String, Int>?>(null)
     val resume: StateFlow<Triple<Int, String, Int>?> = _resume.asStateFlow()
 
+    // بحثٌ داخل الآيات (بالكلمات والعبارات)
+    private val _ayahHits = MutableStateFlow<List<io.github.salehgnutux.gtsalat.domain.AyahHit>>(emptyList())
+    val ayahHits: StateFlow<List<io.github.salehgnutux.gtsalat.domain.AyahHit>> = _ayahHits.asStateFlow()
+    private val _searching = MutableStateFlow(false)
+    val searching: StateFlow<Boolean> = _searching.asStateFlow()
+    private var searchJob: kotlinx.coroutines.Job? = null
+
+    fun searchAyat(query: String) {
+        searchJob?.cancel()
+        if (io.github.salehgnutux.gtsalat.domain.Quran.normalize(query).length < 2) {
+            _ayahHits.value = emptyList(); _searching.value = false; return
+        }
+        _searching.value = true
+        searchJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(250)   // تهدئةٌ بسيطة بين ضغطات المفاتيح
+            _ayahHits.value = repo.searchAyat(query)
+            _searching.value = false
+        }
+    }
+
     init {
         viewModelScope.launch {
             _surahs.value = repo.surahs()
@@ -206,44 +226,82 @@ fun SurahIndexScreen(
     onOpen: (Int) -> Unit,
     onBack: () -> Unit,
     vm: QuranMetaViewModel = hiltViewModel(),
+    ayahSearch: Boolean = false,                    // بحثٌ داخل الآيات (للقرآن النصّيّ)
+    onOpenAyah: (Int, Int) -> Unit = { s, _ -> onOpen(s) },
 ) {
     val surahs by vm.surahs.collectAsStateWithLifecycle()
+    val ayahHits by vm.ayahHits.collectAsStateWithLifecycle()
+    val searching by vm.searching.collectAsStateWithLifecycle()
     var showSearch by remember { mutableStateOf(false) }
     var q by remember { mutableStateOf("") }
     val shown = remember(surahs, q) { filterSurahs(surahs, q) }
+    // بحثٌ داخل الآيات عند تغيّر النصّ (للقرآن النصّيّ فقط).
+    LaunchedEffect(q, ayahSearch) { if (ayahSearch) vm.searchAyat(q) }
+
     Column(Modifier.fillMaxSize()) {
         SubScreenHeader(title, onBack, actions = {
             IconButton(onClick = { showSearch = !showSearch; if (!showSearch) q = "" }) {
                 Icon(if (showSearch) Icons.Filled.Close else Icons.Filled.Search, contentDescription = "بحث")
             }
         })
-        if (showSearch) SurahSearchField(q) { q = it }
+        if (showSearch) SurahSearchField(q, ayahSearch) { q = it }
         LazyColumn(
             Modifier.fillMaxSize(),
             contentPadding = PaddingValues(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(shown, key = { it.n }) { s ->
-                Card(Modifier.fillMaxWidth().clickable { onOpen(s.n) }) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Box(
-                            Modifier.size(38.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center,
-                        ) { Text("${s.n}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer) }
-                        Column(Modifier.weight(1f)) {
-                            Text(s.ar, fontFamily = AmiriQuran, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                            Text("${s.place} · ${s.verses} آية · صفحة ${s.page}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+            // السور المطابقة بالاسم
+            if (shown.isNotEmpty()) {
+                if (q.isNotBlank()) item("h_surah") { SearchHeader("السور (${shown.size})") }
+                items(shown, key = { "s${it.n}" }) { s ->
+                    Card(Modifier.fillMaxWidth().clickable { onOpen(s.n) }) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Box(
+                                Modifier.size(38.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center,
+                            ) { Text("${s.n}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer) }
+                            Column(Modifier.weight(1f)) {
+                                Text(s.ar, fontFamily = AmiriQuran, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text("${s.place} · ${s.verses} آية · صفحة ${s.page}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                            }
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = MaterialTheme.colorScheme.outline)
                         }
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = MaterialTheme.colorScheme.outline)
+                    }
+                }
+            }
+
+            // الآيات المطابقة بالنصّ (بحثٌ شامل)
+            if (ayahSearch && q.isNotBlank()) {
+                item("h_ayah") {
+                    if (searching) SearchHeader("جارٍ البحث في الآيات…")
+                    else SearchHeader(if (ayahHits.isEmpty()) "لا آياتٍ مطابِقة" else "الآيات (${ayahHits.size})")
+                }
+                items(ayahHits, key = { "a${it.surah}_${it.ayah}" }) { hit ->
+                    Card(Modifier.fillMaxWidth().clickable { onOpenAyah(hit.surah, hit.ayah) }) {
+                        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("سورة ${hit.surahName} · الآية ${hit.ayah}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                            Text(hit.text, fontFamily = AmiriQuran, fontSize = 20.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, maxLines = 3)
+                        }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SearchHeader(text: String) {
+    Text(
+        text,
+        Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+    )
 }
 
 /* ============================ ① القرآن النصّيّ (قراءة + استماع) ============================ */
@@ -255,6 +313,8 @@ class TextReaderViewModel @Inject constructor(
     private val settingsRepo: io.github.salehgnutux.gtsalat.data.settings.SettingsRepository,
 ) : ViewModel() {
     val n: Int = (savedState.get<String>("n") ?: "1").toIntOrNull() ?: 1
+    // آية وجهةٍ من البحث (0 = لا شيء، فنستعمل الموضع المحفوظ).
+    private val gotoAyah: Int = (savedState.get<String>("ayah") ?: "0").toIntOrNull() ?: 0
     private val _surah = MutableStateFlow<SurahMeta?>(null)
     val surah: StateFlow<SurahMeta?> = _surah.asStateFlow()
     private val _ayat = MutableStateFlow<List<QuranAyah>>(emptyList())
@@ -294,8 +354,12 @@ class TextReaderViewModel @Inject constructor(
             val cur = settingsRepo.current()
             _reciter.value = list.firstOrNull { it.id == cur.lastReciterId }
                 ?: list.firstOrNull { it.id == "alafasy" } ?: list.firstOrNull()
-            // إن عُدنا لنفس السورة نتابع من آيتها المحفوظة، وإلّا من أوّلها.
-            val startAyah = if (cur.lastReadSurah == n) cur.lastReadAyah.coerceAtLeast(1) else 1
+            // آية البحث لها الأولويّة، وإلّا نتابع من الآية المحفوظة لنفس السورة، وإلّا من أوّلها.
+            val startAyah = when {
+                gotoAyah > 0 -> gotoAyah
+                cur.lastReadSurah == n -> cur.lastReadAyah.coerceAtLeast(1)
+                else -> 1
+            }
             _target.value = startAyah
             settingsRepo.setLastRead(n, startAyah)
         }
@@ -585,12 +649,12 @@ private fun PickerButton(label: String, modifier: Modifier = Modifier, items: @C
 
 /** حقل بحث السور (يظهر عند النقر على زرّ البحث). */
 @Composable
-private fun SurahSearchField(q: String, onChange: (String) -> Unit) {
+private fun SurahSearchField(q: String, ayahSearch: Boolean = false, onChange: (String) -> Unit) {
     androidx.compose.material3.OutlinedTextField(
         value = q,
         onValueChange = onChange,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-        placeholder = { Text("ابحث بالاسم أو رقم السورة…", maxLines = 1) },
+        placeholder = { Text(if (ayahSearch) "ابحث باسم سورةٍ أو كلمةٍ داخل الآيات…" else "ابحث بالاسم أو رقم السورة…", maxLines = 1) },
         textStyle = MaterialTheme.typography.bodyMedium,
         leadingIcon = { Icon(Icons.Filled.Search, null) },
         trailingIcon = { if (q.isNotEmpty()) IconButton(onClick = { onChange("") }) { Icon(Icons.Filled.Close, "مسح") } },

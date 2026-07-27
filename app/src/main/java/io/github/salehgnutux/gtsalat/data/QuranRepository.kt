@@ -95,4 +95,25 @@ class QuranRepository @Inject constructor(
     /** نصّ آيات سورةٍ (حفص/العثمانيّ) من tafsir.json. */
     suspend fun ayat(surah: Int): List<QuranAyah> =
         content.tafsirSurah(surah)?.ayahs?.map { QuranAyah(it.n, it.text) } ?: emptyList()
+
+    /**
+     * بحثٌ شاملٌ داخل نصّ القرآن (6236 آية) بالكلمات والعبارات، مع التطبيع العربيّ
+     * (تجاهل التشكيل وتوحيد الحروف). يُنفَّذ على خيطٍ خلفيّ ويُحدَّد بسقفٍ لأداء الواجهة.
+     */
+    suspend fun searchAyat(query: String, limit: Int = 300): List<io.github.salehgnutux.gtsalat.domain.AyahHit> {
+        val q = io.github.salehgnutux.gtsalat.domain.Quran.normalize(query)
+        if (q.length < 2) return emptyList()
+        return withContext(Dispatchers.Default) {
+            val hits = ArrayList<io.github.salehgnutux.gtsalat.domain.AyahHit>()
+            for (s in content.tafsirSurahs()) {
+                for (a in s.ayahs) {
+                    if (io.github.salehgnutux.gtsalat.domain.Quran.normalize(a.text).contains(q)) {
+                        hits.add(io.github.salehgnutux.gtsalat.domain.AyahHit(s.n, s.name, a.n, a.text))
+                        if (hits.size >= limit) return@withContext hits
+                    }
+                }
+            }
+            hits
+        }
+    }
 }

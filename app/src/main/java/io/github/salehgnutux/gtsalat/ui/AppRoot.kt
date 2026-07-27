@@ -191,11 +191,20 @@ fun AppRoot(setupCompleted: Boolean, gradientTop: Int = 0, gradientBottom: Int =
                     // القرآن الكريم: محورٌ بثلاثة أقسام.
                     composable("quran") { QuranHubScreen(onOpen = { nav.navigate(it) }, onBack = { nav.popBackStack() }) }
                     composable("quran_text") {
-                        SurahIndexScreen("القرآن النصّيّ", onOpen = { nav.navigate("quran_read/$it") }, onBack = { nav.popBackStack() })
+                        SurahIndexScreen(
+                            "القرآن النصّيّ",
+                            onOpen = { nav.navigate("quran_read/$it") },
+                            onBack = { nav.popBackStack() },
+                            ayahSearch = true,
+                            onOpenAyah = { s, a -> nav.navigate("quran_read/$s?ayah=$a") },
+                        )
                     }
                     composable(
-                        "quran_read/{n}",
-                        arguments = listOf(navArgument("n") { type = NavType.StringType }),
+                        "quran_read/{n}?ayah={ayah}",
+                        arguments = listOf(
+                            navArgument("n") { type = NavType.StringType },
+                            navArgument("ayah") { type = NavType.StringType; defaultValue = "0" },
+                        ),
                     ) { TextReaderScreen(onBack = { nav.popBackStack() }) }
                     composable("quran_audio") { AudioRecitationScreen(onBack = { nav.popBackStack() }) }
                     composable("quran_mushaf") { MushafScreen(onBack = { nav.popBackStack() }) }

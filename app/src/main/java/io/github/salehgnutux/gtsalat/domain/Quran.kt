@@ -43,7 +43,21 @@ object Quran {
         "https://www.everyayah.com/data/images_png/${p3(page)}.png",
         "https://raw.githubusercontent.com/risan/quran-images/master/images/${p3(page)}.png",
     )
+
+    /**
+     * تطبيعٌ عربيٌّ للبحث الشامل: إزالة التشكيل والتطويل والبسملة الزائدة، وتوحيد الألف والياء
+     * والتاء المربوطة والهمزات — فيُطابق «الرحمن» ما رُسم «ٱلرَّحْمَٰن»، و«انا» ما رُسم «إنَّا».
+     */
+    private val diacritics = "[\\u064B-\\u065F\\u0670\\u06D6-\\u06ED\\u0640\\uFEFF]".toRegex()
+    fun normalize(s: String): String = s
+        .replace(diacritics, "")
+        .replace('أ', 'ا').replace('إ', 'ا').replace('آ', 'ا').replace('ٱ', 'ا')
+        .replace('ى', 'ي').replace('ئ', 'ي').replace('ؤ', 'و').replace('ة', 'ه')
+        .trim().lowercase()
 }
+
+/** نتيجة بحثٍ داخل الآيات: السورة ورقمها ونصّها. */
+data class AyahHit(val surah: Int, val surahName: String, val ayah: Int, val text: String)
 
 @Serializable
 data class SurahMeta(
