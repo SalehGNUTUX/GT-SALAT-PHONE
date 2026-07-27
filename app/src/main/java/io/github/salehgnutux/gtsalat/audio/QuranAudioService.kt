@@ -24,6 +24,7 @@ import javax.inject.Inject
 class QuranAudioService : Service() {
 
     @Inject lateinit var notifications: NotificationHelper
+    @Inject lateinit var downloader: io.github.salehgnutux.gtsalat.data.QuranDownloader
 
     private var player: MediaPlayer? = null
     private var audioManager: AudioManager? = null
@@ -91,7 +92,9 @@ class QuranAudioService : Service() {
     /** يشغّل الرابط الحاليّ حسب الوضع وحالة البسملة. */
     private fun playCurrent() {
         val url = when {
-            mode == QuranMode.SURAH -> Quran.surahAudioUrl(folder, surah)
+            // في التلاوة الكاملة نستعمل الملفّ المحلّيّ إن نُزِّل (دون إنترنت).
+            mode == QuranMode.SURAH ->
+                downloader.localSurah(reciterId, surah)?.absolutePath ?: Quran.surahAudioUrl(folder, surah)
             playingBasmala -> Quran.basmalaUrl(folder)
             else -> Quran.ayahAudioUrl(folder, surah, curAyah)
         }

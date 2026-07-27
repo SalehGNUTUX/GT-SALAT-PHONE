@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -55,7 +56,8 @@ fun MushafScreen(onBack: () -> Unit, vm: QuranMetaViewModel = hiltViewModel()) {
     val surahs by vm.surahs.collectAsStateWithLifecycle()
     // صفحة 1 = فهرس الصفحة 0. التصفّح لأعلى المصحف من اليمين (RTL افتراضيّ).
     val pager = rememberPagerState(pageCount = { Quran.TOTAL_PAGES })
-    val dark = androidx.compose.foundation.isSystemInDarkTheme()
+    // يتبع سِمة التطبيق الفعليّة (لا وضع النظام) — وإلّا قُلبت صور المصحف خطأً عند فرض وضعٍ مخالفٍ للنظام.
+    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     var jumpOpen by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize()) {
@@ -87,7 +89,7 @@ fun MushafScreen(onBack: () -> Unit, vm: QuranMetaViewModel = hiltViewModel()) {
             }
         }
         HorizontalPager(state = pager, modifier = Modifier.fillMaxSize().background(if (dark) MaterialTheme.colorScheme.surface else androidx.compose.ui.graphics.Color.White)) { index ->
-            MushafPage(page = index + 1, invert = dark)
+            MushafPage(page = index + 1, invert = dark, local = vm.localPage(index + 1))
         }
     }
 }
@@ -98,12 +100,13 @@ private fun scrollToPage(
 ) { pager.requestScrollToPage((page - 1).coerceIn(0, Quran.TOTAL_PAGES - 1)) }
 
 @Composable
-private fun MushafPage(page: Int, invert: Boolean) {
+private fun MushafPage(page: Int, invert: Boolean, local: java.io.File? = null) {
     val ctx = LocalContext.current
+    // إن نُزِّلت الصفحة محليّاً استعملها مباشرةً، وإلّا الشبكة مع مصادرَ بديلة.
     val urls = remember(page) { listOf(Quran.pageImageUrl(page)) + Quran.pageImageFallbacks(page) }
     var idx by remember(page) { mutableIntStateOf(0) }
     val painter = rememberAsyncImagePainter(
-        model = ImageRequest.Builder(ctx).data(urls[idx]).crossfade(true).build(),
+        model = ImageRequest.Builder(ctx).data(local ?: urls[idx]).crossfade(true).build(),
     )
     val state = painter.state
     // عند فشل مصدرٍ، جرّب التالي.

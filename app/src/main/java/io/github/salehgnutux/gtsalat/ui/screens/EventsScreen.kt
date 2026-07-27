@@ -79,13 +79,15 @@ fun EventsScreen(onBack: () -> Unit, vm: EventsViewModel = hiltViewModel()) {
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            placeholder = { Text("ابحث في الأحداث (اسمٌ أو سنة أو كلمة)…") },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+            placeholder = { Text("ابحث…", maxLines = 1) },
+            textStyle = MaterialTheme.typography.bodyMedium,
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             trailingIcon = {
                 if (q.isNotEmpty()) IconButton(onClick = { query = "" }) { Icon(Icons.Filled.Close, contentDescription = "مسح") }
             },
             singleLine = true,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
         )
         LazyColumn(
             Modifier.fillMaxSize(),

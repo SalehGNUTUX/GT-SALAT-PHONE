@@ -21,8 +21,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.Headphones
@@ -33,6 +37,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -78,8 +83,20 @@ import javax.inject.Inject
 @HiltViewModel
 class QuranMetaViewModel @Inject constructor(
     private val repo: QuranRepository,
+    private val downloader: io.github.salehgnutux.gtsalat.data.QuranDownloader,
     settingsRepo: io.github.salehgnutux.gtsalat.data.settings.SettingsRepository,
 ) : ViewModel() {
+
+    /** ملفّ صفحة المصحف المحلّيّ إن نُزِّل. */
+    fun localPage(page: Int): java.io.File? = downloader.localPage(page)
+
+    /** هل نُزِّلت سورةٌ لقارئٍ محليّاً؟ */
+    fun surahDownloaded(reciterId: String, surah: Int): Boolean = downloader.localSurah(reciterId, surah) != null
+
+    /** تنزيل سورةٍ صوتيّاً؛ يُبلِّغ [done] بالنتيجة. */
+    fun downloadSurah(reciterId: String, server: String, surah: Int, done: (Boolean) -> Unit) {
+        viewModelScope.launch { done(downloader.downloadSurah(reciterId, server, surah)) }
+    }
     private val _surahs = MutableStateFlow<List<SurahMeta>>(emptyList())
     val surahs: StateFlow<List<SurahMeta>> = _surahs.asStateFlow()
     private val _reciters = MutableStateFlow<List<Reciter>>(emptyList())
@@ -98,7 +115,9 @@ class QuranMetaViewModel @Inject constructor(
             _surahs.value = repo.surahs()
             _reciters.value = repo.reciters()
             _riwayat.value = repo.riwayat()
+            // المُضمَّنون فوراً (يعملون دون إنترنت)، ثمّ نستبدلهم بكامل قائمة المصدر إن توفّرت الشبكة.
             _surahReciters.value = repo.surahReciters()
+            _surahReciters.value = repo.surahRecitersOnline()
             val s = settingsRepo.current()
             if (s.lastReadSurah in 1..114) {
                 val name = repo.surah(s.lastReadSurah)?.ar ?: "سورة ${s.lastReadSurah}"
@@ -229,9 +248,15 @@ class TextReaderViewModel @Inject constructor(
     private val _reciter = MutableStateFlow<Reciter?>(null)
     val reciter: StateFlow<Reciter?> = _reciter.asStateFlow()
 
-    /** الآية التي يُفتَح عليها القارئ (المحفوظة إن كانت لنفس السورة، وإلّا 1). */
-    var initialAyah: Int = 1
-        private set
+    /** آية المتابعة/الموضع الحاليّ (يُظلَّل بلونٍ مميّز ويُبدأ منه عند التشغيل). */
+    private val _target = MutableStateFlow(1)
+    val target: StateFlow<Int> = _target.asStateFlow()
+
+    /** يضبط موضع المتابعة يدويّاً (عند نقر آيةٍ لبدء القراءة منها). */
+    fun setTarget(ayah: Int) {
+        _target.value = ayah
+        savePosition(ayah)
+    }
 
     fun pick(r: Reciter) {
         _reciter.value = r
@@ -254,8 +279,9 @@ class TextReaderViewModel @Inject constructor(
             _reciter.value = list.firstOrNull { it.id == cur.lastReciterId }
                 ?: list.firstOrNull { it.id == "alafasy" } ?: list.firstOrNull()
             // إن عُدنا لنفس السورة نتابع من آيتها المحفوظة، وإلّا من أوّلها.
-            initialAyah = if (cur.lastReadSurah == n) cur.lastReadAyah.coerceAtLeast(1) else 1
-            settingsRepo.setLastRead(n, initialAyah)
+            val startAyah = if (cur.lastReadSurah == n) cur.lastReadAyah.coerceAtLeast(1) else 1
+            _target.value = startAyah
+            settingsRepo.setLastRead(n, startAyah)
         }
     }
 }
@@ -268,24 +294,22 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
     val reciters by vm.reciters.collectAsStateWithLifecycle()
     val reciter by vm.reciter.collectAsStateWithLifecycle()
     val play by QuranPlayback.state.collectAsStateWithLifecycle()
+    val target by vm.target.collectAsStateWithLifecycle()
 
     val here = play.active && play.mode == QuranMode.AYAH && play.surah == vm.n
-    val current = if (here) play.ayah else 0
+    val playingAyah = if (here) play.ayah else 0
+    // الآية المُظلَّلة: الجاريةُ أثناء التشغيل، وإلّا موضعُ المتابعة (يُبدأ منه).
+    val highlight = if (playingAyah > 0) playingAyah else target
     val listState = rememberLazyListState()
 
-    // تمريرٌ تلقائيٌّ للآية الجاريّة + حفظ الموضع للمتابعة.
-    LaunchedEffect(current) {
-        if (current > 0) {
-            vm.savePosition(current)
-            val idx = ayat.indexOfFirst { it.n == current }
-            if (idx >= 0) runCatching { listState.animateScrollToItem(idx) }
-        }
+    // تمريرٌ تلقائيٌّ للآية المُظلَّلة (الجاريّة أو موضع المتابعة) + حفظ الموضع.
+    LaunchedEffect(playingAyah) {
+        if (playingAyah > 0) vm.savePosition(playingAyah)
     }
-    // عند الفتح (بلا تشغيلٍ جارٍ) نقفز إلى الآية المحفوظة للمتابعة.
-    LaunchedEffect(ayat) {
-        if (ayat.isNotEmpty() && !here && vm.initialAyah > 1) {
-            val idx = ayat.indexOfFirst { it.n == vm.initialAyah }
-            if (idx >= 0) runCatching { listState.scrollToItem(idx) }
+    LaunchedEffect(highlight, ayat) {
+        if (ayat.isNotEmpty() && highlight > 1) {
+            val idx = ayat.indexOfFirst { it.n == highlight }
+            if (idx >= 0) runCatching { listState.animateScrollToItem(idx) }
         }
     }
 
@@ -306,7 +330,7 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
                 FilledIconButton(onClick = {
                     val r = reciter ?: return@FilledIconButton
                     if (here) QuranAudio.toggle(ctx)
-                    else QuranAudio.playAyat(ctx, vm.n, surah?.ar ?: "سورة ${vm.n}", ayat.size, r, 1)
+                    else QuranAudio.playAyat(ctx, vm.n, surah?.ar ?: "سورة ${vm.n}", ayat.size, r, highlight.coerceAtLeast(1))
                 }) {
                     Icon(if (here && play.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, contentDescription = "تشغيل")
                 }
@@ -325,28 +349,40 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             items(ayat, key = { it.n }) { a ->
-                val active = a.n == current
-                val r = reciter
+                val isPlaying = a.n == playingAyah                 // الآية الجاريّة أثناء التلاوة (أخضر)
+                val isResume = playingAyah == 0 && a.n == target && target > 1  // موضع المتابعة (لونٌ مميّز)
+                val container = when {
+                    isPlaying -> MaterialTheme.colorScheme.primaryContainer
+                    isResume -> MaterialTheme.colorScheme.tertiaryContainer
+                    else -> null
+                }
+                val onContainer = when {
+                    isPlaying -> MaterialTheme.colorScheme.onPrimaryContainer
+                    isResume -> MaterialTheme.colorScheme.onTertiaryContainer
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
                 Card(
+                    // النقر يحدّد الآية ويحفظ الموضع (بلا تشغيل). إن كانت التلاوة جاريةً يقفز إليها.
                     Modifier.fillMaxWidth().clickable {
-                        if (r != null) QuranAudio.playAyat(ctx, vm.n, surah?.ar ?: "سورة ${vm.n}", ayat.size, r, a.n)
+                        vm.setTarget(a.n)
+                        if (here) QuranAudio.seekAyah(ctx, a.n)
                     },
-                    colors = if (active)
-                        androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    colors = if (container != null)
+                        androidx.compose.material3.CardDefaults.cardColors(containerColor = container)
                     else androidx.compose.material3.CardDefaults.cardColors(),
                 ) {
                     Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Box(
                             Modifier.size(30.dp).clip(CircleShape)
-                                .background(if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer),
+                                .background(if (container != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text("${a.n}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold,
-                                color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer)
+                                color = if (container != null) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer)
                         }
                         Text(
                             a.text, fontFamily = AmiriQuran, fontSize = 23.sp, lineHeight = 46.sp, fontWeight = FontWeight.Bold,
-                            color = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                            color = onContainer,
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -366,19 +402,37 @@ fun AudioRecitationScreen(vm: QuranMetaViewModel = hiltViewModel(), onBack: () -
     val play by QuranPlayback.state.collectAsStateWithLifecycle()
 
     var selected by remember { mutableStateOf<io.github.salehgnutux.gtsalat.domain.SurahReciter?>(null) }
+    var riwayaFilter by remember { mutableStateOf("all") }  // all | warsh | hafs
+    val shown = remember(reciters, riwayaFilter) {
+        if (riwayaFilter == "all") reciters else reciters.filter { it.riwaya == riwayaFilter }
+    }
     LaunchedEffect(reciters) { if (selected == null) selected = reciters.firstOrNull() }
 
     Column(Modifier.fillMaxSize()) {
         SubScreenHeader("القرآن المسموع", onBack)
         Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
-            Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("القارئ:", Modifier.padding(end = 10.dp), fontWeight = FontWeight.Bold)
-                PickerButton(selected?.let { "${it.ar} · ${riwayaLabel(it.riwaya)}" } ?: "اختر قارئاً", Modifier.weight(1f)) { close ->
-                    reciters.forEach { r ->
-                        DropdownMenuItem(
-                            text = { Text("${r.ar} · ${riwayaLabel(r.riwaya)}") },
-                            onClick = { selected = r; close() },
+            Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                // مرشِّح الرواية (يجعل قائمة قرّاء المصدر الكاملة قابلةً للاستعمال).
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    listOf("all" to "الكلّ", "warsh" to "ورش", "hafs" to "حفص").forEach { (id, label) ->
+                        androidx.compose.material3.FilterChip(
+                            selected = riwayaFilter == id,
+                            onClick = { riwayaFilter = id },
+                            label = { Text(label) },
                         )
+                    }
+                    Text("${shown.size} قارئاً", Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("القارئ:", Modifier.padding(end = 10.dp), fontWeight = FontWeight.Bold)
+                    PickerButton(selected?.let { "${it.ar} · ${riwayaLabel(it.riwaya)}" } ?: "اختر قارئاً", Modifier.weight(1f)) { close ->
+                        shown.forEach { r ->
+                            DropdownMenuItem(
+                                text = { Text("${r.ar} · ${riwayaLabel(r.riwaya)}") },
+                                onClick = { selected = r; close() },
+                            )
+                        }
                     }
                 }
             }
@@ -390,6 +444,9 @@ fun AudioRecitationScreen(vm: QuranMetaViewModel = hiltViewModel(), onBack: () -
         ) {
             items(surahs, key = { it.n }) { s ->
                 val playingThis = play.active && play.mode == QuranMode.SURAH && play.surah == s.n
+                val rid = selected?.id
+                // حالة التنزيل: 0=غير مُنزَّل · 1=جارٍ · 2=مُنزَّل. تُحدَّث بمفتاح selected.
+                var dl by remember(rid, s.n) { mutableStateOf(if (rid != null && vm.surahDownloaded(rid, s.n)) 2 else 0) }
                 Card(
                     Modifier.fillMaxWidth().clickable {
                         selected?.let { QuranAudio.playSurah(ctx, s.n, s.ar, it.id, it.ar, it.server) }
@@ -398,12 +455,20 @@ fun AudioRecitationScreen(vm: QuranMetaViewModel = hiltViewModel(), onBack: () -
                         androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                     else androidx.compose.material3.CardDefaults.cardColors(),
                 ) {
-                    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(
                             Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
                             contentAlignment = Alignment.Center,
                         ) { Text("${s.n}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary) }
                         Text(s.ar, fontFamily = AmiriQuran, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
+                        // تنزيل السورة للقارئ المختار (للاستماع دون إنترنت)
+                        when (dl) {
+                            1 -> CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                            2 -> Icon(Icons.Filled.DownloadDone, "مُنزَّلة", tint = MaterialTheme.colorScheme.primary)
+                            else -> IconButton(onClick = {
+                                selected?.let { r -> dl = 1; vm.downloadSurah(r.id, r.server, s.n) { ok -> dl = if (ok) 2 else 0 } }
+                            }) { Icon(Icons.Filled.Download, "تنزيل", tint = MaterialTheme.colorScheme.outline) }
+                        }
                         Icon(
                             if (playingThis && play.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                             null, tint = MaterialTheme.colorScheme.outline,
@@ -411,32 +476,6 @@ fun AudioRecitationScreen(vm: QuranMetaViewModel = hiltViewModel(), onBack: () -
                     }
                 }
             }
-        }
-        if (play.active && play.mode == QuranMode.SURAH) NowPlayingBar(play.surahName, play.reciterName, play.isPlaying, play.loading)
-    }
-}
-
-/** شريط تشغيلٍ سفليٌّ للتلاوة الكاملة: السابق/تشغيل/التالي/إيقاف. */
-@Composable
-private fun NowPlayingBar(title: String, reciter: String, playing: Boolean, loading: Boolean) {
-    val ctx = LocalContext.current
-    Surface(color = MaterialTheme.colorScheme.primaryContainer, shadowElevation = 8.dp) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(title, fontFamily = AmiriQuran, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                Text(reciter, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
-            }
-            if (loading) CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
-            OutlinedButton(onClick = { QuranAudio.prev(ctx) }, contentPadding = PaddingValues(8.dp)) { Text("السابقة") }
-            FilledIconButton(onClick = { QuranAudio.toggle(ctx) }) {
-                Icon(if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, "تشغيل")
-            }
-            OutlinedButton(onClick = { QuranAudio.next(ctx) }, contentPadding = PaddingValues(8.dp)) { Text("التالية") }
-            FilledIconButton(onClick = { QuranAudio.stop(ctx) }) { Icon(Icons.Filled.Stop, "إيقاف") }
         }
     }
 }
@@ -477,8 +516,15 @@ fun QuranMiniPlayer(onOpen: (String) -> Unit) {
                 )
             }
             if (play.loading) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 3.dp)
+            // في التلاوة الكاملة: تنقّلٌ بين السور.
+            if (play.mode == QuranMode.SURAH) {
+                FilledIconButton(onClick = { QuranAudio.prev(ctx) }) { Icon(Icons.Filled.SkipPrevious, "السابقة") }
+            }
             FilledIconButton(onClick = { QuranAudio.toggle(ctx) }) {
                 Icon(if (play.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, "تشغيل")
+            }
+            if (play.mode == QuranMode.SURAH) {
+                FilledIconButton(onClick = { QuranAudio.next(ctx) }) { Icon(Icons.Filled.SkipNext, "التالية") }
             }
             FilledIconButton(onClick = { QuranAudio.stop(ctx) }) { Icon(Icons.Filled.Stop, "إيقاف") }
         }

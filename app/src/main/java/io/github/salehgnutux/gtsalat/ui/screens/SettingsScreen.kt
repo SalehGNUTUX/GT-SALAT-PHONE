@@ -229,6 +229,10 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             }
         }
 
+        SectionCard("تنزيل المحتوى", openSection == "تنزيل المحتوى", { toggle("تنزيل المحتوى") }) {
+            DownloadsSectionContent()
+        }
+
         SectionCard("المصادر المعتمَدة", openSection == "المصادر المعتمَدة", { toggle("المصادر المعتمَدة") }) {
             Text(
                 "أُثري التطبيق بمحتوىً وبياناتٍ من مشاريعَ حرّةٍ ومفتوحةِ المصدر، بالشكر والتقدير:",
