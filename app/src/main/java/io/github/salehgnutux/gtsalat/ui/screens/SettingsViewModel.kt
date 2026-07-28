@@ -32,6 +32,7 @@ class SettingsViewModel @Inject constructor(
 
     /** النوع الجاري معاينته الآن (لتبديل زرّ التشغيل/الإيقاف)، أو null. */
     val previewing: StateFlow<AdhanType?> = previewer.playing
+    val previewKey: StateFlow<String?> = previewer.previewKey
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val cachedMonths: StateFlow<Int> = settingsRepo.settings
@@ -53,10 +54,10 @@ class SettingsViewModel @Inject constructor(
     fun stopPreview() = previewer.stop()
 
     /** معاينة أصوات التنبيهات في الإعدادات. */
-    fun previewTone() = previewer.previewTone()
-    fun previewPreNotifySound() = previewer.previewRes(io.github.salehgnutux.gtsalat.R.raw.prayer_approaching)
-    fun previewDua() = previewer.previewRes(io.github.salehgnutux.gtsalat.R.raw.dua_after_adhan)
-    fun previewPostDhikr() = previewer.previewRes(io.github.salehgnutux.gtsalat.R.raw.post_prayer_dhikr)
+    fun previewTone() = previewer.previewTone("tone")
+    fun previewPreNotifySound() = previewer.previewRes("prenotify", io.github.salehgnutux.gtsalat.R.raw.prayer_approaching)
+    fun previewDua() = previewer.previewRes("dua", io.github.salehgnutux.gtsalat.R.raw.dua_after_adhan)
+    fun previewPostDhikr() = previewer.previewRes("dhikr", io.github.salehgnutux.gtsalat.R.raw.post_prayer_dhikr)
 
     /** حفظ أذانٍ مخصّص مستورَد (URI دائم + اسمٌ للعرض)، ويصير النوع «مخصّص». */
     fun setCustomAdhan(uri: String, name: String) = viewModelScope.launch {

@@ -27,6 +27,10 @@ class AdhanPreviewer @Inject constructor(
     /** النوع الجاري تشغيله الآن، أو null إن كانت المعاينة متوقّفة. */
     val playing: StateFlow<AdhanType?> = _playing.asStateFlow()
 
+    private val _previewKey = MutableStateFlow<String?>(null)
+    /** مفتاح المعاينة الجاريّة (رنّة/دعاء/ذكر/اقتراب) أو null — لتبديل زرّ التشغيل/الإيقاف. */
+    val previewKey: StateFlow<String?> = _previewKey.asStateFlow()
+
     private val attrs = AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_MEDIA)
         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -57,10 +61,12 @@ class AdhanPreviewer @Inject constructor(
         player?.run { runCatching { if (isPlaying) stop() }; release() }
         player = null
         _playing.value = null
+        _previewKey.value = null
     }
 
-    /** معاينة صوتٍ بمساره (يتوقّف تلقائيّاً عند الانتهاء). */
-    fun previewSound(uri: Uri) {
+    /** معاينة صوتٍ بمفتاحٍ ومسار — تبديل: إن كان المفتاح نفسه يعمل الآن أوقفه، وإلّا شغّله. */
+    fun previewSound(key: String, uri: Uri) {
+        if (_previewKey.value == key) { stop(); return }
         stop()
         player = MediaPlayer().apply {
             setAudioAttributes(attrs)
@@ -71,10 +77,11 @@ class AdhanPreviewer @Inject constructor(
             setOnPreparedListener { start() }
             prepareAsync()
         }
+        _previewKey.value = key
     }
 
-    fun previewRes(resId: Int) = previewSound(resUri(resId))
-    fun previewTone() = previewSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI)
+    fun previewRes(key: String, resId: Int) = previewSound(key, resUri(resId))
+    fun previewTone(key: String) = previewSound(key, android.provider.Settings.System.DEFAULT_NOTIFICATION_URI)
 
     private fun resUri(resId: Int): Uri = Uri.parse("android.resource://${context.packageName}/$resId")
 }

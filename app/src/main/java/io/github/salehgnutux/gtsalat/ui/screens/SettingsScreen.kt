@@ -78,6 +78,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val months by vm.cachedMonths.collectAsStateWithLifecycle()
     val previewing by vm.previewing.collectAsStateWithLifecycle()
+    val previewKey by vm.previewKey.collectAsStateWithLifecycle()
     val settings = s ?: return
     val context = LocalContext.current
 
@@ -164,12 +165,12 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                     AlertModeChips(settings.adhanAlertMode) { vm.setAdhanAlertMode(it) }
                 }
             }
-            PreviewRow("معاينة رنّة التنبيه") { vm.previewTone() }
-            SwitchRowPreview("دعاء بعد الأذان", settings.enableDuaAfterAdhan, { vm.previewDua() }) { vm.setEnableDua(it) }
-            SwitchRowPreview("صوت أذكار بعد الصلاة (بعد ${settings.postDhikrMinutes} دقيقة)", settings.enablePostDhikr, { vm.previewPostDhikr() }) { vm.setEnablePostDhikr(it) }
+            PreviewRow("معاينة رنّة التنبيه", previewKey == "tone") { vm.previewTone() }
+            SwitchRowPreview("دعاء بعد الأذان", settings.enableDuaAfterAdhan, previewKey == "dua", { vm.previewDua() }) { vm.setEnableDua(it) }
+            SwitchRowPreview("صوت أذكار بعد الصلاة (بعد ${settings.postDhikrMinutes} دقيقة)", settings.enablePostDhikr, previewKey == "dhikr", { vm.previewPostDhikr() }) { vm.setEnablePostDhikr(it) }
             SwitchRow("تنبيه الاقتراب قبل الصلاة", settings.enablePreNotify) { vm.setEnablePreNotify(it) }
             if (settings.enablePreNotify) {
-                SwitchRowPreview("صوت تنبيه الاقتراب", settings.enablePreNotifySound, { vm.previewPreNotifySound() }) { vm.setEnablePreNotifySound(it) }
+                SwitchRowPreview("صوت تنبيه الاقتراب", settings.enablePreNotifySound, previewKey == "prenotify", { vm.previewPreNotifySound() }) { vm.setEnablePreNotifySound(it) }
                 MinutesSlider("قبل الصلاة بـ", settings.preNotifyMinutes, 1, 60) { vm.setPreNotify(it) }
             }
             SwitchRow("وضع عدم الإزعاج", settings.doNotDisturb) { vm.setDnd(it) }
@@ -608,24 +609,28 @@ private fun openPolicyAccess(context: Context) {
     }.onFailure { openAppDetails(context) }
 }
 
-/** صفّ مفتاحٍ بزرّ معاينةٍ صوتيّة. */
+/** صفّ مفتاحٍ بزرّ معاينةٍ صوتيّة (يبدّل تشغيل/إيقاف حسب [playing]). */
 @Composable
-private fun SwitchRowPreview(label: String, checked: Boolean, onPreview: () -> Unit, onChange: (Boolean) -> Unit) {
+private fun SwitchRowPreview(label: String, checked: Boolean, playing: Boolean, onPreview: () -> Unit, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onPreview) { Icon(Icons.Filled.PlayArrow, contentDescription = "معاينة", tint = MaterialTheme.colorScheme.primary) }
+            IconButton(onClick = onPreview) {
+                Icon(if (playing) Icons.Filled.Stop else Icons.Filled.PlayArrow, contentDescription = if (playing) "إيقاف" else "معاينة", tint = MaterialTheme.colorScheme.primary)
+            }
             Switch(checked, onChange)
         }
     }
 }
 
-/** صفّ معاينةٍ صوتيّة (زرّ تشغيلٍ فقط). */
+/** صفّ معاينةٍ صوتيّة (زرّ تشغيل/إيقاف حسب [playing]). */
 @Composable
-private fun PreviewRow(label: String, onPreview: () -> Unit) {
+private fun PreviewRow(label: String, playing: Boolean, onPreview: () -> Unit) {
     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyLarge)
-        IconButton(onClick = onPreview) { Icon(Icons.Filled.PlayArrow, contentDescription = "تشغيل", tint = MaterialTheme.colorScheme.primary) }
+        IconButton(onClick = onPreview) {
+            Icon(if (playing) Icons.Filled.Stop else Icons.Filled.PlayArrow, contentDescription = if (playing) "إيقاف" else "تشغيل", tint = MaterialTheme.colorScheme.primary)
+        }
     }
 }
 

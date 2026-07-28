@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Pause
@@ -38,6 +39,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -104,6 +106,12 @@ class QuranMetaViewModel @Inject constructor(
     fun downloadSurah(reciterId: String, server: String, surah: Int, done: (Boolean) -> Unit) {
         viewModelScope.launch { done(downloader.downloadSurah(reciterId, server, surah)) }
     }
+
+    /** حذف سورةٍ منزَّلة. */
+    fun deleteSurah(reciterId: String, surah: Int) { downloader.deleteSurah(reciterId, surah) }
+
+    /** أرقام السور المُنزَّلة لقارئ. */
+    fun downloadedSurahs(reciterId: String): Set<Int> = downloader.downloadedSurahs(reciterId)
     private val _surahs = MutableStateFlow<List<SurahMeta>>(emptyList())
     val surahs: StateFlow<List<SurahMeta>> = _surahs.asStateFlow()
     private val _reciters = MutableStateFlow<List<Reciter>>(emptyList())
@@ -381,6 +389,8 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
     // الآية المُظلَّلة: الجاريةُ أثناء التشغيل، وإلّا موضعُ المتابعة (يُبدأ منه).
     val highlight = if (playingAyah > 0) playingAyah else target
     val listState = rememberLazyListState()
+    // وضع القراءة التلقائيّة (بلا صوت): تنتقل الآية المظلَّلة تلقائيّاً بوتيرةٍ تناسب طولها.
+    var readingMode by remember { mutableStateOf(false) }
 
     // تمريرٌ تلقائيٌّ للآية المُظلَّلة (الجاريّة أو موضع المتابعة) + حفظ الموضع.
     LaunchedEffect(playingAyah) {
@@ -390,6 +400,19 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
         if (ayat.isNotEmpty() && highlight > 1) {
             val idx = ayat.indexOfFirst { it.n == highlight }
             if (idx >= 0) runCatching { listState.animateScrollToItem(idx) }
+        }
+    }
+    // حلقة التنقّل التلقائيّ في وضع القراءة (تتوقّف عند بدء الاستماع أو نهاية السورة).
+    LaunchedEffect(readingMode, here, ayat) {
+        if (readingMode && !here && ayat.isNotEmpty()) {
+            var cur = vm.target.value.coerceIn(1, ayat.size)
+            while (cur <= ayat.size) {
+                vm.setTarget(cur)
+                val len = ayat.getOrNull(cur - 1)?.text?.length ?: 40
+                kotlinx.coroutines.delay((len * 90L).coerceIn(2500L, 15000L))
+                cur++
+            }
+            readingMode = false
         }
     }
 
@@ -407,8 +430,21 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
                 if (here && play.loading) {
                     CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
                 }
+                // وضع القراءة التلقائيّة (بلا صوت) — يتعطّل أثناء الاستماع.
+                if (!here) {
+                    if (readingMode) {
+                        FilledIconButton(onClick = { readingMode = false }) {
+                            Icon(Icons.Filled.Stop, contentDescription = "إيقاف القراءة التلقائيّة")
+                        }
+                    } else {
+                        IconButton(onClick = { readingMode = true }) {
+                            Icon(Icons.Outlined.AutoStories, contentDescription = "قراءةٌ تلقائيّة", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
                 FilledIconButton(onClick = {
                     val r = reciter ?: return@FilledIconButton
+                    readingMode = false
                     if (here) QuranAudio.toggle(ctx)
                     else QuranAudio.playAyat(ctx, vm.n, surah?.ar ?: "سورة ${vm.n}", ayat.size, r, highlight.coerceAtLeast(1))
                 }) {
@@ -491,80 +527,119 @@ fun AudioRecitationScreen(vm: QuranMetaViewModel = hiltViewModel(), onBack: () -
     val shownSurahs = remember(surahs, q) { filterSurahs(surahs, q) }
     LaunchedEffect(reciters) { if (selected == null) selected = reciters.firstOrNull() }
 
-    Column(Modifier.fillMaxSize()) {
-        SubScreenHeader("القرآن المسموع", onBack, actions = {
-            IconButton(onClick = { showSearch = !showSearch; if (!showSearch) q = "" }) {
-                Icon(if (showSearch) Icons.Filled.Close else Icons.Filled.Search, contentDescription = "بحث")
-            }
-        })
-        if (showSearch) SurahSearchField(q) { q = it }
-        Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
-            Column(Modifier.fillMaxWidth().padding(12.dp)) {
-                // مرشِّح الرواية (يجعل قائمة قرّاء المصدر الكاملة قابلةً للاستعمال).
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    listOf("all" to "الكلّ", "warsh" to "ورش", "hafs" to "حفص").forEach { (id, label) ->
-                        androidx.compose.material3.FilterChip(
-                            selected = riwayaFilter == id,
-                            onClick = { riwayaFilter = id },
-                            label = { Text(label) },
-                        )
-                    }
-                    Text("${shown.size} قارئاً", Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End,
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+    // حالة التنزيل على مستوى الشاشة (تفاعليّة) — تُعاد قراءتها عند تبديل القارئ.
+    var downloaded by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var downloading by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    LaunchedEffect(selected?.id) { downloaded = selected?.id?.let { vm.downloadedSurahs(it) } ?: emptySet() }
+
+    val snackbar = remember { androidx.compose.material3.SnackbarHostState() }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var pendingDelete by remember { mutableStateOf<Triple<String, Int, String>?>(null) }
+
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            SubScreenHeader("القرآن المسموع", onBack, actions = {
+                IconButton(onClick = { showSearch = !showSearch; if (!showSearch) q = "" }) {
+                    Icon(if (showSearch) Icons.Filled.Close else Icons.Filled.Search, contentDescription = "بحث")
                 }
-                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("القارئ:", Modifier.padding(end = 10.dp), fontWeight = FontWeight.Bold)
-                    PickerButton(selected?.let { "${it.ar} · ${riwayaLabel(it.riwaya)}" } ?: "اختر قارئاً", Modifier.weight(1f)) { close ->
-                        shown.forEach { r ->
-                            DropdownMenuItem(
-                                text = { Text("${r.ar} · ${riwayaLabel(r.riwaya)}") },
-                                onClick = { selected = r; close() },
+            })
+            if (showSearch) SurahSearchField(q) { q = it }
+            Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
+                Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        listOf("all" to "الكلّ", "warsh" to "ورش", "hafs" to "حفص").forEach { (id, label) ->
+                            androidx.compose.material3.FilterChip(
+                                selected = riwayaFilter == id,
+                                onClick = { riwayaFilter = id },
+                                label = { Text(label) },
+                            )
+                        }
+                        Text("${shown.size} قارئاً", Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                    }
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("القارئ:", Modifier.padding(end = 10.dp), fontWeight = FontWeight.Bold)
+                        PickerButton(selected?.let { "${it.ar} · ${riwayaLabel(it.riwaya)}" } ?: "اختر قارئاً", Modifier.weight(1f)) { close ->
+                            shown.forEach { r ->
+                                DropdownMenuItem(
+                                    text = { Text("${r.ar} · ${riwayaLabel(r.riwaya)}") },
+                                    onClick = { selected = r; close() },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            LazyColumn(
+                Modifier.weight(1f),
+                contentPadding = PaddingValues(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(shownSurahs, key = { it.n }) { s ->
+                    val playingThis = play.active && play.mode == QuranMode.SURAH && play.surah == s.n
+                    val isDownloading = s.n in downloading
+                    val isDownloaded = s.n in downloaded
+                    Card(
+                        Modifier.fillMaxWidth().clickable {
+                            selected?.let { QuranAudio.playSurah(ctx, s.n, s.ar, it.id, it.ar, it.server) }
+                        },
+                        colors = if (playingThis)
+                            androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                        else androidx.compose.material3.CardDefaults.cardColors(),
+                    ) {
+                        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(
+                                Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
+                                contentAlignment = Alignment.Center,
+                            ) { Text("${s.n}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary) }
+                            Text(s.ar, fontFamily = AmiriQuran, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
+                            // تنزيل/حذف السورة للقارئ المختار (للاستماع دون إنترنت)
+                            when {
+                                isDownloading -> CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                                isDownloaded -> IconButton(onClick = { selected?.let { pendingDelete = Triple(it.id, s.n, s.ar) } }) {
+                                    Icon(Icons.Filled.Delete, "حذف التنزيل", tint = MaterialTheme.colorScheme.error)
+                                }
+                                else -> IconButton(onClick = {
+                                    selected?.let { r ->
+                                        downloading = downloading + s.n
+                                        vm.downloadSurah(r.id, r.server, s.n) { ok ->
+                                            downloading = downloading - s.n
+                                            if (ok) downloaded = downloaded + s.n
+                                        }
+                                    }
+                                }) { Icon(Icons.Filled.Download, "تنزيل", tint = MaterialTheme.colorScheme.outline) }
+                            }
+                            Icon(
+                                if (playingThis && play.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                null, tint = MaterialTheme.colorScheme.outline,
                             )
                         }
                     }
                 }
             }
         }
-        LazyColumn(
-            Modifier.weight(1f),
-            contentPadding = PaddingValues(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(shownSurahs, key = { it.n }) { s ->
-                val playingThis = play.active && play.mode == QuranMode.SURAH && play.surah == s.n
-                val rid = selected?.id
-                // حالة التنزيل: 0=غير مُنزَّل · 1=جارٍ · 2=مُنزَّل. تُحدَّث بمفتاح selected.
-                var dl by remember(rid, s.n) { mutableStateOf(if (rid != null && vm.surahDownloaded(rid, s.n)) 2 else 0) }
-                Card(
-                    Modifier.fillMaxWidth().clickable {
-                        selected?.let { QuranAudio.playSurah(ctx, s.n, s.ar, it.id, it.ar, it.server) }
-                    },
-                    colors = if (playingThis)
-                        androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                    else androidx.compose.material3.CardDefaults.cardColors(),
-                ) {
-                    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box(
-                            Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
-                            contentAlignment = Alignment.Center,
-                        ) { Text("${s.n}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary) }
-                        Text(s.ar, fontFamily = AmiriQuran, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
-                        // تنزيل السورة للقارئ المختار (للاستماع دون إنترنت)
-                        when (dl) {
-                            1 -> CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-                            2 -> Icon(Icons.Filled.DownloadDone, "مُنزَّلة", tint = MaterialTheme.colorScheme.primary)
-                            else -> IconButton(onClick = {
-                                selected?.let { r -> dl = 1; vm.downloadSurah(r.id, r.server, s.n) { ok -> dl = if (ok) 2 else 0 } }
-                            }) { Icon(Icons.Filled.Download, "تنزيل", tint = MaterialTheme.colorScheme.outline) }
-                        }
-                        Icon(
-                            if (playingThis && play.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            null, tint = MaterialTheme.colorScheme.outline,
-                        )
+        androidx.compose.material3.SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+    }
+
+    // تأكيد الحذف ثمّ مهلة تراجع (لا يُحذف الملفّ فعليّاً إلّا بعد انقضاء المهلة).
+    pendingDelete?.let { (rid, sn, name) ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("حذف التنزيل") },
+            text = { Text("حذف تنزيل سورة $name لهذا القارئ؟") },
+            confirmButton = {
+                androidx.compose.material3.Button(onClick = {
+                    pendingDelete = null
+                    downloaded = downloaded - sn   // إخفاءٌ فوريّ مع إتاحة التراجع
+                    scope.launch {
+                        val res = snackbar.showSnackbar("حُذف تنزيل سورة $name", actionLabel = "تراجع", duration = androidx.compose.material3.SnackbarDuration.Short)
+                        if (res == androidx.compose.material3.SnackbarResult.ActionPerformed) downloaded = downloaded + sn
+                        else vm.deleteSurah(rid, sn)
                     }
-                }
-            }
-        }
+                }) { Text("حذف") }
+            },
+            dismissButton = { FilledTonalButton(onClick = { pendingDelete = null }) { Text("إلغاء") } },
+        )
     }
 }
 

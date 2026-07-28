@@ -42,6 +42,25 @@ class QuranDownloader @Inject constructor(
     fun localSurah(reciterId: String, surah: Int): File? =
         surahFile(reciterId, surah).takeIf { it.exists() && it.length() > 0 }
 
+    /** حذف سورةٍ منزَّلةٍ لقارئ. */
+    fun deleteSurah(reciterId: String, surah: Int): Boolean = surahFile(reciterId, surah).delete()
+
+    /** أرقام السور المُنزَّلة لقارئٍ معيّن. */
+    fun downloadedSurahs(reciterId: String): Set<Int> =
+        audioDir(reciterId).listFiles()
+            ?.filter { it.length() > 0 }
+            ?.mapNotNull { it.name.removeSuffix(".mp3").toIntOrNull() }
+            ?.toSet() ?: emptySet()
+
+    /** كلّ القرّاء الذين لهم سورٌ منزَّلة (مُعرّف القارئ → أرقام السور). */
+    fun downloadedByReciter(): Map<String, Set<Int>> {
+        val root = File(context.filesDir, "audio")
+        return root.listFiles()?.filter { it.isDirectory }?.mapNotNull { dir ->
+            val surahs = dir.listFiles()?.filter { it.length() > 0 }?.mapNotNull { it.name.removeSuffix(".mp3").toIntOrNull() }?.toSet()
+            if (surahs.isNullOrEmpty()) null else dir.name to surahs
+        }?.toMap() ?: emptyMap()
+    }
+
     /** عدد صفحات المصحف المُنزَّلة. */
     fun mushafDownloadedCount(): Int = mushafDir().listFiles()?.count { it.length() > 0 } ?: 0
 
