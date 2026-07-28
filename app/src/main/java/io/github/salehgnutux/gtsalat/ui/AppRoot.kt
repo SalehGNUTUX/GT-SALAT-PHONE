@@ -54,7 +54,9 @@ import io.github.salehgnutux.gtsalat.ui.screens.HadithScreen
 import io.github.salehgnutux.gtsalat.ui.screens.HikamScreen
 import io.github.salehgnutux.gtsalat.ui.screens.HisnCategoryScreen
 import io.github.salehgnutux.gtsalat.ui.screens.HisnScreen
-import io.github.salehgnutux.gtsalat.ui.screens.AudioRecitationScreen
+import io.github.salehgnutux.gtsalat.ui.screens.AudioRecitersScreen
+import io.github.salehgnutux.gtsalat.ui.screens.DownloadedSurahsScreen
+import io.github.salehgnutux.gtsalat.ui.screens.ReciterSurahsScreen
 import io.github.salehgnutux.gtsalat.ui.screens.MoreScreen
 import io.github.salehgnutux.gtsalat.ui.screens.MushafScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QiblaScreen
@@ -206,7 +208,22 @@ fun AppRoot(setupCompleted: Boolean, gradientTop: Int = 0, gradientBottom: Int =
                             navArgument("ayah") { type = NavType.StringType; defaultValue = "0" },
                         ),
                     ) { TextReaderScreen(onBack = { nav.popBackStack() }) }
-                    composable("quran_audio") { AudioRecitationScreen(onBack = { nav.popBackStack() }) }
+                    composable("quran_audio") {
+                        AudioRecitersScreen(
+                            onOpenReciter = { nav.navigate("quran_reciter/$it") },
+                            onOpenDownloaded = { nav.navigate("quran_downloaded") },
+                            onBack = { nav.popBackStack() },
+                        )
+                    }
+                    composable(
+                        "quran_reciter/{id}",
+                        arguments = listOf(navArgument("id") { type = NavType.StringType }),
+                    ) { entry ->
+                        ReciterSurahsScreen(reciterId = entry.arguments?.getString("id") ?: "", onBack = { nav.popBackStack() })
+                    }
+                    composable("quran_downloaded") {
+                        DownloadedSurahsScreen(onOpenReciter = { nav.navigate("quran_reciter/$it") }, onBack = { nav.popBackStack() })
+                    }
                     composable("quran_mushaf") { MushafScreen(onBack = { nav.popBackStack() }) }
                 }
             }
