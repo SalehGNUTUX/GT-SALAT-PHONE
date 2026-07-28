@@ -35,25 +35,25 @@ class PrayerAlarmScheduler @Inject constructor(
         scheduleDailyReminder()   // والتذكيرات اليوميّة (وِرد/أيّام بيض/آية)
         if (!s.setupCompleted || !s.hasLocation || s.doNotDisturb || !s.enableSalatNotify) return
 
-        val next = repo.nextPrayer() ?: return
-        val prayerAt = next.prayer.epochMillis
-        val id = next.prayer.id
         val now = System.currentTimeMillis()
-        if (prayerAt <= now) return
-
-        // الأذان عبر setAlarmClock: لا يؤجّله Doze/توفير البطاريّة إطلاقاً (كإنذار المنبّه)،
-        // فيصدر في وقته والشاشة مغلقة، ولا يحتاج إذن SCHEDULE_EXACT_ALARM.
-        setAlarmClock(prayerAt, adhanIntent(id.name, id.arabic))
-
-        if (s.enablePreNotify) {
-            val preAt = prayerAt - s.preNotifyMinutes * 60_000L
-            if (preAt > now) setAlarmClock(preAt, preNotifyIntent(id.arabic, s.preNotifyMinutes))
+        // نُسلّح **عدّة صلواتٍ مقدّماً** (لا القادمة فقط): شبكةُ أمانٍ لو جُمّد التطبيق فلم
+        // يُعِد الجدولة الذاتيّة؛ فتبقى إنذارات النظام مسلَّحةً لعدّة أيّام.
+        val upcoming = repo.upcomingPrayers(AHEAD, now)
+        upcoming.forEachIndexed { i, p ->
+            // الأذان عبر setAlarmClock: لا يؤجّله Doze/توفير البطاريّة إطلاقاً (كإنذار المنبّه).
+            setAlarmClock(p.epochMillis, adhanIntent(p.id.name, p.id.arabic, i))
+            if (s.enablePreNotify) {
+                val preAt = p.epochMillis - s.preNotifyMinutes * 60_000L
+                if (preAt > now) setAlarmClock(preAt, preNotifyIntent(p.id.arabic, s.preNotifyMinutes, i))
+            }
         }
     }
 
     fun cancelAll() {
-        am.cancel(adhanIntent("", ""))
-        am.cancel(preNotifyIntent("", 0))
+        for (i in 0 until AHEAD) {
+            am.cancel(adhanIntent("", "", i))
+            am.cancel(preNotifyIntent("", 0, i))
+        }
         // لا نُلغي إنذارَي استعادة الرنين وذكر ما بعد الصلاة كي لا تنقطع نافذةٌ جاريةٌ عند إعادة الجدولة.
     }
 
@@ -145,22 +145,22 @@ class PrayerAlarmScheduler @Inject constructor(
             .onFailure { setExact(triggerAt, pi) }
     }
 
-    private fun adhanIntent(prayerName: String, prayerAr: String): PendingIntent {
+    private fun adhanIntent(prayerName: String, prayerAr: String, index: Int = 0): PendingIntent {
         val i = Intent(context, PrayerAlarmReceiver::class.java).apply {
             action = PrayerAlarmReceiver.ACTION_ADHAN
             putExtra(PrayerAlarmReceiver.EXTRA_PRAYER, prayerName)
             putExtra(PrayerAlarmReceiver.EXTRA_PRAYER_AR, prayerAr)
         }
-        return PendingIntent.getBroadcast(context, RC_ADHAN, i, FLAGS)
+        return PendingIntent.getBroadcast(context, RC_ADHAN_BASE + index, i, FLAGS)
     }
 
-    private fun preNotifyIntent(prayerAr: String, minutes: Int): PendingIntent {
+    private fun preNotifyIntent(prayerAr: String, minutes: Int, index: Int = 0): PendingIntent {
         val i = Intent(context, PrayerAlarmReceiver::class.java).apply {
             action = PrayerAlarmReceiver.ACTION_PRENOTIFY
             putExtra(PrayerAlarmReceiver.EXTRA_PRAYER_AR, prayerAr)
             putExtra(PrayerAlarmReceiver.EXTRA_MINUTES, minutes)
         }
-        return PendingIntent.getBroadcast(context, RC_PRENOTIFY, i, FLAGS)
+        return PendingIntent.getBroadcast(context, RC_PRENOTIFY_BASE + index, i, FLAGS)
     }
 
     private fun restoreIntent(): PendingIntent {
@@ -178,13 +178,14 @@ class PrayerAlarmScheduler @Inject constructor(
     }
 
     companion object {
-        private const val RC_ADHAN = 1001
-        private const val RC_PRENOTIFY = 1002
+        private const val AHEAD = 8            // عدد الصلوات المُسلَّحة مقدّماً (شبكة أمان ~يومين)
         private const val RC_RESTORE = 1003
         private const val RC_POSTDHIKR = 1004
         private const val RC_SHOW = 1005
         private const val RC_REMINDER = 1006
         private const val RC_TEST = 1007
+        private const val RC_ADHAN_BASE = 1100     // 1100..1107
+        private const val RC_PRENOTIFY_BASE = 1200 // 1200..1207
         private val FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     }
 }

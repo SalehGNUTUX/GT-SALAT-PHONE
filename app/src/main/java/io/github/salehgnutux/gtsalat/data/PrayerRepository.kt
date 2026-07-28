@@ -83,6 +83,27 @@ class PrayerRepository @Inject constructor(
         return PrayerCalculator.nextPrayer(today, tomorrowFajr, nowMillis)
     }
 
+    /**
+     * الصلوات الـ[count] القادمة (عبر اليوم والأيّام التالية) — لتسليح عدّة إنذاراتٍ مقدّماً
+     * كشبكة أمانٍ إن جُمّد التطبيق فلم يُعِد جدولة التالية.
+     */
+    suspend fun upcomingPrayers(count: Int = 6, nowMillis: Long = System.currentTimeMillis()): List<PrayerTime> {
+        val s = settingsRepo.current()
+        if (!s.hasLocation) return emptyList()
+        val out = ArrayList<PrayerTime>()
+        var day = LocalDate.now()
+        var guard = 0
+        while (out.size < count && guard < 5) {
+            val dt = if (day == LocalDate.now()) todayTimetable()
+            else PrayerCalculator.computeDay(day, s.lat!!, s.lon!!, s.methodId, s.madhab)
+            dt?.prayers?.filter { it.id.isPrayer && it.epochMillis > nowMillis }
+                ?.sortedBy { it.epochMillis }
+                ?.forEach { if (out.size < count) out.add(it) }
+            day = day.plusDays(1); guard++
+        }
+        return out.take(count)
+    }
+
     /** تخزين مسبق لعدّة أشهر قادمة ليعمل التطبيق دون إنترنت طويلاً. */
     suspend fun prefetchMonths(count: Int = 6) {
         val s = settingsRepo.current()

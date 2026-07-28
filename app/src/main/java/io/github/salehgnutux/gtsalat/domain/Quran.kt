@@ -33,16 +33,21 @@ object Quran {
     fun surahAudioUrl(server: String, surah: Int): String =
         server.trimEnd('/') + "/${p3(surah)}.mp3"
 
-    /** المصدر الأساسيّ لصورة صفحةٍ من المصحف. */
-    fun pageImageUrl(page: Int): String =
-        "https://raw.githubusercontent.com/SalehGNUTUX/Quran-PNG/master/${p3(page)}.png"
+    /** المصدر الأساسيّ لصورة صفحةٍ من المصحف حسب الرواية (حفص افتراضيّاً، وورش من مجمّع الملك فهد). */
+    fun pageImageUrl(page: Int, riwaya: String = "hafs"): String = when (riwaya) {
+        "warsh" -> "https://raw.githubusercontent.com/QuranHub/quran-pages-images/main/kfgqpc/warsh/$page.jpg"
+        else -> "https://raw.githubusercontent.com/SalehGNUTUX/Quran-PNG/master/${p3(page)}.png"
+    }
 
-    /** مصادر بديلة تُجرَّب بالترتيب عند تعذّر الأساسيّ. */
-    fun pageImageFallbacks(page: Int): List<String> = listOf(
-        "https://quranpages.github.io/pages/page_${p3(page)}.png",
-        "https://www.everyayah.com/data/images_png/${p3(page)}.png",
-        "https://raw.githubusercontent.com/risan/quran-images/master/images/${p3(page)}.png",
-    )
+    /** مصادر بديلة تُجرَّب بالترتيب عند تعذّر الأساسيّ (لحفص فقط؛ ورش من مصدرٍ واحدٍ موثوق). */
+    fun pageImageFallbacks(page: Int, riwaya: String = "hafs"): List<String> = when (riwaya) {
+        "warsh" -> emptyList()
+        else -> listOf(
+            "https://quranpages.github.io/pages/page_${p3(page)}.png",
+            "https://www.everyayah.com/data/images_png/${p3(page)}.png",
+            "https://raw.githubusercontent.com/risan/quran-images/master/images/${p3(page)}.png",
+        )
+    }
 
     /**
      * تطبيعٌ عربيٌّ للبحث الشامل: إزالة التشكيل والتطويل والبسملة الزائدة، وتوحيد الألف والياء

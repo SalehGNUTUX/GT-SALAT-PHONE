@@ -120,6 +120,9 @@ class QuranMetaViewModel @Inject constructor(
     /** أرقام السور المُنزَّلة لقارئ. */
     fun downloadedSurahs(reciterId: String): Set<Int> = downloader.downloadedSurahs(reciterId)
 
+    /** أرقام السور التي نُزِّل صوت آياتها (نصّيّ، لأيّ قارئ). */
+    fun downloadedAyatSurahs(): Set<Int> = downloader.downloadedAyatSurahs()
+
     /** كلّ القرّاء الذين لهم سورٌ منزَّلة (مُعرّف → أرقام السور). */
     fun downloadedByReciter(): Map<String, Set<Int>> = downloader.downloadedByReciter()
 
@@ -271,6 +274,8 @@ fun SurahIndexScreen(
     var showSearch by remember { mutableStateOf(false) }
     var q by remember { mutableStateOf("") }
     val shown = remember(surahs, q) { filterSurahs(surahs, q) }
+    // السور المُنزَّل صوتُها (نصّيّ) — لعرض مؤشّرٍ عليها.
+    val downloadedAyat = remember(ayahSearch, surahs) { if (ayahSearch) vm.downloadedAyatSurahs() else emptySet() }
     // بحثٌ داخل الآيات عند تغيّر النصّ (للقرآن النصّيّ فقط).
     LaunchedEffect(q, ayahSearch) { if (ayahSearch) vm.searchAyat(q) }
 
@@ -304,6 +309,7 @@ fun SurahIndexScreen(
                                 Text(s.ar, fontFamily = AmiriQuran, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 Text("${s.place} · ${s.verses} آية · صفحة ${s.page}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                             }
+                            if (s.n in downloadedAyat) Icon(Icons.Filled.DownloadDone, "صوتٌ مُنزَّل", tint = MaterialTheme.colorScheme.primary)
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = MaterialTheme.colorScheme.outline)
                         }
                     }

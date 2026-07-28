@@ -60,6 +60,7 @@ fun MushafScreen(onBack: () -> Unit, vm: QuranMetaViewModel = hiltViewModel()) {
     // يتبع سِمة التطبيق الفعليّة (لا وضع النظام) — وإلّا قُلبت صور المصحف خطأً عند فرض وضعٍ مخالفٍ للنظام.
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     var jumpOpen by remember { mutableStateOf(false) }
+    var riwaya by remember { mutableStateOf("hafs") }   // حفص (Quran-PNG) · ورش (مجمّع الملك فهد)
 
     // استئنافٌ من آخر صفحةٍ محفوظة (مرّةً واحدةً عند التحميل).
     var restored by remember { mutableStateOf(false) }
@@ -101,6 +102,9 @@ fun MushafScreen(onBack: () -> Unit, vm: QuranMetaViewModel = hiltViewModel()) {
                         }
                     }
                 }
+                // مبدّل الرواية (حفص/ورش) — لصور المصحف.
+                androidx.compose.material3.FilterChip(riwaya == "hafs", { riwaya = "hafs" }, { Text("حفص") })
+                androidx.compose.material3.FilterChip(riwaya == "warsh", { riwaya = "warsh" }, { Text("ورش") }, modifier = Modifier.padding(start = 6.dp))
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                     currentSurah?.let {
                         Text("سورة ${it.ar}", fontFamily = AmiriQuran, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -113,7 +117,8 @@ fun MushafScreen(onBack: () -> Unit, vm: QuranMetaViewModel = hiltViewModel()) {
             }
         }
         HorizontalPager(state = pager, modifier = Modifier.fillMaxSize().background(if (dark) MaterialTheme.colorScheme.surface else androidx.compose.ui.graphics.Color.White)) { index ->
-            MushafPage(page = index + 1, invert = dark, local = vm.localPage(index + 1))
+            // ورش يُبثّ (Coil يخزّنه)؛ حفص يُفضّل الملفّ المحلّيّ إن نُزِّل.
+            MushafPage(page = index + 1, invert = dark, riwaya = riwaya, local = if (riwaya == "hafs") vm.localPage(index + 1) else null)
         }
     }
 }
@@ -124,11 +129,11 @@ private fun scrollToPage(
 ) { pager.requestScrollToPage((page - 1).coerceIn(0, Quran.TOTAL_PAGES - 1)) }
 
 @Composable
-private fun MushafPage(page: Int, invert: Boolean, local: java.io.File? = null) {
+private fun MushafPage(page: Int, invert: Boolean, riwaya: String = "hafs", local: java.io.File? = null) {
     val ctx = LocalContext.current
-    // إن نُزِّلت الصفحة محليّاً استعملها مباشرةً، وإلّا الشبكة مع مصادرَ بديلة.
-    val urls = remember(page) { listOf(Quran.pageImageUrl(page)) + Quran.pageImageFallbacks(page) }
-    var idx by remember(page) { mutableIntStateOf(0) }
+    // إن نُزِّلت الصفحة محليّاً استعملها مباشرةً، وإلّا الشبكة مع مصادرَ بديلة (حسب الرواية).
+    val urls = remember(page, riwaya) { listOf(Quran.pageImageUrl(page, riwaya)) + Quran.pageImageFallbacks(page, riwaya) }
+    var idx by remember(page, riwaya) { mutableIntStateOf(0) }
     val painter = rememberAsyncImagePainter(
         model = ImageRequest.Builder(ctx).data(local ?: urls[idx]).crossfade(true).build(),
     )

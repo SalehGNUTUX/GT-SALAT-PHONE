@@ -58,6 +58,16 @@ class QuranDownloader @Inject constructor(
         for (a in 1..verses) ayahFile(reciterId, surah, a).delete()
     }
 
+    /** أرقام السور التي نُزِّل لها صوتُ آياتٍ (لأيّ قارئ) — لعرض المُنزَّل في القرآن النصّيّ. */
+    fun downloadedAyatSurahs(): Set<Int> {
+        val root = File(context.filesDir, "audio_ayat")
+        val out = HashSet<Int>()
+        root.listFiles()?.filter { it.isDirectory }?.forEach { dir ->
+            dir.listFiles()?.forEach { f -> f.name.take(3).toIntOrNull()?.let { out.add(it) } }
+        }
+        return out
+    }
+
     /** حذف سورةٍ منزَّلةٍ لقارئ. */
     fun deleteSurah(reciterId: String, surah: Int): Boolean = surahFile(reciterId, surah).delete()
 
@@ -79,6 +89,12 @@ class QuranDownloader @Inject constructor(
 
     /** عدد صفحات المصحف المُنزَّلة. */
     fun mushafDownloadedCount(): Int = mushafDir().listFiles()?.count { it.length() > 0 } ?: 0
+
+    /** حذف كلّ صفحات المصحف المُنزَّلة، وتصفير الحالة. */
+    fun deleteMushaf() {
+        mushafDir().listFiles()?.forEach { it.delete() }
+        _mushaf.value = MushafDownloadState(running = false, done = 0)
+    }
 
     /** تنزيل كامل صور المصحف (604 صفحة) — يتخطّى الموجود، ويُحدّث [mushaf]. */
     suspend fun downloadMushaf() = withContext(Dispatchers.IO) {
