@@ -2,6 +2,8 @@ package io.github.salehgnutux.gtsalat.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -344,6 +346,26 @@ class TextReaderViewModel @Inject constructor(
     private val _reciter = MutableStateFlow<Reciter?>(null)
     val reciter: StateFlow<Reciter?> = _reciter.asStateFlow()
 
+    // الرواية المختارة لنصّ القراءة (حفص مُضمَّن، وغيرها يُجلب ويُخزَّن).
+    private val _riwayat = MutableStateFlow<List<Riwaya>>(emptyList())
+    val riwayat: StateFlow<List<Riwaya>> = _riwayat.asStateFlow()
+    private val _riwaya = MutableStateFlow<Riwaya?>(null)
+    val riwaya: StateFlow<Riwaya?> = _riwaya.asStateFlow()
+    private val _textLoading = MutableStateFlow(false)
+    val textLoading: StateFlow<Boolean> = _textLoading.asStateFlow()
+
+    fun pickRiwaya(r: Riwaya) {
+        if (_riwaya.value?.id == r.id) return
+        _riwaya.value = r
+        viewModelScope.launch {
+            _textLoading.value = true
+            _ayat.value = repo.ayatForRiwaya(n, r.apiSlug)
+            _textLoading.value = false
+            // نوافق الصوت مع النصّ: نختار قارئاً بنفس الرواية إن توفّر.
+            _reciters.value.firstOrNull { it.riwaya == r.id }?.let { _reciter.value = it }
+        }
+    }
+
     /** آية المتابعة/الموضع الحاليّ (يُظلَّل بلونٍ مميّز ويُبدأ منه عند التشغيل). */
     private val _target = MutableStateFlow(1)
     val target: StateFlow<Int> = _target.asStateFlow()
@@ -382,6 +404,8 @@ class TextReaderViewModel @Inject constructor(
         viewModelScope.launch {
             _surah.value = repo.surah(n)
             _ayat.value = repo.ayat(n)
+            _riwayat.value = repo.riwayat()
+            _riwaya.value = repo.riwayat().firstOrNull { it.id == "hafs" }
             // القرّاء ذوو صوت آية-بآية فقط
             val list = repo.reciters().filter { it.hasAyahAudio }
             _reciters.value = list
@@ -409,6 +433,9 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
     val reciter by vm.reciter.collectAsStateWithLifecycle()
     val play by QuranPlayback.state.collectAsStateWithLifecycle()
     val target by vm.target.collectAsStateWithLifecycle()
+    val riwayat by vm.riwayat.collectAsStateWithLifecycle()
+    val riwaya by vm.riwaya.collectAsStateWithLifecycle()
+    val textLoading by vm.textLoading.collectAsStateWithLifecycle()
 
     val here = play.active && play.mode == QuranMode.AYAH && play.surah == vm.n
     val playingAyah = if (here) play.ayah else 0
@@ -421,6 +448,8 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
     var ayatProgress by remember { mutableStateOf<Int?>(null) }
     var ayatDownloaded by remember(reciter?.id, ayat) { mutableStateOf(reciter?.let { vm.ayatDownloaded(it.id) } ?: false) }
     var confirmDeleteAyat by remember { mutableStateOf(false) }
+    val readerSnackbar = remember { androidx.compose.material3.SnackbarHostState() }
+    val readerScope = androidx.compose.runtime.rememberCoroutineScope()
 
     // تمريرٌ تلقائيٌّ للآية المُظلَّلة (الجاريّة أو موضع المتابعة) + حفظ الموضع.
     LaunchedEffect(playingAyah) {
@@ -446,6 +475,7 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
         }
     }
 
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         SubScreenHeader("سورة ${surah?.ar ?: ""}".trim(), onBack)
 
@@ -502,6 +532,28 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
             }
         }
 
+        // اختيار رواية النصّ (ورش/حفص/قالون/الدوري) — غير حفص يُجلب مرّةً ويُخزَّن.
+        if (riwayat.isNotEmpty()) {
+            Surface(color = MaterialTheme.colorScheme.surface) {
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("الرواية:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
+                    riwayat.forEach { r ->
+                        androidx.compose.material3.FilterChip(
+                            selected = riwaya?.id == r.id,
+                            onClick = { vm.pickRiwaya(r) },
+                            label = { Text(r.ar) },
+                            enabled = !textLoading,
+                        )
+                    }
+                    if (textLoading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                }
+            }
+        }
+
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -550,12 +602,19 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
             }
         }
     }
+    androidx.compose.material3.SnackbarHost(readerSnackbar, Modifier.align(Alignment.BottomCenter))
+    }
 
     if (confirmDeleteAyat) {
         DeleteConfirmDialog("آيات ${surah?.ar ?: ""}".trim(), onCancel = { confirmDeleteAyat = false }) {
             confirmDeleteAyat = false
-            reciter?.let { vm.deleteAyat(it.id) }
-            ayatDownloaded = false
+            ayatDownloaded = false   // إخفاءٌ فوريّ؛ لا يُحذف الملفّ إلّا بعد انقضاء مهلة التراجع.
+            val rid = reciter?.id
+            readerScope.launch {
+                val res = readerSnackbar.showSnackbar("حُذف صوت آيات السورة", actionLabel = "تراجع", duration = androidx.compose.material3.SnackbarDuration.Long)
+                if (res == androidx.compose.material3.SnackbarResult.ActionPerformed) ayatDownloaded = true
+                else rid?.let { vm.deleteAyat(it) }
+            }
         }
     }
 }
@@ -883,7 +942,8 @@ fun QuranMiniPlayer(onOpen: (String) -> Unit, vm: QuranMetaViewModel = hiltViewM
                 Icon(if (play.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, "تشغيل")
             }
             if (play.mode == QuranMode.SURAH) {
-                FilledIconButton(onClick = { QuranAudio.next(ctx) }) { Icon(Icons.Filled.SkipNext, "التالية") }
+                // في RTL: «التالية» تشير يساراً، فنستعمل أيقونة SkipPrevious.
+                FilledIconButton(onClick = { QuranAudio.next(ctx) }) { Icon(Icons.Filled.SkipPrevious, "التالية") }
             }
             FilledIconButton(onClick = { QuranAudio.stop(ctx) }) { Icon(Icons.Filled.Stop, "إيقاف") }
         }

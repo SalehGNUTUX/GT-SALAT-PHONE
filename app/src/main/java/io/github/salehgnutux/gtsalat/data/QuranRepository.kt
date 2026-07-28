@@ -15,6 +15,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -95,6 +96,37 @@ class QuranRepository @Inject constructor(
     /** نصّ آيات سورةٍ (حفص/العثمانيّ) من tafsir.json. */
     suspend fun ayat(surah: Int): List<QuranAyah> =
         content.tafsirSurah(surah)?.ayahs?.map { QuranAyah(it.n, it.text) } ?: emptyList()
+
+    /**
+     * نصّ آيات سورةٍ **برواية**: حفص من tafsir.json المُضمَّن (فوريّ)، وغيرها يُجلب مرّةً من
+     * alquran.cloud (`/surah/{n}/{apiSlug}`) ويُخزَّن في filesDir ليعمل بعدها دون إنترنت.
+     */
+    suspend fun ayatForRiwaya(surah: Int, apiSlug: String): List<QuranAyah> {
+        if (apiSlug.isBlank() || apiSlug == "quran-uthmani") return ayat(surah)
+        return withContext(Dispatchers.IO) {
+            val cache = File(context.filesDir, "riwaya_text/$apiSlug/$surah.json")
+            val body = if (cache.exists() && cache.length() > 0) cache.readText()
+            else runCatching {
+                http.newCall(Request.Builder().url("https://api.alquran.cloud/v1/surah/$surah/$apiSlug").build())
+                    .execute().use { if (it.isSuccessful) it.body?.string().orEmpty() else "" }
+            }.getOrDefault("")
+            if (body.isBlank()) return@withContext ayat(surah)
+            val parsed = runCatching { json.decodeFromString<AqSurahResp>(body) }.getOrNull()
+            val ayahs = parsed?.data?.ayahs?.map { QuranAyah(it.numberInSurah, it.text) }.orEmpty()
+            if (ayahs.isNotEmpty() && !(cache.exists() && cache.length() > 0)) {
+                runCatching { cache.parentFile?.mkdirs(); cache.writeText(body) }
+            }
+            ayahs.ifEmpty { ayat(surah) }
+        }
+    }
+
+    /** هل نُزِّل نصّ سورةٍ برواية؟ */
+    fun riwayaTextCached(surah: Int, apiSlug: String): Boolean =
+        apiSlug == "quran-uthmani" || File(context.filesDir, "riwaya_text/$apiSlug/$surah.json").let { it.exists() && it.length() > 0 }
+
+    @Serializable private data class AqSurahResp(val data: AqSurah? = null)
+    @Serializable private data class AqSurah(val ayahs: List<AqAyah> = emptyList())
+    @Serializable private data class AqAyah(val numberInSurah: Int = 0, val text: String = "")
 
     /**
      * بحثٌ شاملٌ داخل نصّ القرآن (6236 آية) بالكلمات والعبارات، مع التطبيع العربيّ
