@@ -42,6 +42,22 @@ class QuranDownloader @Inject constructor(
     fun localSurah(reciterId: String, surah: Int): File? =
         surahFile(reciterId, surah).takeIf { it.exists() && it.length() > 0 }
 
+    // ---- صوت القرآن النصّيّ آية-بآية (audio_ayat/{reciter}/SSSAAA.mp3) ----
+    private fun ayatDir(reciterId: String): File = File(context.filesDir, "audio_ayat/$reciterId").apply { mkdirs() }
+    private fun ayahFile(reciterId: String, surah: Int, ayah: Int): File =
+        File(ayatDir(reciterId), "${surah.toString().padStart(3, '0')}${ayah.toString().padStart(3, '0')}.mp3")
+    fun localAyah(reciterId: String, surah: Int, ayah: Int): File? =
+        ayahFile(reciterId, surah, ayah).takeIf { it.exists() && it.length() > 0 }
+
+    /** هل نُزِّلت كلُّ آيات سورةٍ لقارئٍ (نصّيّ)؟ */
+    fun ayatDownloaded(reciterId: String, surah: Int, verses: Int): Boolean =
+        verses > 0 && (1..verses).all { localAyah(reciterId, surah, it) != null }
+
+    /** حذف صوت آيات سورةٍ (نصّيّ). */
+    fun deleteAyat(reciterId: String, surah: Int, verses: Int) {
+        for (a in 1..verses) ayahFile(reciterId, surah, a).delete()
+    }
+
     /** حذف سورةٍ منزَّلةٍ لقارئ. */
     fun deleteSurah(reciterId: String, surah: Int): Boolean = surahFile(reciterId, surah).delete()
 
@@ -81,28 +97,67 @@ class QuranDownloader @Inject constructor(
         }
     }
 
-    /** تنزيل سورةٍ صوتيّاً لقارئٍ (رابط خادمٍ كامل). يعيد true عند النجاح أو وجودها. */
-    suspend fun downloadSurah(reciterId: String, server: String, surah: Int): Boolean = withContext(Dispatchers.IO) {
-        if (localSurah(reciterId, surah) != null) return@withContext true
-        downloadFirst(listOf(Quran.surahAudioUrl(server, surah)), surahFile(reciterId, surah))
-    }
-
-    /** يجرّب الروابط بالترتيب، ويحفظ أوّل ناجحٍ إلى [dest]. */
-    private fun downloadFirst(urls: List<String>, dest: File): Boolean {
-        for (url in urls) {
-            val ok = runCatching {
-                http.newCall(Request.Builder().url(url).build()).execute().use { resp ->
-                    if (!resp.isSuccessful) return@use false
-                    val bytes = resp.body?.bytes() ?: return@use false
-                    if (bytes.isEmpty()) return@use false
-                    val tmp = File(dest.parentFile, dest.name + ".part")
-                    tmp.writeBytes(bytes)
-                    tmp.renameTo(dest)
-                    true
-                }
-            }.getOrDefault(false)
-            if (ok) return true
+    /** تنزيل سورةٍ صوتيّاً لقارئٍ (رابط خادمٍ كامل) مع تقدّمٍ بالنسبة المئويّة. */
+    suspend fun downloadSurah(reciterId: String, server: String, surah: Int, onProgress: (Int) -> Unit = {}): Boolean =
+        withContext(Dispatchers.IO) {
+            if (localSurah(reciterId, surah) != null) { onProgress(100); return@withContext true }
+            downloadStreaming(Quran.surahAudioUrl(server, surah), surahFile(reciterId, surah), onProgress)
         }
+
+    /**
+     * تنزيل صوت آيات سورةٍ للقرآن النصّيّ (everyayah) مع بسملةٍ عند الحاجة، وتقدّمٍ بالنسبة.
+     * @param folder مجلّد everyayah للقارئ.
+     */
+    suspend fun downloadSurahAyat(reciterId: String, folder: String, surah: Int, verses: Int, onProgress: (Int) -> Unit = {}): Boolean =
+        withContext(Dispatchers.IO) {
+            if (verses <= 0) return@withContext false
+            val needBasmala = surah != 1 && surah != 9
+            val total = verses + if (needBasmala) 1 else 0
+            var done = 0
+            var okAll = true
+            if (needBasmala && localAyah(reciterId, surah, 0) == null) {
+                // نخزّن البسملة كآيةٍ رقمها 0
+                okAll = downloadStreaming(Quran.basmalaUrl(folder), ayahFile(reciterId, surah, 0)) {}
+            }
+            done++; onProgress((done * 100 / total))
+            for (a in 1..verses) {
+                if (localAyah(reciterId, surah, a) == null) {
+                    if (!downloadStreaming(Quran.ayahAudioUrl(folder, surah, a), ayahFile(reciterId, surah, a)) {}) okAll = false
+                }
+                done++; onProgress((done * 100 / total).coerceIn(0, 100))
+            }
+            okAll
+        }
+
+    /** بثٌّ تدفّقيٌّ إلى ملفٍّ مع إبلاغٍ بالنسبة (يُستدعى onProgress عند تغيّر النسبة فقط). */
+    private fun downloadStreaming(url: String, dest: File, onProgress: (Int) -> Unit): Boolean = runCatching {
+        http.newCall(Request.Builder().url(url).build()).execute().use { resp ->
+            if (!resp.isSuccessful) return false
+            val body = resp.body ?: return false
+            val total = body.contentLength()
+            val tmp = File(dest.parentFile, dest.name + ".part")
+            var last = -1
+            body.byteStream().use { input ->
+                tmp.outputStream().use { out ->
+                    val buf = ByteArray(16 * 1024); var read: Int; var sum = 0L
+                    while (input.read(buf).also { read = it } != -1) {
+                        out.write(buf, 0, read); sum += read
+                        if (total > 0) {
+                            val p = ((sum * 100) / total).toInt().coerceIn(0, 100)
+                            if (p != last) { last = p; onProgress(p) }
+                        }
+                    }
+                }
+            }
+            if (tmp.length() == 0L) { tmp.delete(); return false }
+            tmp.renameTo(dest)
+            true
+        }
+    }.getOrDefault(false)
+
+    /** يجرّب الروابط بالترتيب، ويحفظ أوّل ناجحٍ إلى [dest] (للصور الصغيرة، بلا تقدّم). */
+    private fun downloadFirst(urls: List<String>, dest: File): Boolean {
+        for (url in urls) if (downloadStreaming(url, dest) {}) return true
         return false
     }
 }

@@ -95,8 +95,11 @@ class QuranAudioService : Service() {
             // في التلاوة الكاملة نستعمل الملفّ المحلّيّ إن نُزِّل (دون إنترنت).
             mode == QuranMode.SURAH ->
                 downloader.localSurah(reciterId, surah)?.absolutePath ?: Quran.surahAudioUrl(folder, surah)
-            playingBasmala -> Quran.basmalaUrl(folder)
-            else -> Quran.ayahAudioUrl(folder, surah, curAyah)
+            // آية-بآية: نُفضّل الملفّ المحلّيّ (البسملة مخزَّنةٌ كآيةٍ رقمها 0).
+            playingBasmala ->
+                downloader.localAyah(reciterId, surah, 0)?.absolutePath ?: Quran.basmalaUrl(folder)
+            else ->
+                downloader.localAyah(reciterId, surah, curAyah)?.absolutePath ?: Quran.ayahAudioUrl(folder, surah, curAyah)
         }
         publish(
             loading = true,
