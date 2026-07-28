@@ -100,8 +100,8 @@ class QuranMetaViewModel @Inject constructor(
     val lastMushafPage: StateFlow<Int> = _lastMushafPage.asStateFlow()
     fun saveMushafPage(page: Int) { viewModelScope.launch { settingsRepo.setLastMushafPage(page) } }
 
-    /** ملفّ صفحة المصحف المحلّيّ إن نُزِّل. */
-    fun localPage(page: Int): java.io.File? = downloader.localPage(page)
+    /** ملفّ صفحة المصحف المحلّيّ إن نُزِّل (حسب الرواية). */
+    fun localPage(page: Int, riwaya: String = "hafs"): java.io.File? = downloader.localPage(page, riwaya)
 
     /** هل نُزِّلت سورةٌ لقارئٍ محليّاً؟ */
     fun surahDownloaded(reciterId: String, surah: Int): Boolean = downloader.localSurah(reciterId, surah) != null

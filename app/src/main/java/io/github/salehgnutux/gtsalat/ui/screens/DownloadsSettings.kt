@@ -40,27 +40,30 @@ import javax.inject.Inject
 @HiltViewModel
 class DownloadsViewModel @Inject constructor(private val downloader: QuranDownloader) : ViewModel() {
     val mushaf = downloader.mushaf
-    fun downloadMushaf() = viewModelScope.launch { downloader.downloadMushaf() }
-    fun deleteMushaf() = downloader.deleteMushaf()
-    fun mushafCount() = downloader.mushafDownloadedCount()
+    fun downloadMushaf(riwaya: String) = viewModelScope.launch { downloader.downloadMushaf(riwaya) }
+    fun deleteMushaf(riwaya: String) = downloader.deleteMushaf(riwaya)
+    fun mushafCount(riwaya: String) = downloader.mushafDownloadedCount(riwaya)
 }
 
 /** محتوى مطويّة «تنزيل المحتوى» في الإعدادات — للاستخدام دون إنترنت. */
 @Composable
 fun DownloadsSectionContent(vm: DownloadsViewModel = hiltViewModel()) {
     val state by vm.mushaf.collectAsStateWithLifecycle()
+    var riwaya by remember { mutableStateOf("hafs") }
     var confirmDelete by remember { mutableStateOf(false) }
-    var pendingDelete by remember { mutableStateOf(false) }   // في مهلة التراجع
+    var pendingDelete by remember { mutableStateOf<String?>(null) }   // الرواية في مهلة التراجع
 
-    // بعد انقضاء مهلة التراجع يُحذف المصحف فعليّاً.
+    // بعد انقضاء مهلة التراجع يُحذف مصحف الرواية فعليّاً.
     LaunchedEffect(pendingDelete) {
-        if (pendingDelete) {
+        val r = pendingDelete
+        if (r != null) {
             kotlinx.coroutines.delay(6000)
-            if (pendingDelete) { vm.deleteMushaf(); pendingDelete = false }
+            if (pendingDelete == r) { vm.deleteMushaf(r); pendingDelete = null }
         }
     }
 
-    val count = if (pendingDelete) 0 else vm.mushafCount()
+    val runningThis = state.running && state.riwaya == riwaya
+    val count = if (pendingDelete == riwaya) 0 else vm.mushafCount(riwaya)
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
@@ -69,44 +72,47 @@ fun DownloadsSectionContent(vm: DownloadsViewModel = hiltViewModel()) {
             color = MaterialTheme.colorScheme.outline,
         )
 
-        // المصحف المصوَّر (604 صفحة)
+        Text("المصحف المصوَّر", fontWeight = FontWeight.Bold)
+        // مبدّل الرواية للتنزيل.
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.material3.FilterChip(riwaya == "hafs", { riwaya = "hafs" }, { Text("حفص") }, enabled = !state.running)
+            androidx.compose.material3.FilterChip(riwaya == "warsh", { riwaya = "warsh" }, { Text("ورش") }, enabled = !state.running)
+        }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("المصحف المصوَّر", fontWeight = FontWeight.Bold)
-                val done = if (state.running) state.done else count
+                val done = if (runningThis) state.done else count
                 Text(
                     when {
-                        state.running -> "جارٍ التنزيل… $done / ${state.total}"
-                        done >= state.total -> "مُنزَّلٌ كاملاً ($done صفحة)"
-                        done > 0 -> "مُنزَّلٌ جزئيّاً: $done / ${state.total}"
-                        else -> "604 صفحة (مصحف المدينة، حفص) — للتصفّح دون إنترنت"
+                        runningThis -> "جارٍ تنزيل مصحف ${riwayaName(riwaya)}… $done / ${state.total}"
+                        done >= state.total -> "مصحف ${riwayaName(riwaya)}: مُنزَّلٌ كاملاً"
+                        done > 0 -> "مصحف ${riwayaName(riwaya)}: مُنزَّلٌ جزئيّاً ($done / ${state.total})"
+                        else -> "604 صفحة (${riwayaName(riwaya)}) — للتصفّح دون إنترنت"
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
                 )
             }
             when {
-                state.running -> CircularProgressIndicator(Modifier.padding(start = 8.dp).size(28.dp), strokeWidth = 3.dp)
+                runningThis -> CircularProgressIndicator(Modifier.padding(start = 8.dp).size(28.dp), strokeWidth = 3.dp)
                 count > 0 -> IconButton(onClick = { confirmDelete = true }) {
                     Icon(Icons.Filled.Delete, "حذف المصحف", tint = MaterialTheme.colorScheme.error)
                 }
-                else -> Button(onClick = { vm.downloadMushaf() }) {
+                else -> Button(onClick = { vm.downloadMushaf(riwaya) }, enabled = !state.running) {
                     Icon(Icons.Filled.Download, null, Modifier.size(18.dp))
                     Text("  تنزيل")
                 }
             }
         }
-        if (state.running) {
+        if (runningThis) {
             LinearProgressIndicator(
                 progress = { (state.done.toFloat() / state.total).coerceIn(0f, 1f) },
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        // شريطُ تراجعٍ مضمَّنٌ أثناء المهلة (لا يُحذف الملفّ إلّا بعد انقضائها).
-        if (pendingDelete) {
+        if (pendingDelete == riwaya) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("سيُحذف المصحف…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                FilledTonalButton(onClick = { pendingDelete = false }) { Text("تراجع") }
+                Text("سيُحذف مصحف ${riwayaName(riwaya)}…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                FilledTonalButton(onClick = { pendingDelete = null }) { Text("تراجع") }
             }
         }
     }
@@ -115,9 +121,11 @@ fun DownloadsSectionContent(vm: DownloadsViewModel = hiltViewModel()) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("حذف المصحف المصوَّر") },
-            text = { Text("حذف كلّ صفحات المصحف المُنزَّلة؟") },
-            confirmButton = { Button(onClick = { confirmDelete = false; pendingDelete = true }) { Text("حذف") } },
+            text = { Text("حذف كلّ صفحات مصحف ${riwayaName(riwaya)} المُنزَّلة؟") },
+            confirmButton = { Button(onClick = { confirmDelete = false; pendingDelete = riwaya }) { Text("حذف") } },
             dismissButton = { FilledTonalButton(onClick = { confirmDelete = false }) { Text("إلغاء") } },
         )
     }
 }
+
+private fun riwayaName(id: String) = if (id == "warsh") "ورش" else "حفص"

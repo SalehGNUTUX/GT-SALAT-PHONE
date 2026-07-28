@@ -14,8 +14,8 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** حالة تنزيلٍ جارٍ (المصحف). */
-data class MushafDownloadState(val running: Boolean = false, val done: Int = 0, val total: Int = 604)
+/** حالة تنزيلٍ جارٍ (المصحف) — مع الرواية الجاريّ تنزيلها. */
+data class MushafDownloadState(val running: Boolean = false, val riwaya: String = "", val done: Int = 0, val total: Int = 604)
 
 /**
  * تنزيل محتوى القرآن للاستخدام **دون إنترنت**: صور صفحات المصحف والسور صوتيّاً.
@@ -31,11 +31,19 @@ class QuranDownloader @Inject constructor(
     private val _mushaf = MutableStateFlow(MushafDownloadState())
     val mushaf: StateFlow<MushafDownloadState> = _mushaf.asStateFlow()
 
-    private fun mushafDir(): File = File(context.filesDir, "mushaf").apply { mkdirs() }
+    // حفص في المسار القديم (توافقٌ مع تنزيلاتٍ سابقة)، وباقي الروايات في مجلّدٍ خاصّ.
+    private fun mushafDir(riwaya: String): File =
+        File(context.filesDir, if (riwaya == "hafs") "mushaf" else "mushaf_$riwaya").apply { mkdirs() }
     private fun audioDir(reciterId: String): File = File(context.filesDir, "audio/$reciterId").apply { mkdirs() }
 
-    private fun pageFile(page: Int): File = File(mushafDir(), "${page.toString().padStart(3, '0')}.png")
-    fun localPage(page: Int): File? = pageFile(page).takeIf { it.exists() && it.length() > 0 }
+    private fun pageFile(page: Int, riwaya: String): File =
+        File(mushafDir(riwaya), "${page.toString().padStart(3, '0')}.img")
+    fun localPage(page: Int, riwaya: String = "hafs"): File? {
+        // حفص القديم كان يُسمّى PPP.png — ندعمه أيضاً.
+        pageFile(page, riwaya).takeIf { it.exists() && it.length() > 0 }?.let { return it }
+        if (riwaya == "hafs") File(mushafDir("hafs"), "${page.toString().padStart(3, '0')}.png").takeIf { it.exists() && it.length() > 0 }?.let { return it }
+        return null
+    }
 
     private fun surahFile(reciterId: String, surah: Int): File =
         File(audioDir(reciterId), "${surah.toString().padStart(3, '0')}.mp3")
@@ -87,29 +95,30 @@ class QuranDownloader @Inject constructor(
         }?.toMap() ?: emptyMap()
     }
 
-    /** عدد صفحات المصحف المُنزَّلة. */
-    fun mushafDownloadedCount(): Int = mushafDir().listFiles()?.count { it.length() > 0 } ?: 0
+    /** عدد صفحات مصحف روايةٍ المُنزَّلة (عدّ الملفّات في مجلّد الرواية). */
+    fun mushafDownloadedCount(riwaya: String = "hafs"): Int =
+        mushafDir(riwaya).listFiles()?.count { it.length() > 0 } ?: 0
 
-    /** حذف كلّ صفحات المصحف المُنزَّلة، وتصفير الحالة. */
-    fun deleteMushaf() {
-        mushafDir().listFiles()?.forEach { it.delete() }
-        _mushaf.value = MushafDownloadState(running = false, done = 0)
+    /** حذف كلّ صفحات مصحف روايةٍ، وتصفير الحالة. */
+    fun deleteMushaf(riwaya: String = "hafs") {
+        mushafDir(riwaya).listFiles()?.forEach { it.delete() }
+        _mushaf.value = MushafDownloadState(running = false, riwaya = riwaya, done = 0)
     }
 
-    /** تنزيل كامل صور المصحف (604 صفحة) — يتخطّى الموجود، ويُحدّث [mushaf]. */
-    suspend fun downloadMushaf() = withContext(Dispatchers.IO) {
+    /** تنزيل كامل صور مصحف روايةٍ (604 صفحة) — يتخطّى الموجود، ويُحدّث [mushaf]. */
+    suspend fun downloadMushaf(riwaya: String = "hafs") = withContext(Dispatchers.IO) {
         if (_mushaf.value.running) return@withContext
-        _mushaf.value = MushafDownloadState(running = true, done = mushafDownloadedCount())
+        _mushaf.value = MushafDownloadState(running = true, riwaya = riwaya, done = mushafDownloadedCount(riwaya))
         try {
             for (page in 1..Quran.TOTAL_PAGES) {
-                if (localPage(page) == null) {
-                    val urls = listOf(Quran.pageImageUrl(page)) + Quran.pageImageFallbacks(page)
-                    downloadFirst(urls, pageFile(page))
+                if (localPage(page, riwaya) == null) {
+                    val urls = listOf(Quran.pageImageUrl(page, riwaya)) + Quran.pageImageFallbacks(page, riwaya)
+                    downloadFirst(urls, pageFile(page, riwaya))
                 }
                 _mushaf.value = _mushaf.value.copy(done = page)
             }
         } finally {
-            _mushaf.value = _mushaf.value.copy(running = false, done = mushafDownloadedCount())
+            _mushaf.value = _mushaf.value.copy(running = false, done = mushafDownloadedCount(riwaya))
         }
     }
 

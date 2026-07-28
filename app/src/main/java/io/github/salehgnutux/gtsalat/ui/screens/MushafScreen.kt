@@ -21,7 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -83,42 +83,34 @@ fun MushafScreen(onBack: () -> Unit, vm: QuranMetaViewModel = hiltViewModel()) {
 
     Column(Modifier.fillMaxSize()) {
         SubScreenHeader("المصحف المصوَّر", onBack)
+        // عارضةٌ مضغوطةٌ في صفٍّ واحد: زرّ سورة + مبدّل رواية + اسم السورة/الصفحة — لتكبر مساحة المصحف.
         Surface(color = MaterialTheme.colorScheme.surfaceVariant, shadowElevation = 1.dp) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Box {
-                    TextButton(onClick = { jumpOpen = true }) {
-                        Icon(Icons.Outlined.MenuBook, null)
-                        Text("  الذهاب إلى سورة", fontWeight = FontWeight.Bold)
-                    }
+                    IconButton(onClick = { jumpOpen = true }) { Icon(Icons.Outlined.MenuBook, "الذهاب إلى سورة", tint = MaterialTheme.colorScheme.primary) }
                     DropdownMenu(expanded = jumpOpen, onDismissRequest = { jumpOpen = false }) {
                         surahs.forEach { s ->
-                            DropdownMenuItem(
-                                text = { Text("${s.n}. ${s.ar}") },
-                                onClick = { jumpOpen = false; scrollToPage(pager, s.page) },
-                            )
+                            DropdownMenuItem(text = { Text("${s.n}. ${s.ar}") }, onClick = { jumpOpen = false; scrollToPage(pager, s.page) })
                         }
                     }
                 }
-                // مبدّل الرواية (حفص/ورش) — لصور المصحف.
                 androidx.compose.material3.FilterChip(riwaya == "hafs", { riwaya = "hafs" }, { Text("حفص") })
-                androidx.compose.material3.FilterChip(riwaya == "warsh", { riwaya = "warsh" }, { Text("ورش") }, modifier = Modifier.padding(start = 6.dp))
+                androidx.compose.material3.FilterChip(riwaya == "warsh", { riwaya = "warsh" }, { Text("ورش") })
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                     currentSurah?.let {
-                        Text("سورة ${it.ar}", fontFamily = AmiriQuran, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Text("سورة ${it.ar}", fontFamily = AmiriQuran, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, maxLines = 1)
                     }
-                    Text(
-                        "صفحة $currentPage / ${Quran.TOTAL_PAGES}",
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Text("$currentPage / ${Quran.TOTAL_PAGES}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
         HorizontalPager(state = pager, modifier = Modifier.fillMaxSize().background(if (dark) MaterialTheme.colorScheme.surface else androidx.compose.ui.graphics.Color.White)) { index ->
-            // ورش يُبثّ (Coil يخزّنه)؛ حفص يُفضّل الملفّ المحلّيّ إن نُزِّل.
-            MushafPage(page = index + 1, invert = dark, riwaya = riwaya, local = if (riwaya == "hafs") vm.localPage(index + 1) else null)
+            // يُفضّل الملفّ المحلّيّ إن نُزِّل لهذه الرواية، وإلّا يُبثّ (Coil يخزّنه).
+            MushafPage(page = index + 1, invert = dark, riwaya = riwaya, local = vm.localPage(index + 1, riwaya))
         }
     }
 }
