@@ -82,6 +82,7 @@ import io.github.salehgnutux.gtsalat.ui.theme.AmiriQuran
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -134,9 +135,16 @@ class QuranMetaViewModel @Inject constructor(
     private val _surahReciters = MutableStateFlow<List<io.github.salehgnutux.gtsalat.domain.SurahReciter>>(emptyList())
     val surahReciters: StateFlow<List<io.github.salehgnutux.gtsalat.domain.SurahReciter>> = _surahReciters.asStateFlow()
 
-    /** موضع القراءة الأخير للمتابعة: (السورة، الآية) أو null. */
-    private val _resume = MutableStateFlow<Triple<Int, String, Int>?>(null)
-    val resume: StateFlow<Triple<Int, String, Int>?> = _resume.asStateFlow()
+    /** متابعة القراءة/الاستماع — **تفاعليّة** (تتحدّث فور تغيّر الموضع)، (سورة، اسم، آية) أو null. */
+    val readResume: StateFlow<Triple<Int, String, Int>?> =
+        kotlinx.coroutines.flow.combine(settingsRepo.settings, surahs) { s, list ->
+            if (s.lastReadSurah in 1..114) Triple(s.lastReadSurah, list.firstOrNull { it.n == s.lastReadSurah }?.ar ?: "${s.lastReadSurah}", s.lastReadAyah) else null
+        }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), null)
+
+    val listenResume: StateFlow<Triple<Int, String, Int>?> =
+        kotlinx.coroutines.flow.combine(settingsRepo.settings, surahs) { s, list ->
+            if (s.lastListenSurah in 1..114) Triple(s.lastListenSurah, list.firstOrNull { it.n == s.lastListenSurah }?.ar ?: "${s.lastListenSurah}", s.lastListenAyah) else null
+        }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), null)
 
     // بحثٌ داخل الآيات (بالكلمات والعبارات)
     private val _ayahHits = MutableStateFlow<List<io.github.salehgnutux.gtsalat.domain.AyahHit>>(emptyList())
@@ -166,12 +174,7 @@ class QuranMetaViewModel @Inject constructor(
             // المُضمَّنون فوراً (يعملون دون إنترنت)، ثمّ نستبدلهم بكامل قائمة المصدر إن توفّرت الشبكة.
             _surahReciters.value = repo.surahReciters()
             _surahReciters.value = repo.surahRecitersOnline()
-            val s = settingsRepo.current()
-            _lastMushafPage.value = s.lastMushafPage.coerceIn(1, 604)
-            if (s.lastReadSurah in 1..114) {
-                val name = repo.surah(s.lastReadSurah)?.ar ?: "سورة ${s.lastReadSurah}"
-                _resume.value = Triple(s.lastReadSurah, name, s.lastReadAyah)
-            }
+            _lastMushafPage.value = settingsRepo.current().lastMushafPage.coerceIn(1, 604)
         }
     }
 }
@@ -180,9 +183,28 @@ class QuranMetaViewModel @Inject constructor(
 
 private data class QSection(val label: String, val note: String, val icon: ImageVector, val route: String)
 
+/** بطاقة متابعةٍ (قراءة/استماع) — عنوانٌ وسورةٌ وآية، تفتح القارئ على الموضع. */
+@Composable
+private fun ResumeCard(title: String, name: String, ayah: Int, icon: ImageVector, container: androidx.compose.ui.graphics.Color, onContainer: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
+    Card(
+        Modifier.fillMaxWidth().clickable(onClick = onClick),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = container),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Icon(icon, null, tint = onContainer)
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.labelLarge, color = onContainer)
+                Text("سورة $name · الآية $ayah", fontFamily = AmiriQuran, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = onContainer)
+            }
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = onContainer)
+        }
+    }
+}
+
 @Composable
 fun QuranHubScreen(onOpen: (String) -> Unit, onBack: () -> Unit, vm: QuranMetaViewModel = hiltViewModel()) {
-    val resume by vm.resume.collectAsStateWithLifecycle()
+    val readResume by vm.readResume.collectAsStateWithLifecycle()
+    val listenResume by vm.listenResume.collectAsStateWithLifecycle()
     val sections = listOf(
         QSection("القرآن النصّيّ", "قراءةٌ واستماعٌ آية-بآية مع تظليل", Icons.Outlined.MenuBook, "quran_text"),
         QSection("القرآن المسموع", "تلاواتٌ كاملةٌ بالقرّاء والروايات", Icons.Outlined.Headphones, "quran_audio"),
@@ -195,24 +217,17 @@ fun QuranHubScreen(onOpen: (String) -> Unit, onBack: () -> Unit, vm: QuranMetaVi
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            resume?.let { (surah, name, ayah) ->
-                item {
-                    Card(
-                        Modifier.fillMaxWidth().clickable { onOpen("quran_read/$surah") },
-                        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                    ) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        ) {
-                            Icon(Icons.Filled.PlayArrow, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                            Column(Modifier.weight(1f)) {
-                                Text("متابعة القراءة", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                                Text("سورة $name · الآية $ayah", fontFamily = AmiriQuran, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            }
-                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                        }
+            readResume?.let { (surah, name, ayah) ->
+                item("resume_read") {
+                    ResumeCard("متابعة القراءة", name, ayah, Icons.Outlined.MenuBook, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer) {
+                        onOpen("quran_read/$surah?ayah=$ayah")
+                    }
+                }
+            }
+            listenResume?.let { (surah, name, ayah) ->
+                item("resume_listen") {
+                    ResumeCard("متابعة الاستماع", name, ayah, Icons.Outlined.Headphones, MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) {
+                        onOpen("quran_read/$surah?ayah=$ayah")
                     }
                 }
             }
@@ -381,9 +396,14 @@ class TextReaderViewModel @Inject constructor(
         viewModelScope.launch { settingsRepo.setLastReciter(r.id) }
     }
 
-    /** حفظ موضع القراءة الحاليّ (للمتابعة لاحقاً). */
+    /** حفظ موضع القراءة الحاليّ (متابعة القراءة). */
     fun savePosition(ayah: Int) {
         viewModelScope.launch { settingsRepo.setLastRead(n, ayah.coerceAtLeast(1)) }
+    }
+
+    /** حفظ موضع الاستماع الحاليّ (متابعة الاستماع — مستقلٌّ عن القراءة). */
+    fun saveListenPosition(ayah: Int) {
+        viewModelScope.launch { settingsRepo.setLastListen(n, ayah.coerceAtLeast(1)) }
     }
 
     /** هل نُزِّل صوت آيات هذه السورة للقارئ؟ */
@@ -451,9 +471,9 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
     val readerSnackbar = remember { androidx.compose.material3.SnackbarHostState() }
     val readerScope = androidx.compose.runtime.rememberCoroutineScope()
 
-    // تمريرٌ تلقائيٌّ للآية المُظلَّلة (الجاريّة أو موضع المتابعة) + حفظ الموضع.
+    // أثناء الاستماع: نحفظ موضع الاستماع (مستقلّاً عن القراءة).
     LaunchedEffect(playingAyah) {
-        if (playingAyah > 0) vm.savePosition(playingAyah)
+        if (playingAyah > 0) vm.saveListenPosition(playingAyah)
     }
     LaunchedEffect(highlight, ayat) {
         if (ayat.isNotEmpty() && highlight > 1) {

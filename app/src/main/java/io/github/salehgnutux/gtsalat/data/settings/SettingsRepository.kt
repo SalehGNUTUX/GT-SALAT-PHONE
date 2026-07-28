@@ -70,6 +70,8 @@ class SettingsRepository @Inject constructor(
         val SETUP = booleanPreferencesKey("setup_completed")
         val LAST_READ_SURAH = intPreferencesKey("last_read_surah")
         val LAST_READ_AYAH = intPreferencesKey("last_read_ayah")
+        val LAST_LISTEN_SURAH = intPreferencesKey("last_listen_surah")
+        val LAST_LISTEN_AYAH = intPreferencesKey("last_listen_ayah")
         val LAST_RECITER = stringPreferencesKey("last_reciter_id")
         val LAST_MUSHAF_PAGE = intPreferencesKey("last_mushaf_page")
     }
@@ -132,6 +134,8 @@ class SettingsRepository @Inject constructor(
             setupCompleted = this[Keys.SETUP] ?: false,
             lastReadSurah = this[Keys.LAST_READ_SURAH] ?: 0,
             lastReadAyah = this[Keys.LAST_READ_AYAH] ?: 1,
+            lastListenSurah = this[Keys.LAST_LISTEN_SURAH] ?: 0,
+            lastListenAyah = this[Keys.LAST_LISTEN_AYAH] ?: 1,
             lastReciterId = this[Keys.LAST_RECITER] ?: "",
             lastMushafPage = this[Keys.LAST_MUSHAF_PAGE] ?: 1,
         )
@@ -143,6 +147,12 @@ class SettingsRepository @Inject constructor(
     suspend fun setLastRead(surah: Int, ayah: Int) = context.dataStore.edit {
         it[Keys.LAST_READ_SURAH] = surah
         it[Keys.LAST_READ_AYAH] = ayah
+    }
+
+    /** حفظ موضع الاستماع الأخير (مستقلٌّ عن القراءة). */
+    suspend fun setLastListen(surah: Int, ayah: Int) = context.dataStore.edit {
+        it[Keys.LAST_LISTEN_SURAH] = surah
+        it[Keys.LAST_LISTEN_AYAH] = ayah
     }
     suspend fun setLastReciter(id: String) = context.dataStore.edit { it[Keys.LAST_RECITER] = id }
 
