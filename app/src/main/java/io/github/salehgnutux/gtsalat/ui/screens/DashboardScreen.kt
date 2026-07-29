@@ -19,6 +19,8 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material3.Card
@@ -55,7 +57,7 @@ private const val I_HIKMAH = 4
 private const val I_AYAH = 5
 
 @Composable
-fun DashboardScreen(vm: DashboardViewModel = hiltViewModel()) {
+fun DashboardScreen(onOpenSettings: () -> Unit = {}, vm: DashboardViewModel = hiltViewModel()) {
     val ui by vm.ui.collectAsStateWithLifecycle()
     val tick by vm.tick.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
@@ -76,8 +78,19 @@ fun DashboardScreen(vm: DashboardViewModel = hiltViewModel()) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        // 0 — البطاقة الرئيسيّة (ساعة + تاريخان + الصلاة القادمة) بخلفيّةٍ متدرّجة
-        item { HeroCard(ui, tick) }
+        // 0 — صفٌّ علويٌّ (اختصار الإعدادات + تبديل السِمة) ثمّ البطاقة الرئيسيّة (بلا تغيير المؤشّرات)
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Outlined.Settings, contentDescription = "الإعدادات", tint = MaterialTheme.colorScheme.primary)
+                    }
+                    Text("GT-SALAT", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+                    ThemeToggleButton()
+                }
+                HeroCard(ui, tick)
+            }
+        }
 
         // 1 — أزرار ذكر/حكمة/آية اليوم (تنزل للمحتوى أسفل الصفحة) — متّسقةٌ بسطرٍ واحد
         item {

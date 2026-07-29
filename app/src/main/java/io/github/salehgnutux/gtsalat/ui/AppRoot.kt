@@ -165,7 +165,14 @@ fun AppRoot(setupCompleted: Boolean, gradientTop: Int = 0, gradientBottom: Int =
                 startDestination = Dest.DASHBOARD.route,
                 modifier = Modifier.padding(padding),
             ) {
-                composable(Dest.DASHBOARD.route) { DashboardScreen() }
+                composable(Dest.DASHBOARD.route) {
+                    DashboardScreen(onOpenSettings = {
+                        nav.navigate(Dest.SETTINGS.route) {
+                            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true; restoreState = true
+                        }
+                    })
+                }
                 composable(Dest.TIMETABLE.route) { TimetableScreen() }
                 composable(Dest.QIBLA.route) { QiblaScreen() }
                 composable(Dest.SETTINGS.route) { SettingsScreen() }

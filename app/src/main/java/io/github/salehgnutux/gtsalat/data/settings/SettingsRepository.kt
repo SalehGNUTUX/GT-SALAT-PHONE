@@ -67,6 +67,7 @@ class SettingsRepository @Inject constructor(
         val GRAD_BOT_D = intPreferencesKey("grad_bot_dark")
         val MONTH_SCHEME = stringPreferencesKey("month_scheme")
         val CAL_KIND = stringPreferencesKey("timetable_calendar")
+        val CLOCK_24 = booleanPreferencesKey("clock_24h")
         val SETUP = booleanPreferencesKey("setup_completed")
         val LAST_READ_SURAH = intPreferencesKey("last_read_surah")
         val LAST_READ_AYAH = intPreferencesKey("last_read_ayah")
@@ -131,6 +132,7 @@ class SettingsRepository @Inject constructor(
             gradBotDark = this[Keys.GRAD_BOT_D] ?: 0,
             monthScheme = runCatching { MonthScheme.valueOf(this[Keys.MONTH_SCHEME] ?: "AUTO") }.getOrDefault(MonthScheme.AUTO),
             timetableCalendar = if (this[Keys.CAL_KIND] == "GREGORIAN") CalendarKind.GREGORIAN else CalendarKind.HIJRI,
+            clock24h = this[Keys.CLOCK_24] ?: true,
             setupCompleted = this[Keys.SETUP] ?: false,
             lastReadSurah = this[Keys.LAST_READ_SURAH] ?: 0,
             lastReadAyah = this[Keys.LAST_READ_AYAH] ?: 1,
@@ -206,6 +208,7 @@ class SettingsRepository @Inject constructor(
     suspend fun setSilenceMinutes(m: Int) = context.dataStore.edit { it[Keys.SILENCE_MIN] = m }
     suspend fun setSavedRingerMode(m: Int) = context.dataStore.edit { it[Keys.SAVED_RINGER] = m }
     suspend fun savedRingerMode(): Int? = context.dataStore.data.first()[Keys.SAVED_RINGER]
+    suspend fun setClock24h(v: Boolean) = context.dataStore.edit { it[Keys.CLOCK_24] = v }
     suspend fun setTheme(t: ThemeMode) = context.dataStore.edit { it[Keys.THEME] = t.name }
     suspend fun setDynamicColor(v: Boolean) = context.dataStore.edit { it[Keys.DYNAMIC] = v }
     suspend fun setSeedColor(argb: Int) = context.dataStore.edit { it[Keys.SEED_COLOR] = argb }

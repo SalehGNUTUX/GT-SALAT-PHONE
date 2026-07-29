@@ -87,6 +87,7 @@ class SettingsViewModel @Inject constructor(
     fun setSilenceMinutes(m: Int) = viewModelScope.launch { settingsRepo.setSilenceMinutes(m) }
     fun setPersistentNotification(v: Boolean) = viewModelScope.launch { settingsRepo.setPersistentNotification(v); reschedule() }
     fun setTheme(t: ThemeMode) = viewModelScope.launch { settingsRepo.setTheme(t) }
+    fun setClock24h(v: Boolean) = viewModelScope.launch { settingsRepo.setClock24h(v) }
 
     /** يجدول تنبيهاً اختباريّاً بعد دقيقة (لقياس وصول التنبيهات والشاشة مغلقة). */
     fun testNotification() = scheduler.scheduleTest()

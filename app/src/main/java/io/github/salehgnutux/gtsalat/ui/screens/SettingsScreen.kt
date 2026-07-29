@@ -198,6 +198,12 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         ReliabilityCard(openSection == "موثوقيّة التنبيهات", { toggle("موثوقيّة التنبيهات") }, { vm.testNotification() })
 
         SectionCard("التقويم والتواريخ", openSection == "التقويم والتواريخ", { toggle("التقويم والتواريخ") }) {
+            LabeledRow("نظام عرض الوقت") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(settings.clock24h, { vm.setClock24h(true) }, { Text("24 ساعة") })
+                    FilterChip(!settings.clock24h, { vm.setClock24h(false) }, { Text("12 ساعة (ص/م)") })
+                }
+            }
             LabeledRow("تقويم عرض المواقيت") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(settings.timetableCalendar == CalendarKind.HIJRI, { vm.setTimetableCalendar(CalendarKind.HIJRI) }, { Text("هجريّ") })

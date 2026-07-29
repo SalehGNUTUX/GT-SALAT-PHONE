@@ -8,15 +8,27 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 object Format {
-    private val clockFmt = DateTimeFormatter.ofPattern("HH:mm", Locale.US)
-    private val clockSecFmt = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.US)
+    /** نظام عرض الوقت: 24 ساعة (افتراضيّ) أو 12 ساعة (ص/م). يُضبَط من الإعدادات عند الإقلاع. */
+    @Volatile var use24 = true
+
+    private val fmt24 = DateTimeFormatter.ofPattern("HH:mm", Locale.US)
+    private val fmt12 = DateTimeFormatter.ofPattern("hh:mm", Locale.US)
+    private val fmtSec24 = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.US)
+    private val fmtSec12 = DateTimeFormatter.ofPattern("hh:mm:ss", Locale.US)
     private val dayFmt = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale("ar"))
 
-    fun clock(epochMillis: Long): String =
-        Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).format(clockFmt)
+    private fun meridiem(hour: Int) = if (hour < 12) " ص" else " م"
 
-    /** الساعة الحاليّة HH:mm:ss بأرقامٍ مغربيّة (0-9). */
-    fun clockNow(): String = java.time.LocalTime.now().format(clockSecFmt)
+    fun clock(epochMillis: Long): String {
+        val z = Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault())
+        return if (use24) z.format(fmt24) else z.format(fmt12) + meridiem(z.hour)
+    }
+
+    /** الساعة الحاليّة (24 أو 12 ساعة) بأرقامٍ مغربيّة (0-9). */
+    fun clockNow(): String {
+        val t = java.time.LocalTime.now()
+        return if (use24) t.format(fmtSec24) else t.format(fmtSec12) + meridiem(t.hour)
+    }
 
     fun weekdayDate(epochMillis: Long): String =
         Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).format(dayFmt)

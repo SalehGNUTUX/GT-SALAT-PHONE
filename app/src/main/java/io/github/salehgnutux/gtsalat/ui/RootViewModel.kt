@@ -19,6 +19,7 @@ data class RootState(
     val gradBotLight: Int,
     val gradTopDark: Int,
     val gradBotDark: Int,
+    val clock24h: Boolean,
     val setupCompleted: Boolean,
 )
 
@@ -31,7 +32,7 @@ class RootViewModel @Inject constructor(
             RootState(
                 it.themeMode, it.dynamicColor, it.seedColor,
                 it.gradTopLight, it.gradBotLight, it.gradTopDark, it.gradBotDark,
-                it.setupCompleted,
+                it.clock24h, it.setupCompleted,
             )
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)

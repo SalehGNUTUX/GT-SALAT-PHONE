@@ -76,6 +76,13 @@ class MainActivity : ComponentActivity() {
                 }
                 val gradTop = if (dark) s.gradTopDark else s.gradTopLight
                 val gradBot = if (dark) s.gradBotDark else s.gradBotLight
+                // في الوضع الفاتح تكون أيقونات شريط الحالة **داكنة** لتظهر (وإلّا اختفت البيضاء).
+                LaunchedEffect(dark) {
+                    androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+                        .isAppearanceLightStatusBars = !dark
+                }
+                // نظام عرض الوقت (24/12) — يُضبَط عالميّاً في Format.
+                LaunchedEffect(s.clock24h) { io.github.salehgnutux.gtsalat.util.Format.use24 = s.clock24h }
                 GtSalatTheme(darkTheme = dark, dynamicColor = s.dynamicColor, seedColor = s.seedColor) {
                     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                         AppRoot(setupCompleted = s.setupCompleted, gradientTop = gradTop, gradientBottom = gradBot)

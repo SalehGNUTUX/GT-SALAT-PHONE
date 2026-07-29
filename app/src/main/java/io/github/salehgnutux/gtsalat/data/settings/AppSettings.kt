@@ -54,6 +54,7 @@ data class AppSettings(
 
     val monthScheme: MonthScheme = MonthScheme.AUTO,
     val timetableCalendar: CalendarKind = CalendarKind.HIJRI,
+    val clock24h: Boolean = true,                 // عرض الوقت: 24 ساعة أو 12 (ص/م)
     val setupCompleted: Boolean = false,
     // موضع القراءة والاستماع الأخيرين (كلٌّ مستقلّ) + آخر قارئٍ مختار + آخر صفحة مصحف
     val lastReadSurah: Int = 0,      // 0 = لا يوجد
