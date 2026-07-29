@@ -104,15 +104,22 @@ class PrayerRepository @Inject constructor(
         return out.take(count)
     }
 
-    /** تخزين مسبق لعدّة أشهر قادمة ليعمل التطبيق دون إنترنت طويلاً. */
+    /** تخزين مسبق لعدّة أشهر قادمة ليعمل التطبيق دون إنترنت طويلاً (+ تنظيفٌ تلقائيّ للمنصرم). */
     suspend fun prefetchMonths(count: Int = 6) {
         val s = settingsRepo.current()
         if (!s.hasLocation) return
+        pruneOldMonths()
         val start = LocalDate.now().withDayOfMonth(1)
         for (i in 0 until count) {
             val d = start.plusMonths(i.toLong())
             monthTimetable(d.year, d.monthValue, s)
         }
+    }
+
+    /** حذف أيّام الأشهر المنصرمة (قبل أوّل الشهر الحاليّ) تفاديّاً للتراكم. يعيد عدد الأشهر المتبقّية. */
+    suspend fun pruneOldMonths(): Int {
+        dao.deleteOlderThan(LocalDate.now().withDayOfMonth(1).toString())
+        return cachedMonthsCount()
     }
 
     suspend fun cachedMonthsCount(): Int {

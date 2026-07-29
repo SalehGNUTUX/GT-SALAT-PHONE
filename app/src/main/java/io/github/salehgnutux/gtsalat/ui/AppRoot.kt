@@ -62,6 +62,7 @@ import io.github.salehgnutux.gtsalat.ui.screens.MushafScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QiblaScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QuranHubScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QuranMiniPlayer
+import io.github.salehgnutux.gtsalat.ui.screens.RadiosScreen
 import io.github.salehgnutux.gtsalat.ui.screens.SurahIndexScreen
 import io.github.salehgnutux.gtsalat.ui.screens.TextReaderScreen
 import io.github.salehgnutux.gtsalat.ui.screens.SettingsScreen
@@ -225,6 +226,7 @@ fun AppRoot(setupCompleted: Boolean, gradientTop: Int = 0, gradientBottom: Int =
                         DownloadedSurahsScreen(onOpenReciter = { nav.navigate("quran_reciter/$it") }, onBack = { nav.popBackStack() })
                     }
                     composable("quran_mushaf") { MushafScreen(onBack = { nav.popBackStack() }) }
+                    composable("radios") { RadiosScreen(onBack = { nav.popBackStack() }) }
                 }
             }
         }

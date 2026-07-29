@@ -35,9 +35,13 @@ class SettingsViewModel @Inject constructor(
     val previewKey: StateFlow<String?> = previewer.previewKey
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    val cachedMonths: StateFlow<Int> = settingsRepo.settings
-        .map { repo.cachedMonthsCount() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    private val monthsRefresh = kotlinx.coroutines.flow.MutableStateFlow(0)
+    val cachedMonths: StateFlow<Int> =
+        kotlinx.coroutines.flow.combine(settingsRepo.settings, monthsRefresh) { _, _ -> repo.cachedMonthsCount() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    /** حذف الأشهر المنصرمة يدويّاً (تفاديّاً للتراكم). */
+    fun pruneOldMonths() = viewModelScope.launch { repo.pruneOldMonths(); monthsRefresh.value++ }
 
     private fun reschedule() = viewModelScope.launch { scheduler.scheduleNext() }
 

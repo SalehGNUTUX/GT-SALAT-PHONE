@@ -15,8 +15,8 @@ android {
         applicationId = "io.github.salehgnutux.gtsalat"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "0.9.7-beta"
+        versionCode = 17
+        versionName = "0.9.8-beta"
         vectorDrawables { useSupportLibrary = true }
     }
 

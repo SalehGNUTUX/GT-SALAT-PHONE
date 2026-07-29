@@ -16,6 +16,7 @@ object Credits {
     val SOURCES = listOf(
         Source("GT_HISNMUSLIM", "حصن المسلم المصنّف (132 باباً)", "https://github.com/SalehGNUTUX/GT_HISNMUSLIM"),
         Source("GT-SIRM", "أحاديث · أدعية · حِكَم · أسماء الله", "https://github.com/SalehGNUTUX"),
+        Source("GT_QURANRADIO", "قائمة إذاعات القرآن", "https://github.com/SalehGNUTUX/GT_QURANRADIO"),
         Source("GT-QURANREADER", "فهرس القرآن والروايات والقرّاء", "https://github.com/SalehGNUTUX/GT-QURANREADER"),
         Source("alquran.cloud", "النصّ العثمانيّ والتفسير الميسّر", "https://alquran.cloud"),
         Source("everyayah.com", "صوت القرآن آية-بآية (13 قارئاً)", "https://everyayah.com"),

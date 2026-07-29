@@ -62,7 +62,7 @@ fun MoreScreen(onOpen: (String) -> Unit) {
         Feature("أسماء الله الحسنى", Icons.Outlined.AutoAwesome, "asma"),
         Feature("حِكَم ومواعظ", Icons.Outlined.FormatQuote, "hikam"),
         Feature("أحداثٌ تاريخيّة", Icons.Outlined.HistoryEdu, "events"),
-        Feature("الإذاعات", Icons.Outlined.Radio, null),
+        Feature("الإذاعات", Icons.Outlined.Radio, "radios"),
     )
 
     Column(Modifier.fillMaxSize()) {

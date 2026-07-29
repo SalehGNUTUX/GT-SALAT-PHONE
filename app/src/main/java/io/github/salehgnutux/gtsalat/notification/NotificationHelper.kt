@@ -153,6 +153,7 @@ class NotificationHelper @Inject constructor(
         const val ID_WHITEDAYS = 2006
         const val ID_AYAH = 2007
         const val ID_TEST = 2008
+        const val ID_RADIO = 2009
         val PI_FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     }
 }

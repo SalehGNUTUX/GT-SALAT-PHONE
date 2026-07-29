@@ -92,14 +92,22 @@ fun DownloadsSectionContent(vm: DownloadsViewModel = hiltViewModel()) {
                     color = MaterialTheme.colorScheme.outline,
                 )
             }
-            when {
-                runningThis -> CircularProgressIndicator(Modifier.padding(start = 8.dp).size(28.dp), strokeWidth = 3.dp)
-                count > 0 -> IconButton(onClick = { confirmDelete = true }) {
-                    Icon(Icons.Filled.Delete, "حذف المصحف", tint = MaterialTheme.colorScheme.error)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                // إكمال التنزيل الجزئيّ (يتخطّى الصفحات الموجودة).
+                if (!state.running && count in 1 until state.total) {
+                    FilledTonalButton(onClick = { vm.downloadMushaf(riwaya) }) {
+                        Icon(Icons.Filled.Download, null, Modifier.size(16.dp)); Text(" إكمال")
+                    }
                 }
-                else -> Button(onClick = { vm.downloadMushaf(riwaya) }, enabled = !state.running) {
-                    Icon(Icons.Filled.Download, null, Modifier.size(18.dp))
-                    Text("  تنزيل")
+                when {
+                    runningThis -> CircularProgressIndicator(Modifier.padding(start = 8.dp).size(28.dp), strokeWidth = 3.dp)
+                    count > 0 -> IconButton(onClick = { confirmDelete = true }) {
+                        Icon(Icons.Filled.Delete, "حذف المصحف", tint = MaterialTheme.colorScheme.error)
+                    }
+                    else -> Button(onClick = { vm.downloadMushaf(riwaya) }, enabled = !state.running) {
+                        Icon(Icons.Filled.Download, null, Modifier.size(18.dp))
+                        Text("  تنزيل")
+                    }
                 }
             }
         }

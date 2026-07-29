@@ -120,7 +120,14 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 }
             }
             SwitchRow("تحديث المواقيت عبر الإنترنت (AlAdhan)", settings.useApiTimetables) { vm.setUseApi(it) }
-            InfoRow("أشهر مخزَّنة محليّاً", "$months")
+            // الأشهر المخزّنة تُنظَّف تلقائيّاً عند التخزين المسبق، وهنا حذفٌ يدويٌّ للمنصرم.
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("أشهر مخزَّنة محليّاً", style = MaterialTheme.typography.bodyLarge)
+                    Text("$months شهراً — تُنظَّف المنصرمة تلقائيّاً", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                }
+                FilledTonalButton(onClick = { vm.pruneOldMonths() }) { Text("حذف المنصرم") }
+            }
         }
 
         SectionCard("الأذان والتنبيهات", openSection == "الأذان والتنبيهات", { toggle("الأذان والتنبيهات") }) {
