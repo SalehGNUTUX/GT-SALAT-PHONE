@@ -37,17 +37,26 @@ class RadioRepository @Inject constructor(
 
     private fun saveUser(u: UserRadios) = runCatching { userFile().writeText(json.encodeToString(UserRadios.serializer(), u)) }
 
-    /** القائمة الفعليّة: الافتراضيّة (منقوصةً المحذوف، معدَّلةَ الروابط) ثمّ المخصّصة. */
+    /** القائمة الفعليّة: **المفضّلة أوّلاً** ثمّ الافتراضيّة (منقوصةً المحذوف، معدَّلةَ الروابط) فالمخصّصة. */
     suspend fun radios(): List<RadioItem> {
         val u = loadUser()
+        val favSet = u.favorites.toSet()
         val out = ArrayList<RadioItem>()
         defaults().forEach { d ->
             if (d.name in u.deleted) return@forEach
             val url = u.overrides[d.name] ?: d.url
-            out.add(RadioItem(d.name, d.desc, url, isCustom = false, isModified = u.overrides.containsKey(d.name)))
+            out.add(RadioItem(d.name, d.desc, url, isCustom = false, isModified = u.overrides.containsKey(d.name), isFav = d.name in favSet))
         }
-        u.customs.forEach { c -> out.add(RadioItem(c.name, c.desc, c.url, isCustom = true)) }
-        return out
+        u.customs.forEach { c -> out.add(RadioItem(c.name, c.desc, c.url, isCustom = true, isFav = c.name in favSet)) }
+        // المفضّلة إلى الرأس (بترتيب إضافتها)، وغيرها بموضعها الأصليّ — فرزٌ مستقرّ.
+        return out.sortedBy { if (it.isFav) u.favorites.indexOf(it.name) else Int.MAX_VALUE }
+    }
+
+    /** تبديل المفضّلة لإذاعة. */
+    fun toggleFav(name: String) {
+        val u = loadUser()
+        val favs = if (name in u.favorites) u.favorites - name else u.favorites + name
+        saveUser(u.copy(favorites = favs))
     }
 
     /** تعديل رابط إذاعةٍ (افتراضيّة أو مخصّصة). */

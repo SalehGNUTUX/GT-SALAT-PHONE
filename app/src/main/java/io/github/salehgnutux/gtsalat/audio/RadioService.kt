@@ -26,6 +26,7 @@ class RadioService : Service() {
     private var player: MediaPlayer? = null
     private var audioManager: AudioManager? = null
     private var focusRequest: AudioFocusRequest? = null
+    private var wifiLock: android.net.wifi.WifiManager.WifiLock? = null
     private var name = ""
     private var url = ""
 
@@ -54,6 +55,7 @@ class RadioService : Service() {
         if (url.isBlank()) { stopEverything(); return START_NOT_STICKY }
         startForeground(NotificationHelper.ID_RADIO, buildNotification())
         requestFocus()
+        acquireWifiLock()   // يبقي الواي‑فاي حيّاً للبثّ والشاشة مغلقة
         RadioPlayback.update { RadioState(active = true, name = name, url = url, isPlaying = true, loading = true) }
         play()
         return START_STICKY
@@ -98,14 +100,24 @@ class RadioService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) focusRequest?.let { am.abandonAudioFocusRequest(it) }
     }
 
+    private fun acquireWifiLock() {
+        runCatching {
+            val wifi = applicationContext.getSystemService(WIFI_SERVICE) as android.net.wifi.WifiManager
+            wifiLock = wifi.createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF, "gtsalat:radio")
+                .apply { setReferenceCounted(false); acquire() }
+        }
+    }
+
+    private fun releaseWifiLock() { runCatching { wifiLock?.let { if (it.isHeld) it.release() } }; wifiLock = null }
+
     private fun releasePlayer() { player?.run { runCatching { if (isPlaying) stop() }; release() }; player = null }
 
     private fun stopEverything() {
-        releasePlayer(); abandonFocus(); RadioPlayback.reset()
+        releasePlayer(); abandonFocus(); releaseWifiLock(); RadioPlayback.reset()
         stopForeground(STOP_FOREGROUND_REMOVE); stopSelf()
     }
 
-    override fun onDestroy() { releasePlayer(); abandonFocus(); super.onDestroy() }
+    override fun onDestroy() { releasePlayer(); abandonFocus(); releaseWifiLock(); super.onDestroy() }
 
     private fun stopPendingIntent(): PendingIntent {
         val i = Intent(this, RadioService::class.java).setAction(ACTION_STOP)

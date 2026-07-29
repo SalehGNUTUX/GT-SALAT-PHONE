@@ -15,6 +15,7 @@ data class UserRadios(
     val overrides: Map<String, String> = emptyMap(),   // الاسم → رابطٌ معدَّل
     val deleted: List<String> = emptyList(),            // أسماء الإذاعات الافتراضيّة المخفيّة
     val customs: List<Radio> = emptyList(),             // إذاعاتٌ أضافها المستخدم
+    val favorites: List<String> = emptyList(),          // أسماء المفضّلة (تُرفَع لرأس القائمة)
 )
 
 /** إذاعةٌ في القائمة الفعليّة مع أعلامٍ للعرض. */
@@ -24,4 +25,5 @@ data class RadioItem(
     val url: String,
     val isCustom: Boolean = false,      // أضافها المستخدم
     val isModified: Boolean = false,    // رابطها معدَّلٌ عن الافتراضيّ
+    val isFav: Boolean = false,         // في المفضّلة
 )

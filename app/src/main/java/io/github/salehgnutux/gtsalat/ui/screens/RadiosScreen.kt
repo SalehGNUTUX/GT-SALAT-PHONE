@@ -1,5 +1,6 @@
 package io.github.salehgnutux.gtsalat.ui.screens
 
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,10 +15,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Radio
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -76,6 +81,7 @@ class RadiosViewModel @Inject constructor(private val repo: RadioRepository) : V
     fun addCustom(name: String, desc: String, url: String) { repo.addCustom(name, desc, url); reload() }
     fun delete(item: RadioItem) { repo.delete(item.name, item.isCustom); reload() }
     fun restore(item: RadioItem) { repo.restore(item.name, item.isCustom, item.desc, item.url); reload() }
+    fun toggleFav(name: String) { repo.toggleFav(name); reload() }
 }
 
 @Composable
@@ -103,13 +109,13 @@ fun RadiosScreen(onBack: () -> Unit, vm: RadiosViewModel = hiltViewModel()) {
                     RadioRow(
                         item = r, playing = playingThis && play.isPlaying, loading = playingThis && play.loading,
                         onPlay = { if (playingThis) RadioAudio.toggle(ctx) else RadioAudio.play(ctx, r.name, r.url) },
+                        onToggleFav = { vm.toggleFav(r.name) },
                         onEditUrl = { editItem = r },
                         onResetUrl = { vm.resetUrl(r.name) },
                         onDelete = { confirmDelete = r },
                     )
                 }
             }
-            if (play.active) RadioNowPlaying(play.name, play.isPlaying, play.loading)
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
@@ -155,19 +161,27 @@ fun RadiosScreen(onBack: () -> Unit, vm: RadiosViewModel = hiltViewModel()) {
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun RadioRow(item: RadioItem, playing: Boolean, loading: Boolean, onPlay: () -> Unit, onEditUrl: () -> Unit, onResetUrl: () -> Unit, onDelete: () -> Unit) {
+private fun RadioRow(item: RadioItem, playing: Boolean, loading: Boolean, onPlay: () -> Unit, onToggleFav: () -> Unit, onEditUrl: () -> Unit, onResetUrl: () -> Unit, onDelete: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     Card(
         Modifier.fillMaxWidth().clickable(onClick = onPlay),
         colors = if (playing) androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
         else androidx.compose.material3.CardDefaults.cardColors(),
     ) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth().padding(start = 12.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Icon(Icons.Outlined.Radio, null, tint = MaterialTheme.colorScheme.primary)
-            Column(Modifier.weight(1f)) {
-                Text(item.name + when { item.isCustom -> " (مخصّصة)"; item.isModified -> " (معدَّل)"; else -> "" }, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, maxLines = 1)
-                if (item.desc.isNotBlank()) Text(item.desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, maxLines = 1)
+            Column(Modifier.weight(1f).padding(horizontal = 4.dp)) {
+                // الأسماء الطويلة تُمرَّر أفقيّاً لتظهر كاملة.
+                Text(
+                    item.name + when { item.isCustom -> " (مخصّصة)"; item.isModified -> " (معدَّل)"; else -> "" },
+                    Modifier.basicMarquee(), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, maxLines = 1,
+                )
+                if (item.desc.isNotBlank()) Text(item.desc, Modifier.basicMarquee(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, maxLines = 1)
+            }
+            IconButton(onClick = onToggleFav) {
+                Icon(if (item.isFav) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder, "المفضّلة", tint = if (item.isFav) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
             }
             if (loading) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
             FilledIconButton(onClick = onPlay) { Icon(if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, "تشغيل") }
@@ -183,15 +197,32 @@ private fun RadioRow(item: RadioItem, playing: Boolean, loading: Boolean, onPlay
     }
 }
 
+/**
+ * مشغّلُ إذاعةٍ مصغّرٌ **عالميّ** (فوق الشريط السفليّ) — يبقى ظاهراً عبر كلّ الأقسام أثناء البثّ.
+ * النقر على متنه يفتح قسم الإذاعات؛ وفيه السابقة/التالية للتنقّل بين الإذاعات.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun RadioNowPlaying(name: String, playing: Boolean, loading: Boolean) {
+fun RadioMiniPlayer(onOpen: () -> Unit, vm: RadiosViewModel = hiltViewModel()) {
     val ctx = LocalContext.current
+    val play by RadioPlayback.state.collectAsStateWithLifecycle()
+    val radios by vm.radios.collectAsStateWithLifecycle()
+    if (!play.active) return
+    fun jump(delta: Int) {
+        if (radios.isEmpty()) return
+        val idx = radios.indexOfFirst { it.url == play.url }.let { if (it < 0) 0 else it }
+        val next = radios[((idx + delta) % radios.size + radios.size) % radios.size]
+        RadioAudio.play(ctx, next.name, next.url)
+    }
     Surface(color = MaterialTheme.colorScheme.secondaryContainer, shadowElevation = 8.dp) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Icon(Icons.Outlined.Radio, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
-            Text(name, Modifier.weight(1f), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer, maxLines = 1)
-            if (loading) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-            FilledIconButton(onClick = { RadioAudio.toggle(ctx) }) { Icon(if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, "تشغيل") }
+            Text(play.name, Modifier.weight(1f).padding(horizontal = 4.dp).basicMarquee(), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer, maxLines = 1)
+            if (play.loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+            // في RTL: السابقة تشير يميناً (SkipNext)، التالية يساراً (SkipPrevious).
+            FilledIconButton(onClick = { jump(-1) }) { Icon(Icons.Filled.SkipNext, "السابقة") }
+            FilledIconButton(onClick = { RadioAudio.toggle(ctx) }) { Icon(if (play.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, "تشغيل") }
+            FilledIconButton(onClick = { jump(1) }) { Icon(Icons.Filled.SkipPrevious, "التالية") }
             FilledIconButton(onClick = { RadioAudio.stop(ctx) }) { Icon(Icons.Filled.Stop, "إيقاف") }
         }
     }

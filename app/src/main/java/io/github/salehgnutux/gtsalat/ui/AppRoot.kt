@@ -62,6 +62,7 @@ import io.github.salehgnutux.gtsalat.ui.screens.MushafScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QiblaScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QuranHubScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QuranMiniPlayer
+import io.github.salehgnutux.gtsalat.ui.screens.RadioMiniPlayer
 import io.github.salehgnutux.gtsalat.ui.screens.RadiosScreen
 import io.github.salehgnutux.gtsalat.ui.screens.SurahIndexScreen
 import io.github.salehgnutux.gtsalat.ui.screens.TextReaderScreen
@@ -141,6 +142,8 @@ fun AppRoot(setupCompleted: Boolean, gradientTop: Int = 0, gradientBottom: Int =
                     QuranMiniPlayer(onOpen = { route ->
                         nav.navigate(route) { launchSingleTop = true }
                     })
+                    // مشغّل الإذاعة العالميّ — يبقى ظاهراً عبر الأقسام أثناء البثّ.
+                    RadioMiniPlayer(onOpen = { nav.navigate("radios") { launchSingleTop = true } })
                     NavigationBar {
                         Dest.entries.forEach { d ->
                             val selected = currentDest?.hierarchy?.any { it.route == d.route } == true
