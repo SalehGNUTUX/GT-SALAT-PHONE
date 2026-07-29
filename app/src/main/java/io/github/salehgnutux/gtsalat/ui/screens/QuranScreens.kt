@@ -169,14 +169,20 @@ class QuranMetaViewModel @Inject constructor(
         }
     }
 
+    private var onlineLoaded = false
+    /** يجلب كامل قائمة قرّاء المصدر (شبكة) **كسولاً** عند فتح القرآن المسموع فقط — لا عند الإقلاع. */
+    fun ensureOnlineReciters() {
+        if (onlineLoaded) return
+        onlineLoaded = true
+        viewModelScope.launch { _surahReciters.value = repo.surahRecitersOnline() }
+    }
+
     init {
         viewModelScope.launch {
             _surahs.value = repo.surahs()
             _reciters.value = repo.reciters()
             _riwayat.value = repo.riwayat()
-            // المُضمَّنون فوراً (يعملون دون إنترنت)، ثمّ نستبدلهم بكامل قائمة المصدر إن توفّرت الشبكة.
-            _surahReciters.value = repo.surahReciters()
-            _surahReciters.value = repo.surahRecitersOnline()
+            _surahReciters.value = repo.surahReciters()   // المُضمَّنون فوراً (دون شبكة/إقلاع بطيء)
             _lastMushafPage.value = settingsRepo.current().lastMushafPage.coerceIn(1, 604)
         }
     }
@@ -655,6 +661,7 @@ fun AudioRecitersScreen(
     onBack: () -> Unit,
 ) {
     val reciters by vm.surahReciters.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { vm.ensureOnlineReciters() }   // جلبُ كامل القائمة عند فتح القسم فقط
     var riwayaFilter by remember { mutableStateOf("all") }
     var showSearch by remember { mutableStateOf(false) }
     var q by remember { mutableStateOf("") }
@@ -719,6 +726,7 @@ fun ReciterSurahsScreen(reciterId: String, vm: QuranMetaViewModel = hiltViewMode
     val surahs by vm.surahs.collectAsStateWithLifecycle()
     val reciters by vm.surahReciters.collectAsStateWithLifecycle()
     val play by QuranPlayback.state.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { vm.ensureOnlineReciters() }
     val reciter = remember(reciters, reciterId) { reciters.firstOrNull { it.id == reciterId } }
 
     var showSearch by remember { mutableStateOf(false) }
@@ -797,6 +805,7 @@ fun DownloadedSurahsScreen(vm: QuranMetaViewModel = hiltViewModel(), onOpenRecit
     val ctx = LocalContext.current
     val surahs by vm.surahs.collectAsStateWithLifecycle()
     val play by QuranPlayback.state.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { vm.ensureOnlineReciters() }
     var refresh by remember { mutableIntStateOf(0) }
     val byReciter = remember(refresh) { vm.downloadedByReciter() }
 
