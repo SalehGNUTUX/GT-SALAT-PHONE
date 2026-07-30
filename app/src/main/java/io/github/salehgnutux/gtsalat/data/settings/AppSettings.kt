@@ -65,6 +65,15 @@ data class AppSettings(
     val lastListenAyah: Int = 1,
     val lastReciterId: String = "",
     val lastMushafPage: Int = 1,
+    // إشارات القرآن المرجعيّة: مجموعة مفاتيح "سورة:آية" (مثل "2:255").
+    val bookmarks: Set<String> = emptySet(),
+    // وِرد التلاوة اليوميّ (يدويّ): بطاقةٌ اختياريّةٌ مطفأةٌ افتراضيّاً (التذكير في الإشعارات مستقلٌّ ومفعّل).
+    val enableWird: Boolean = false,
+    // الوحدة والعدد + آخر يومٍ أُتمَّ فيه + سلسلة الأيّام المتتالية.
+    val wirdGoalUnit: String = "juz",   // juz | hizb | pages | ayat
+    val wirdGoalCount: Int = 1,
+    val wirdLastDoneDate: String = "",  // yyyy-MM-dd لآخر إتمام
+    val wirdStreak: Int = 0,
 ) {
     val hasLocation: Boolean get() = lat != null && lon != null
 

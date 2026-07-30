@@ -33,7 +33,11 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.outlined.AutoStories
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.Bookmarks
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material3.Card
@@ -82,6 +86,7 @@ import io.github.salehgnutux.gtsalat.ui.theme.AmiriQuran
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -149,6 +154,32 @@ class QuranMetaViewModel @Inject constructor(
             if (s.lastListenSurah in 1..114) Triple(s.lastListenSurah, list.firstOrNull { it.n == s.lastListenSurah }?.ar ?: "${s.lastListenSurah}", s.lastListenAyah) else null
         }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), null)
 
+    /** الإشارات المرجعيّة مرتّبةً (سورة، اسم، آية) — تفاعليّة. */
+    val bookmarks: StateFlow<List<Triple<Int, String, Int>>> =
+        kotlinx.coroutines.flow.combine(settingsRepo.settings, surahs) { s, list ->
+            s.bookmarks.mapNotNull { bm ->
+                val p = bm.split(":")
+                val sn = p.getOrNull(0)?.toIntOrNull() ?: return@mapNotNull null
+                val ay = p.getOrNull(1)?.toIntOrNull() ?: return@mapNotNull null
+                Triple(sn, list.firstOrNull { it.n == sn }?.ar ?: "$sn", ay)
+            }.sortedWith(compareBy({ it.first }, { it.third }))
+        }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun removeBookmark(surah: Int, ayah: Int) = viewModelScope.launch { settingsRepo.removeBookmark(surah, ayah) }
+
+    /** حالة الوِرد الخام (الوحدة/العدد/آخر إتمام/السلسلة) — تُحسَب اليوم/السلسلة السارية في الواجهة. */
+    val wird: StateFlow<WirdRaw> =
+        settingsRepo.settings.map { WirdRaw(it.enableWird, it.wirdGoalUnit, it.wirdGoalCount, it.wirdLastDoneDate, it.wirdStreak) }
+            .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), WirdRaw())
+
+    fun setWirdGoal(unit: String, count: Int) = viewModelScope.launch { settingsRepo.setWirdGoal(unit, count) }
+    fun markWirdDone() = viewModelScope.launch {
+        settingsRepo.markWirdDone(java.time.LocalDate.now().toString(), java.time.LocalDate.now().minusDays(1).toString())
+    }
+    fun undoWirdToday() = viewModelScope.launch {
+        settingsRepo.undoWirdToday(java.time.LocalDate.now().toString(), java.time.LocalDate.now().minusDays(1).toString())
+    }
+
     // بحثٌ داخل الآيات (بالكلمات والعبارات)
     private val _ayahHits = MutableStateFlow<List<io.github.salehgnutux.gtsalat.domain.AyahHit>>(emptyList())
     val ayahHits: StateFlow<List<io.github.salehgnutux.gtsalat.domain.AyahHit>> = _ayahHits.asStateFlow()
@@ -192,6 +223,20 @@ class QuranMetaViewModel @Inject constructor(
 
 private data class QSection(val label: String, val note: String, val icon: ImageVector, val route: String)
 
+/** حالة الوِرد الخام كما تُخزَّن (تُشتقّ منها حالةُ اليوم في الواجهة). */
+data class WirdRaw(val enabled: Boolean = false, val unit: String = "juz", val count: Int = 1, val lastDate: String = "", val streak: Int = 0)
+
+/** وصف هدف الوِرد بالعربيّة (مفرد/جمع مبسّط). */
+fun wirdGoalLabel(unit: String, count: Int): String = when (unit) {
+    "juz" -> if (count == 1) "جزءٌ واحد" else "$count أجزاء"
+    "hizb" -> if (count == 1) "حزبٌ واحد" else "$count أحزاب"
+    "pages" -> if (count == 1) "صفحةٌ واحدة" else "$count صفحات"
+    "ayat" -> if (count == 1) "آيةٌ واحدة" else "$count آيات"
+    else -> "$count"
+}
+
+val WIRD_UNITS = listOf("juz" to "أجزاء", "hizb" to "أحزاب", "pages" to "صفحات", "ayat" to "آيات")
+
 /** بطاقة متابعةٍ (قراءة/استماع) — عنوانٌ وسورةٌ وآية، تفتح القارئ على الموضع. */
 @Composable
 private fun ResumeCard(title: String, name: String, ayah: Int, icon: ImageVector, container: androidx.compose.ui.graphics.Color, onContainer: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
@@ -214,6 +259,9 @@ private fun ResumeCard(title: String, name: String, ayah: Int, icon: ImageVector
 fun QuranHubScreen(onOpen: (String) -> Unit, onBack: () -> Unit, vm: QuranMetaViewModel = hiltViewModel()) {
     val readResume by vm.readResume.collectAsStateWithLifecycle()
     val listenResume by vm.listenResume.collectAsStateWithLifecycle()
+    val bookmarks by vm.bookmarks.collectAsStateWithLifecycle()
+    val wird by vm.wird.collectAsStateWithLifecycle()
+    var editWird by remember { mutableStateOf(false) }
     val sections = listOf(
         QSection("القرآن النصّيّ", "قراءةٌ واستماعٌ آية-بآية مع تظليل", Icons.Outlined.MenuBook, "quran_text"),
         QSection("القرآن المسموع", "تلاواتٌ كاملةٌ بالقرّاء والروايات", Icons.Outlined.Headphones, "quran_audio"),
@@ -226,6 +274,9 @@ fun QuranHubScreen(onOpen: (String) -> Unit, onBack: () -> Unit, vm: QuranMetaVi
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (wird.enabled) {
+                item("wird") { WirdCard(wird, onMark = { vm.markWirdDone() }, onUndo = { vm.undoWirdToday() }, onEdit = { editWird = true }) }
+            }
             readResume?.let { (surah, name, ayah) ->
                 item("resume_read") {
                     ResumeCard("متابعة القراءة", name, ayah, Icons.Outlined.MenuBook, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer) {
@@ -237,6 +288,23 @@ fun QuranHubScreen(onOpen: (String) -> Unit, onBack: () -> Unit, vm: QuranMetaVi
                 item("resume_listen") {
                     ResumeCard("متابعة الاستماع", name, ayah, Icons.Outlined.Headphones, MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) {
                         onOpen("quran_read/$surah?ayah=$ayah")
+                    }
+                }
+            }
+            if (bookmarks.isNotEmpty()) {
+                item("bookmarks") {
+                    Card(
+                        Modifier.fillMaxWidth().clickable { onOpen("quran_bookmarks") },
+                        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                    ) {
+                        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            Icon(Icons.Filled.Bookmark, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                            Column(Modifier.weight(1f)) {
+                                Text("الإشارات المرجعيّة", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                Text("${bookmarks.size} إشارةٌ محفوظة", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                            }
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                        }
                     }
                 }
             }
@@ -256,6 +324,132 @@ fun QuranHubScreen(onOpen: (String) -> Unit, onBack: () -> Unit, vm: QuranMetaVi
                             Text(s.note, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = MaterialTheme.colorScheme.outline)
+                    }
+                }
+            }
+        }
+    }
+    if (editWird) {
+        WirdGoalDialog(wird.unit, wird.count, onDismiss = { editWird = false }) { unit, count ->
+            vm.setWirdGoal(unit, count); editWird = false
+        }
+    }
+}
+
+/** بطاقة الوِرد اليوميّ: الهدف + سلسلة الأيّام + زرّ إتمام/تراجع + تعديل الهدف. */
+@Composable
+private fun WirdCard(wird: WirdRaw, onMark: () -> Unit, onUndo: () -> Unit, onEdit: () -> Unit) {
+    val today = remember { java.time.LocalDate.now().toString() }
+    val yesterday = remember { java.time.LocalDate.now().minusDays(1).toString() }
+    val doneToday = wird.lastDate == today
+    // السلسلة ساريةٌ فقط إن كان آخر إتمامٍ اليوم أو الأمس، وإلّا انقطعت.
+    val streak = if (wird.lastDate == today || wird.lastDate == yesterday) wird.streak else 0
+
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = if (doneToday) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Icon(Icons.Outlined.MenuBook, null, tint = MaterialTheme.colorScheme.primary)
+                Column(Modifier.weight(1f)) {
+                    Text("وِرد التلاوة اليوميّ", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(wirdGoalLabel(wird.unit, wird.count), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                }
+                if (streak > 0) {
+                    Text("🔥 $streak", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                }
+                IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, "تعديل الهدف", tint = MaterialTheme.colorScheme.outline) }
+            }
+            if (doneToday) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("✓ أتممتَ وردك اليوم — بارك الله فيك", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
+                    androidx.compose.material3.TextButton(onClick = onUndo) { Text("تراجع") }
+                }
+            } else {
+                androidx.compose.material3.Button(onClick = onMark, modifier = Modifier.fillMaxWidth()) {
+                    Text("أتممتُ وردي اليوم")
+                }
+            }
+        }
+    }
+}
+
+/** حوار تعديل هدف الوِرد: الوحدة (أجزاء/أحزاب/صفحات/آيات) + العدد. */
+@Composable
+private fun WirdGoalDialog(unit: String, count: Int, onDismiss: () -> Unit, onSave: (String, Int) -> Unit) {
+    var u by remember { mutableStateOf(unit) }
+    var c by remember { mutableStateOf(count.coerceAtLeast(1)) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("هدف الوِرد اليوميّ") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text("الوحدة:", style = MaterialTheme.typography.labelLarge)
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    WIRD_UNITS.forEach { (key, label) ->
+                        androidx.compose.material3.FilterChip(selected = u == key, onClick = { u = key }, label = { Text(label) })
+                    }
+                }
+                Text("العدد:", style = MaterialTheme.typography.labelLarge)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    androidx.compose.material3.FilledTonalButton(onClick = { if (c > 1) c-- }) { Text("−", fontWeight = FontWeight.Bold) }
+                    Text("$c", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    androidx.compose.material3.FilledTonalButton(onClick = { if (c < 60) c++ }) { Text("+", fontWeight = FontWeight.Bold) }
+                }
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = { onSave(u, c) }) { Text("حفظ") } },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("إلغاء") } },
+    )
+}
+
+/* ============================ الإشارات المرجعيّة ============================ */
+
+@Composable
+fun QuranBookmarksScreen(onOpenAyah: (Int, Int) -> Unit, onBack: () -> Unit, vm: QuranMetaViewModel = hiltViewModel()) {
+    val bookmarks by vm.bookmarks.collectAsStateWithLifecycle()
+    Column(Modifier.fillMaxSize()) {
+        SubScreenHeader("الإشارات المرجعيّة", onBack)
+        if (bookmarks.isEmpty()) {
+            Column(
+                Modifier.fillMaxSize().padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Icon(Icons.Outlined.Bookmarks, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(56.dp))
+                Text(
+                    "لا إشاراتٍ بعد.\nاضغط أيقونة الإشارة بجانب أيّ آيةٍ في القارئ النصّيّ لحفظها هنا.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.outline,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+            }
+            return
+        }
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(bookmarks, key = { "${it.first}:${it.third}" }) { (surah, name, ayah) ->
+                Card(Modifier.fillMaxWidth().clickable { onOpenAyah(surah, ayah) }) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Icon(Icons.Filled.Bookmark, null, tint = MaterialTheme.colorScheme.primary)
+                        Column(Modifier.weight(1f)) {
+                            Text("سورة $name", fontFamily = AmiriQuran, fontSize = 21.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            Text("الآية $ayah", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                        }
+                        IconButton(onClick = { vm.removeBookmark(surah, ayah) }) {
+                            Icon(Icons.Filled.Close, "إزالة", tint = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
             }
@@ -397,6 +591,15 @@ class TextReaderViewModel @Inject constructor(
     private val _target = MutableStateFlow(1)
     val target: StateFlow<Int> = _target.asStateFlow()
 
+    /** إشارات هذه السورة المرجعيّة (أرقام الآيات) — تفاعليّة. */
+    val bookmarkedAyat: StateFlow<Set<Int>> =
+        settingsRepo.settings.map { s -> s.bookmarks.mapNotNull { bm ->
+            val parts = bm.split(":"); if (parts.size == 2 && parts[0].toIntOrNull() == n) parts[1].toIntOrNull() else null
+        }.toSet() }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), emptySet())
+
+    /** يبدّل إشارة آية. */
+    fun toggleBookmark(ayah: Int) = viewModelScope.launch { settingsRepo.toggleBookmark(n, ayah) }
+
     /** يضبط موضع المتابعة يدويّاً (عند نقر آيةٍ لبدء القراءة منها). */
     fun setTarget(ayah: Int) {
         _target.value = ayah
@@ -468,6 +671,7 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
     val riwayat by vm.riwayat.collectAsStateWithLifecycle()
     val riwaya by vm.riwaya.collectAsStateWithLifecycle()
     val textLoading by vm.textLoading.collectAsStateWithLifecycle()
+    val bookmarked by vm.bookmarkedAyat.collectAsStateWithLifecycle()
 
     val here = play.active && play.mode == QuranMode.AYAH && play.surah == vm.n
     val playingAyah = if (here) play.ayah else 0
@@ -615,7 +819,7 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
                         androidx.compose.material3.CardDefaults.cardColors(containerColor = container)
                     else androidx.compose.material3.CardDefaults.cardColors(),
                 ) {
-                    Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(Modifier.padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Box(
                             Modifier.size(30.dp).clip(CircleShape)
                                 .background(if (container != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer),
@@ -629,6 +833,15 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
                             color = onContainer,
                             modifier = Modifier.weight(1f),
                         )
+                        // إشارةٌ مرجعيّة: نقرةٌ تحفظ الآية/تزيلها.
+                        val isMarked = a.n in bookmarked
+                        IconButton(onClick = { vm.toggleBookmark(a.n) }, modifier = Modifier.size(34.dp)) {
+                            Icon(
+                                if (isMarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                                contentDescription = if (isMarked) "إزالة الإشارة" else "إضافة إشارة",
+                                tint = if (isMarked) MaterialTheme.colorScheme.primary else onContainer.copy(alpha = 0.5f),
+                            )
+                        }
                     }
                 }
             }

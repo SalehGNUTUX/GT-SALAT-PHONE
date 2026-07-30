@@ -77,6 +77,12 @@ class SettingsRepository @Inject constructor(
         val LAST_LISTEN_AYAH = intPreferencesKey("last_listen_ayah")
         val LAST_RECITER = stringPreferencesKey("last_reciter_id")
         val LAST_MUSHAF_PAGE = intPreferencesKey("last_mushaf_page")
+        val BOOKMARKS = androidx.datastore.preferences.core.stringSetPreferencesKey("quran_bookmarks")
+        val ENABLE_WIRD = booleanPreferencesKey("enable_wird")
+        val WIRD_UNIT = stringPreferencesKey("wird_goal_unit")
+        val WIRD_COUNT = intPreferencesKey("wird_goal_count")
+        val WIRD_LAST_DATE = stringPreferencesKey("wird_last_done_date")
+        val WIRD_STREAK = intPreferencesKey("wird_streak")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { p -> p.toSettings() }
@@ -144,10 +150,54 @@ class SettingsRepository @Inject constructor(
             lastListenAyah = this[Keys.LAST_LISTEN_AYAH] ?: 1,
             lastReciterId = this[Keys.LAST_RECITER] ?: "",
             lastMushafPage = this[Keys.LAST_MUSHAF_PAGE] ?: 1,
+            bookmarks = this[Keys.BOOKMARKS] ?: emptySet(),
+            enableWird = this[Keys.ENABLE_WIRD] ?: false,
+            wirdGoalUnit = this[Keys.WIRD_UNIT] ?: "juz",
+            wirdGoalCount = this[Keys.WIRD_COUNT] ?: 1,
+            wirdLastDoneDate = this[Keys.WIRD_LAST_DATE] ?: "",
+            wirdStreak = this[Keys.WIRD_STREAK] ?: 0,
         )
     }
 
+    /** يفعّل/يطفئ بطاقة الوِرد في القرآن (لا يمسّ تذكير الإشعارات). */
+    suspend fun setEnableWird(v: Boolean) = context.dataStore.edit { it[Keys.ENABLE_WIRD] = v }
+
+    /** يضبط هدف الوِرد اليوميّ (الوحدة والعدد). */
+    suspend fun setWirdGoal(unit: String, count: Int) = context.dataStore.edit {
+        it[Keys.WIRD_UNIT] = unit
+        it[Keys.WIRD_COUNT] = count.coerceAtLeast(1)
+    }
+
+    /** يؤشّر إتمام وِرد اليوم: يزيد السلسلة إن كان الأمس مُتمَّاً، وإلّا يبدأها من واحد. */
+    suspend fun markWirdDone(today: String, yesterday: String) = context.dataStore.edit {
+        val last = it[Keys.WIRD_LAST_DATE] ?: ""
+        if (last == today) return@edit   // أُتمَّ اليوم بالفعل
+        val streak = it[Keys.WIRD_STREAK] ?: 0
+        it[Keys.WIRD_STREAK] = if (last == yesterday) streak + 1 else 1
+        it[Keys.WIRD_LAST_DATE] = today
+    }
+
+    /** يتراجع عن إتمام اليوم (إن أُشّر خطأً). */
+    suspend fun undoWirdToday(today: String, yesterday: String) = context.dataStore.edit {
+        if ((it[Keys.WIRD_LAST_DATE] ?: "") != today) return@edit
+        val streak = it[Keys.WIRD_STREAK] ?: 0
+        it[Keys.WIRD_STREAK] = (streak - 1).coerceAtLeast(0)
+        it[Keys.WIRD_LAST_DATE] = yesterday   // نعيد آخر إتمامٍ إلى الأمس (تقريبٌ كافٍ للتراجع الفوريّ)
+    }
+
     suspend fun setLastMushafPage(page: Int) = context.dataStore.edit { it[Keys.LAST_MUSHAF_PAGE] = page }
+
+    /** يبدّل إشارة آيةٍ مرجعيّة (يضيفها إن غابت، ويزيلها إن وُجدت). */
+    suspend fun toggleBookmark(surah: Int, ayah: Int) = context.dataStore.edit {
+        val key = "$surah:$ayah"
+        val cur = it[Keys.BOOKMARKS] ?: emptySet()
+        it[Keys.BOOKMARKS] = if (key in cur) cur - key else cur + key
+    }
+
+    /** يزيل إشارةً مرجعيّة. */
+    suspend fun removeBookmark(surah: Int, ayah: Int) = context.dataStore.edit {
+        it[Keys.BOOKMARKS] = (it[Keys.BOOKMARKS] ?: emptySet()) - "$surah:$ayah"
+    }
 
     /** حفظ موضع القراءة الأخير في القرآن (للمتابعة لاحقاً). */
     suspend fun setLastRead(surah: Int, ayah: Int) = context.dataStore.edit {

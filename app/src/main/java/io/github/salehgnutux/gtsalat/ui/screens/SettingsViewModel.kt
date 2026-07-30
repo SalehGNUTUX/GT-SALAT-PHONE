@@ -97,6 +97,7 @@ class SettingsViewModel @Inject constructor(
     fun setTheme(t: ThemeMode) = viewModelScope.launch { settingsRepo.setTheme(t) }
     fun setClock24h(v: Boolean) = viewModelScope.launch { settingsRepo.setClock24h(v) }
     fun setCheckUpdates(v: Boolean) = viewModelScope.launch { settingsRepo.setCheckUpdates(v) }
+    fun setEnableWird(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableWird(v) }
     fun setFullScreenAdhan(v: Boolean) = viewModelScope.launch { settingsRepo.setFullScreenAdhan(v) }
 
     /**

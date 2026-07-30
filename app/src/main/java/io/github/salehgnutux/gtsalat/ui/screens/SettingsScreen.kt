@@ -198,6 +198,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         SectionCard("التذكيرات اليوميّة", openSection == "التذكيرات اليوميّة", { toggle("التذكيرات اليوميّة") }) {
             SwitchRow("بطاقة آية اليوم في الرئيسيّة", settings.enableDailyAyah) { vm.setEnableDailyAyah(it) }
             SwitchRow("تذكير وِرد التلاوة", settings.enableRecitationReminder) { vm.setEnableRecitationReminder(it) }
+            SwitchRow("بطاقة وِرد التلاوة في القرآن (هدفٌ وسلسلة أيّام)", settings.enableWird) { vm.setEnableWird(it) }
             SwitchRow("تذكير الأيّام البيض (13/14/15 هجريّ)", settings.enableWhiteDaysReminder) { vm.setEnableWhiteDaysReminder(it) }
             MinutesSlider("ساعة التذكير:", settings.reminderHour, 0, 23, suffix = "") { vm.setReminderHour(it) }
         }

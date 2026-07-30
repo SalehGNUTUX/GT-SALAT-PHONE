@@ -60,6 +60,7 @@ import io.github.salehgnutux.gtsalat.ui.screens.ReciterSurahsScreen
 import io.github.salehgnutux.gtsalat.ui.screens.MoreScreen
 import io.github.salehgnutux.gtsalat.ui.screens.MushafScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QiblaScreen
+import io.github.salehgnutux.gtsalat.ui.screens.QuranBookmarksScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QuranHubScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QuranMiniPlayer
 import io.github.salehgnutux.gtsalat.ui.screens.RadioMiniPlayer
@@ -219,6 +220,12 @@ fun AppRoot(setupCompleted: Boolean, gradientTop: Int = 0, gradientBottom: Int =
                             navArgument("ayah") { type = NavType.StringType; defaultValue = "0" },
                         ),
                     ) { TextReaderScreen(onBack = { nav.popBackStack() }) }
+                    composable("quran_bookmarks") {
+                        QuranBookmarksScreen(
+                            onOpenAyah = { s, a -> nav.navigate("quran_read/$s?ayah=$a") },
+                            onBack = { nav.popBackStack() },
+                        )
+                    }
                     composable("quran_audio") {
                         AudioRecitersScreen(
                             onOpenReciter = { nav.navigate("quran_reciter/$it") },
