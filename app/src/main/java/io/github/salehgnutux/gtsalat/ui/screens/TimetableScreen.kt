@@ -52,7 +52,7 @@ fun TimetableScreen(vm: TimetableViewModel = hiltViewModel()) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = { vm.prevMonth() }) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "الشهر السابق", tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "الشهر السابق", tint = MaterialTheme.colorScheme.primary)
             }
             Text(
                 ui.monthLabel,
@@ -61,7 +61,7 @@ fun TimetableScreen(vm: TimetableViewModel = hiltViewModel()) {
                 color = MaterialTheme.colorScheme.primary,
             )
             IconButton(onClick = { vm.nextMonth() }) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "الشهر التالي", tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "الشهر التالي", tint = MaterialTheme.colorScheme.primary)
             }
         }
 

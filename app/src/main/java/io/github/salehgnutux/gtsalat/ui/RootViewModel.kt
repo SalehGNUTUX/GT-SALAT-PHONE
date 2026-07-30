@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class RootState(
@@ -26,6 +27,7 @@ data class RootState(
 @HiltViewModel
 class RootViewModel @Inject constructor(
     settingsRepo: SettingsRepository,
+    private val updateRepo: io.github.salehgnutux.gtsalat.data.UpdateRepository,
 ) : ViewModel() {
     val state: StateFlow<RootState?> = settingsRepo.settings
         .map {
@@ -36,4 +38,9 @@ class RootViewModel @Inject constructor(
             )
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    init {
+        // فحص التحديثات مرّةً عند الإقلاع (إن كان مفعّلاً).
+        viewModelScope.launch { runCatching { updateRepo.checkForUpdate() } }
+    }
 }

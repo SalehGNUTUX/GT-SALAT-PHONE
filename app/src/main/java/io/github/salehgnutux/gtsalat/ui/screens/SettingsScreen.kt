@@ -186,6 +186,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             if (settings.autoSilence) {
                 SilenceControls(settings.silenceMinutes) { vm.setSilenceMinutes(it) }
             }
+            SwitchRow("نافذة أذانٍ ملء الشاشة فوق القفل", settings.fullScreenAdhan) { vm.setFullScreenAdhan(it) }
         }
 
         SectionCard("التذكيرات اليوميّة", openSection == "التذكيرات اليوميّة", { toggle("التذكيرات اليوميّة") }) {
@@ -262,6 +263,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         SectionCard("حول", openSection == "حول", { toggle("حول") }) {
             InfoRow("النسخة", "GT-SALAT ${BuildConfig.VERSION_NAME}")
             InfoRow("الإصدار", if (BuildConfig.USES_GMS) "كاملة (خدمات Google)" else "حرّة (بلا Google)")
+            SwitchRow("إشعارٌ عند توفّر نسخةٍ جديدة", settings.checkUpdates) { vm.setCheckUpdates(it) }
             HorizontalDivider()
             LinkRow("المطوّر", io.github.salehgnutux.gtsalat.domain.Credits.DEVELOPER) { openUrl(context, io.github.salehgnutux.gtsalat.domain.Credits.GITHUB) }
             LinkRow("المستودع (GitHub)", "الشيفرة المصدريّة") { openUrl(context, io.github.salehgnutux.gtsalat.domain.Credits.REPO) }

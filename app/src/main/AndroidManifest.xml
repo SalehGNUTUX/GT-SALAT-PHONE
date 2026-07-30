@@ -34,6 +34,9 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
 
+    <!-- نافذة أذانٍ ملء الشاشة فوق القفل -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
     <application
         android:name=".GtSalatApp"
         android:allowBackup="true"
@@ -55,6 +58,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- نافذة الأذان ملء الشاشة (تظهر فوق شاشة القفل عبر full-screen intent) -->
+        <activity
+            android:name=".alarm.AdhanAlarmActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:showOnLockScreen="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.GtSalat" />
 
         <!-- خدمة تشغيل الأذان (مقدّمة، نوع تشغيل وسائط) -->
         <service

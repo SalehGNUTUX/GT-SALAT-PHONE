@@ -30,9 +30,28 @@ class ThemeToggleViewModel @Inject constructor(
         .map { it.themeMode }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemeMode.SYSTEM)
 
+    val clock24h = settingsRepo.settings
+        .map { it.clock24h }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     /** يبدّل بين الفاتح والداكن؛ إن كان تابعاً للنظام قلبَ إلى عكس وضع النظام الحاليّ. */
     fun toggle(effectiveDark: Boolean) = viewModelScope.launch {
         settingsRepo.setTheme(if (effectiveDark) ThemeMode.LIGHT else ThemeMode.DARK)
+    }
+
+    fun toggleClock(current: Boolean) = viewModelScope.launch { settingsRepo.setClock24h(!current) }
+}
+
+/** زرٌّ لتبديل نظام عرض الوقت 24/12 — يُوضَع في الرئيسيّة بجانب زرّ السِمة. */
+@Composable
+fun ClockFormatToggleButton(vm: ThemeToggleViewModel = hiltViewModel()) {
+    val is24 by vm.clock24h.collectAsStateWithLifecycle()
+    androidx.compose.material3.TextButton(onClick = { vm.toggleClock(is24) }) {
+        androidx.compose.material3.Text(
+            if (is24) "24" else "12",
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+        )
     }
 }
 

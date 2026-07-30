@@ -75,6 +75,26 @@ class NotificationHelper @Inject constructor(
             .setContentIntent(contentIntent())
             .build()
 
+    /** إشعارُ توفّر نسخةٍ جديدة — نقره يفتح صفحة الإصدار. */
+    fun showUpdate(version: String, url: String) {
+        val open = PendingIntent.getActivity(
+            context, 8,
+            android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)),
+            PI_FLAGS,
+        )
+        nm.notify(
+            ID_UPDATE,
+            NotificationCompat.Builder(context, CH_REMINDERS)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("تحديثٌ متوفّر: GT-SALAT v$version")
+                .setContentText("اضغط لفتح صفحة التنزيل.")
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true)
+                .setContentIntent(open)
+                .build(),
+        )
+    }
+
     fun showRecitationReminder() = nm.notify(ID_RECITATION, reminder("📖 وِرد التلاوة", "لا تنسَ وردك اليوميّ من تلاوة القرآن الكريم."))
     fun showWhiteDaysReminder(text: String) = nm.notify(ID_WHITEDAYS, reminder("🌕 الأيّام البيض", text))
     fun showDailyAyah(surah: String, n: Int, text: String) = nm.notify(ID_AYAH, reminder("آية اليوم — سورة $surah [$n]", text))
@@ -85,7 +105,7 @@ class NotificationHelper @Inject constructor(
         return PendingIntent.getActivity(context, 0, i, PI_FLAGS)
     }
 
-    fun prayerNotification(prayerName: String): Notification =
+    fun prayerNotification(prayerName: String, fullScreen: PendingIntent? = null): Notification =
         NotificationCompat.Builder(context, CH_ADHAN)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("🕌 حان الآن وقت صلاة $prayerName")
@@ -94,7 +114,27 @@ class NotificationHelper @Inject constructor(
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
             .setContentIntent(contentIntent())
+            .apply { if (fullScreen != null) setFullScreenIntent(fullScreen, true) }
             .build()
+
+    /** إشعارُ أذكار ما بعد الصلاة (بنافذةٍ ملء الشاشة اختياريّاً كالأذان). */
+    fun dhikrNotification(prayerName: String, fullScreen: PendingIntent? = null): Notification =
+        NotificationCompat.Builder(context, CH_ADHAN)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("📿 أذكارٌ بعد صلاة $prayerName")
+            .setContentText("سبحان الله والحمد لله ولا إله إلّا الله والله أكبر")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setAutoCancel(true)
+            .setContentIntent(contentIntent())
+            .apply { if (fullScreen != null) setFullScreenIntent(fullScreen, true) }
+            .build()
+
+    /** يبني full-screen PendingIntent يُطلق [io.github.salehgnutux.gtsalat.alarm.AdhanAlarmActivity]. */
+    fun fullScreenAdhanIntent(title: String, subtitle: String, isDhikr: Boolean): PendingIntent {
+        val i = io.github.salehgnutux.gtsalat.alarm.AdhanAlarmActivity.intent(context, title, subtitle, isDhikr)
+        return PendingIntent.getActivity(context, if (isDhikr) 71 else 70, i, PI_FLAGS)
+    }
 
     fun preNotifyNotification(prayerName: String, minutes: Int): Notification =
         NotificationCompat.Builder(context, CH_PRENOTIFY)
@@ -154,6 +194,7 @@ class NotificationHelper @Inject constructor(
         const val ID_AYAH = 2007
         const val ID_TEST = 2008
         const val ID_RADIO = 2009
+        const val ID_UPDATE = 2010
         val PI_FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     }
 }

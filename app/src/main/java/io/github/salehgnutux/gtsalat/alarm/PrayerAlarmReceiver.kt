@@ -63,9 +63,13 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                             scheduler.schedulePostDhikr(now + s.postDhikrMinutes * 60_000L)
                         }
                         if (s.enableSalatNotify && !s.doNotDisturb) {
+                            // نافذة الأذان ملء الشاشة فوق القفل (إن فُعّلت) — عبر full-screen intent.
+                            val fs = if (s.fullScreenAdhan) {
+                                notifications.fullScreenAdhanIntent(prayerAr, io.github.salehgnutux.gtsalat.util.Format.clock(now), isDhikr = false)
+                            } else null
                             notifications.notify(
                                 NotificationHelper.ID_PRAYER,
-                                notifications.prayerNotification(prayerAr),
+                                notifications.prayerNotification(prayerAr, fs),
                             )
                             // النمط الفعّال لهذه الصلاة (مخصّصٌ أو عامّ). الصامت: إشعارٌ بلا صوت.
                             val pid = runCatching { PrayerId.valueOf(intent.getStringExtra(EXTRA_PRAYER) ?: "") }.getOrNull()
@@ -82,6 +86,13 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     ACTION_RESTORE_SOUND -> ringer.restore()
                     ACTION_POST_DHIKR -> {
                         if (s.enablePostDhikr && !s.doNotDisturb) {
+                            val fs = if (s.fullScreenAdhan) {
+                                notifications.fullScreenAdhanIntent(prayerAr, "", isDhikr = true)
+                            } else null
+                            notifications.notify(
+                                NotificationHelper.ID_PRAYER,
+                                notifications.dhikrNotification(prayerAr, fs),
+                            )
                             startAdhanService(context, prayerAr, AdhanService.SOUND_POST_DHIKR)
                         }
                     }
