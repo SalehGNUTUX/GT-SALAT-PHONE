@@ -68,6 +68,8 @@ class SettingsRepository @Inject constructor(
         val MONTH_SCHEME = stringPreferencesKey("month_scheme")
         val CAL_KIND = stringPreferencesKey("timetable_calendar")
         val CLOCK_24 = booleanPreferencesKey("clock_24h")
+        val HIJRI_OFFSET = intPreferencesKey("hijri_offset")
+        val SETTINGS_OPEN_SECTION = stringPreferencesKey("settings_open_section")
         val CHECK_UPDATES = booleanPreferencesKey("check_updates")
         val FULLSCREEN_ADHAN = booleanPreferencesKey("fullscreen_adhan")
         val SETUP = booleanPreferencesKey("setup_completed")
@@ -141,6 +143,8 @@ class SettingsRepository @Inject constructor(
             monthScheme = runCatching { MonthScheme.valueOf(this[Keys.MONTH_SCHEME] ?: "AUTO") }.getOrDefault(MonthScheme.AUTO),
             timetableCalendar = if (this[Keys.CAL_KIND] == "GREGORIAN") CalendarKind.GREGORIAN else CalendarKind.HIJRI,
             clock24h = this[Keys.CLOCK_24] ?: true,
+            hijriOffset = this[Keys.HIJRI_OFFSET] ?: 0,
+            settingsOpenSection = this[Keys.SETTINGS_OPEN_SECTION] ?: "الموقع وطريقة الحساب",
             checkUpdates = this[Keys.CHECK_UPDATES] ?: true,
             fullScreenAdhan = this[Keys.FULLSCREEN_ADHAN] ?: true,
             setupCompleted = this[Keys.SETUP] ?: false,
@@ -184,6 +188,55 @@ class SettingsRepository @Inject constructor(
         it[Keys.WIRD_STREAK] = (streak - 1).coerceAtLeast(0)
         it[Keys.WIRD_LAST_DATE] = yesterday   // نعيد آخر إتمامٍ إلى الأمس (تقريبٌ كافٍ للتراجع الفوريّ)
     }
+
+    /** يصدّر كلّ الإعدادات إلى JSON (نسخةٌ احتياطيّة) — عامٌّ يشمل كلّ المفاتيح تلقائيّاً. */
+    suspend fun exportJson(): String {
+        val prefs = context.dataStore.data.first()
+        val root = org.json.JSONObject()
+        root.put("app", "GT-SALAT")
+        root.put("schema", 1)
+        val p = org.json.JSONObject()
+        prefs.asMap().forEach { (key, value) ->
+            val o = org.json.JSONObject()
+            when (value) {
+                is Boolean -> { o.put("t", "bool"); o.put("v", value) }
+                is Int -> { o.put("t", "int"); o.put("v", value) }
+                is Long -> { o.put("t", "long"); o.put("v", value) }
+                is Float -> { o.put("t", "float"); o.put("v", value.toDouble()) }
+                is Double -> { o.put("t", "double"); o.put("v", value) }
+                is String -> { o.put("t", "str"); o.put("v", value) }
+                is Set<*> -> { o.put("t", "set"); o.put("v", org.json.JSONArray(value.map { it.toString() })) }
+                else -> return@forEach
+            }
+            p.put(key.name, o)
+        }
+        root.put("prefs", p)
+        return root.toString(2)
+    }
+
+    /** يستورد الإعدادات من JSON مصدَّر. يعيد true عند النجاح. */
+    suspend fun importJson(json: String): Boolean = runCatching {
+        val p = org.json.JSONObject(json).getJSONObject("prefs")
+        context.dataStore.edit { prefs ->
+            p.keys().forEach { name ->
+                val o = p.getJSONObject(name)
+                when (o.getString("t")) {
+                    "bool" -> prefs[booleanPreferencesKey(name)] = o.getBoolean("v")
+                    "int" -> prefs[intPreferencesKey(name)] = o.getInt("v")
+                    "long" -> prefs[androidx.datastore.preferences.core.longPreferencesKey(name)] = o.getLong("v")
+                    "float" -> prefs[androidx.datastore.preferences.core.floatPreferencesKey(name)] = o.getDouble("v").toFloat()
+                    "double" -> prefs[doublePreferencesKey(name)] = o.getDouble("v")
+                    "str" -> prefs[stringPreferencesKey(name)] = o.getString("v")
+                    "set" -> {
+                        val arr = o.getJSONArray("v")
+                        prefs[androidx.datastore.preferences.core.stringSetPreferencesKey(name)] =
+                            (0 until arr.length()).map { arr.getString(it) }.toSet()
+                    }
+                }
+            }
+        }
+        true
+    }.getOrDefault(false)
 
     suspend fun setLastMushafPage(page: Int) = context.dataStore.edit { it[Keys.LAST_MUSHAF_PAGE] = page }
 
@@ -263,6 +316,8 @@ class SettingsRepository @Inject constructor(
     suspend fun setSavedRingerMode(m: Int) = context.dataStore.edit { it[Keys.SAVED_RINGER] = m }
     suspend fun savedRingerMode(): Int? = context.dataStore.data.first()[Keys.SAVED_RINGER]
     suspend fun setClock24h(v: Boolean) = context.dataStore.edit { it[Keys.CLOCK_24] = v }
+    suspend fun setHijriOffset(days: Int) = context.dataStore.edit { it[Keys.HIJRI_OFFSET] = days.coerceIn(-3, 3) }
+    suspend fun setSettingsOpenSection(title: String) = context.dataStore.edit { it[Keys.SETTINGS_OPEN_SECTION] = title }
     suspend fun setCheckUpdates(v: Boolean) = context.dataStore.edit { it[Keys.CHECK_UPDATES] = v }
     suspend fun setFullScreenAdhan(v: Boolean) = context.dataStore.edit { it[Keys.FULLSCREEN_ADHAN] = v }
     suspend fun setTheme(t: ThemeMode) = context.dataStore.edit { it[Keys.THEME] = t.name }

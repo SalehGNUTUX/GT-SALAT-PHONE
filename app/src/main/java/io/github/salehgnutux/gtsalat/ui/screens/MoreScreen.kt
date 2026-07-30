@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.HistoryEdu
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.NightsStay
 import androidx.compose.material.icons.outlined.Notes
+import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Radio
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.VolunteerActivism
@@ -63,6 +64,7 @@ fun MoreScreen(onOpen: (String) -> Unit) {
         Feature("حِكَم ومواعظ", Icons.Outlined.FormatQuote, "hikam"),
         Feature("أحداثٌ تاريخيّة", Icons.Outlined.HistoryEdu, "events"),
         Feature("الإذاعات", Icons.Outlined.Radio, "radios"),
+        Feature("إمساكيّة رمضان", Icons.Outlined.DarkMode, "imsakiah"),
     )
 
     Column(Modifier.fillMaxSize()) {

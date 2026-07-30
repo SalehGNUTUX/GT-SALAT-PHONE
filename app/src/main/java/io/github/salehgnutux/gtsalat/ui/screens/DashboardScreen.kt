@@ -96,6 +96,7 @@ fun DashboardScreen(onOpenSettings: () -> Unit = {}, vm: DashboardViewModel = hi
                 }
                 UpdateBanner()
                 HeroCard(ui, tick)
+                RamadanCard(ui, tick)
             }
         }
 
@@ -248,6 +249,61 @@ private fun HeroCard(ui: DashboardUi, tick: DashboardTick) {
                 )
             }
         }
+    }
+}
+
+/** بطاقة رمضان (تظهر في الشهر فقط): عدٌّ تنازليٌّ للإفطار أو السحور/الإمساك + وقتاهما. */
+@Composable
+private fun RamadanCard(ui: DashboardUi, tick: DashboardTick) {
+    if (!io.github.salehgnutux.gtsalat.domain.Ramadan.isRamadan()) return
+    val today = ui.today ?: return
+    val fajr = today.time(io.github.salehgnutux.gtsalat.domain.PrayerId.FAJR)?.epochMillis ?: return
+    val maghrib = today.time(io.github.salehgnutux.gtsalat.domain.PrayerId.MAGHRIB)?.epochMillis ?: return
+    // قراءة tick تُجبر إعادة التركيب كلّ ثانية (عدّادٌ حيّ).
+    @Suppress("UNUSED_EXPRESSION") tick.clock
+    val now = System.currentTimeMillis()
+    val imsak = fajr - io.github.salehgnutux.gtsalat.domain.Ramadan.IMSAK_BEFORE_FAJR_MIN * 60_000L
+
+    // تحديد الحدث القادم: قبل الإمساك → سحور، بين الفجر والمغرب → إفطار، بعد المغرب → سحور الغد.
+    val (label, target, isIftar) = when {
+        now < imsak -> Triple("السحور والإمساك", imsak, false)
+        now < maghrib -> Triple("الإفطار", maghrib, true)
+        else -> Triple("السحور والإمساك", (ui.tomorrowFajrMillis ?: (fajr + 86_400_000L)) - io.github.salehgnutux.gtsalat.domain.Ramadan.IMSAK_BEFORE_FAJR_MIN * 60_000L, false)
+    }
+    val remaining = (target - now).coerceAtLeast(0L)
+    val day = io.github.salehgnutux.gtsalat.domain.Ramadan.dayOfRamadan()
+
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
+        Column(
+            Modifier.fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.secondaryContainer)))
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            val onC = MaterialTheme.colorScheme.onTertiaryContainer
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Text("🌙 رمضان", fontWeight = FontWeight.Bold, color = onC, style = MaterialTheme.typography.titleMedium)
+                if (day in 1..30) Text("اليوم $day", color = onC, fontWeight = FontWeight.Bold)
+            }
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Text("المتبقّي على ${if (isIftar) "الإفطار" else "الإمساك"}", color = onC.copy(alpha = 0.9f), style = MaterialTheme.typography.labelLarge)
+                Text(Format.countdown(remaining), style = CountdownStyle, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = onC)
+            }
+            HorizontalDivider(color = onC.copy(alpha = 0.25f))
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceEvenly) {
+                RamadanTime("الإمساك", Format.clock(imsak), onC)
+                RamadanTime("الفجر", Format.clock(fajr), onC)
+                RamadanTime("الإفطار", Format.clock(maghrib), onC)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RamadanTime(label: String, time: String, onColor: androidx.compose.ui.graphics.Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = onColor.copy(alpha = 0.85f))
+        Text(time, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = onColor)
     }
 }
 

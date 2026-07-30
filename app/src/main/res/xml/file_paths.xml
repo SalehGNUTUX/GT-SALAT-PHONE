@@ -2,4 +2,6 @@
 <paths>
     <!-- حزمة التحديث المُنزَّلة في filesDir/updates -->
     <files-path name="updates" path="updates/" />
+    <!-- حزمة النسخ الاحتياطيّ للمشاركة في cacheDir/backups -->
+    <cache-path name="backups" path="backups/" />
 </paths>

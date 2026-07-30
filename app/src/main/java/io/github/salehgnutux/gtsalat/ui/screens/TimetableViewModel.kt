@@ -26,6 +26,7 @@ data class TimetableUi(
     val hasLocation: Boolean = true,
     val calendar: CalendarKind = CalendarKind.HIJRI,
     val scheme: MonthScheme = MonthScheme.STANDARD,
+    val hijriOffset: Int = 0,
     /** فهرس اليوم داخل قائمة أيّام الشهر المعروض (-1 إن لم يكن ضمنه). */
     val todayIndex: Int = -1,
 )
@@ -66,6 +67,7 @@ class TimetableViewModel @Inject constructor(
                 hasLocation = days.isNotEmpty(),
                 calendar = s.timetableCalendar,
                 scheme = scheme,
+                hijriOffset = s.hijriOffset,
                 todayIndex = days.indexOfFirst { it.dateIso == todayIso },
             )
         }

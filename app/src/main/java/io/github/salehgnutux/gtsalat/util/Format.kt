@@ -61,4 +61,21 @@ object Format {
     /** «يوليوز 2026» — الشهر والسنة فقط وفق المخطّط. */
     fun monthYear(year: Int, month: Int, scheme: io.github.salehgnutux.gtsalat.domain.MonthScheme): String =
         "${io.github.salehgnutux.gtsalat.domain.GregorianMonths.monthName(month, scheme)} $year"
+
+    private val hijriMonths = arrayOf(
+        "محرّم", "صفر", "ربيع الأوّل", "ربيع الآخر", "جمادى الأولى", "جمادى الآخرة",
+        "رجب", "شعبان", "رمضان", "شوّال", "ذو القعدة", "ذو الحجّة",
+    )
+
+    /** تاريخٌ هجريٌّ محلّيّ (أمّ القرى) مع إزاحةٍ بالأيّام لتصحيح فروق المناطق. بأرقامٍ 0-9. */
+    fun hijriAdjusted(offsetDays: Int): String = hijriForDate(LocalDate.now(), offsetDays)
+
+    /** تاريخٌ هجريٌّ محلّيّ لتاريخٍ ميلاديٍّ معيّن مع إزاحةٍ بالأيّام. */
+    fun hijriForDate(date: LocalDate, offsetDays: Int): String = runCatching {
+        val d = java.time.chrono.HijrahDate.from(date).plus(offsetDays.toLong(), java.time.temporal.ChronoUnit.DAYS)
+        val day = d.get(java.time.temporal.ChronoField.DAY_OF_MONTH)
+        val month = d.get(java.time.temporal.ChronoField.MONTH_OF_YEAR)
+        val year = d.get(java.time.temporal.ChronoField.YEAR)
+        "$day ${hijriMonths[month - 1]} $year هـ"
+    }.getOrDefault("")
 }

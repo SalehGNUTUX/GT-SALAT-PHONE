@@ -72,17 +72,19 @@ fun TimetableScreen(vm: TimetableViewModel = hiltViewModel()) {
 
         LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(ui.days, key = { it.dateIso }) { day ->
-                DayCard(day, isToday = day.dateIso == ui.todayIso, calendar = ui.calendar, scheme = ui.scheme)
+                DayCard(day, isToday = day.dateIso == ui.todayIso, calendar = ui.calendar, scheme = ui.scheme, hijriOffset = ui.hijriOffset)
             }
         }
     }
 }
 
 @Composable
-private fun DayCard(day: DayTimetable, isToday: Boolean, calendar: CalendarKind, scheme: MonthScheme) {
+private fun DayCard(day: DayTimetable, isToday: Boolean, calendar: CalendarKind, scheme: MonthScheme, hijriOffset: Int) {
     val date = runCatching { LocalDate.parse(day.dateIso) }.getOrNull()
     val gregorian = date?.let { "${Format.weekdayName(it)} ${it.dayOfMonth} ${io.github.salehgnutux.gtsalat.domain.GregorianMonths.monthName(it.monthValue, scheme)} ${it.year}" } ?: day.dateIso
-    val hijri = day.hijri?.takeIf { it.isNotBlank() }
+    // عند وجود إزاحةٍ نحسب الهجريّ محلّيّاً لتاريخ الصفّ (فيوافق يومه الميلاديّ)؛ وإلّا من الإنترنت.
+    val hijri = if (hijriOffset != 0 && date != null) Format.hijriForDate(date, hijriOffset)
+                else day.hijri?.takeIf { it.isNotBlank() }
 
     // التقويم المختار أساسٌ، والآخر تحته (فيظهر الميلاديّ الموافق للهجريّ دائماً).
     val primary = if (calendar == CalendarKind.GREGORIAN) gregorian else (hijri ?: gregorian)

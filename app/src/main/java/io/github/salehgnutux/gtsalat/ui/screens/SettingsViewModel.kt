@@ -32,6 +32,7 @@ class SettingsViewModel @Inject constructor(
     private val repo: PrayerRepository,
     private val scheduler: PrayerAlarmScheduler,
     private val previewer: AdhanPreviewer,
+    private val backup: io.github.salehgnutux.gtsalat.data.BackupManager,
 ) : ViewModel() {
 
     val settings: StateFlow<AppSettings?> = settingsRepo.settings
@@ -98,6 +99,42 @@ class SettingsViewModel @Inject constructor(
     fun setClock24h(v: Boolean) = viewModelScope.launch { settingsRepo.setClock24h(v) }
     fun setCheckUpdates(v: Boolean) = viewModelScope.launch { settingsRepo.setCheckUpdates(v) }
     fun setEnableWird(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableWird(v) }
+    fun setHijriOffset(days: Int) = viewModelScope.launch { settingsRepo.setHijriOffset(days) }
+    fun setSettingsSection(title: String) = viewModelScope.launch { settingsRepo.setSettingsOpenSection(title) }
+
+    // ----- النسخ الاحتياطيّ / التصدير / الاستيراد الانتقائيّ -----
+
+    /** أحجام ما هو متاحٌ على الجهاز (لحوار التصدير). */
+    fun loadBackupSizes(cb: (io.github.salehgnutux.gtsalat.data.BackupSizes) -> Unit) =
+        viewModelScope.launch { cb(backup.sizes()) }
+
+    /** يصدّر الحزمة إلى ملفٍّ اختاره المستخدم (SAF) وفق ما اختاره. */
+    fun exportBundle(uri: android.net.Uri, opts: io.github.salehgnutux.gtsalat.data.BackupOptions, done: (Boolean) -> Unit) =
+        viewModelScope.launch { done(backup.export(uri, opts)) }
+
+    /** يجهّز حزمةً في التخبئة ويعيد Uri للمشاركة عبر ورقة النظام (FileProvider). */
+    fun shareBundle(opts: io.github.salehgnutux.gtsalat.data.BackupOptions, done: (android.net.Uri?) -> Unit) =
+        viewModelScope.launch {
+            val file = backup.exportToCache(opts)
+            val uri = file?.let {
+                runCatching {
+                    androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", it)
+                }.getOrNull()
+            }
+            done(uri)
+        }
+
+    /** يفحص حزمةً قبل الاستيراد ليختار المستخدم ما يستعيد. */
+    fun inspectBackup(uri: android.net.Uri, cb: (io.github.salehgnutux.gtsalat.data.BackupContents) -> Unit) =
+        viewModelScope.launch { cb(backup.inspect(uri)) }
+
+    /** يستورد ما اختاره المستخدم من الحزمة ثمّ يعيد جدولة التنبيهات إن لزم. */
+    fun importBundle(uri: android.net.Uri, opts: io.github.salehgnutux.gtsalat.data.BackupOptions, done: (io.github.salehgnutux.gtsalat.data.BackupImport) -> Unit) =
+        viewModelScope.launch {
+            val res = backup.import(uri, opts)
+            if (res.ok && (res.settings || res.prayers > 0)) reschedule()
+            done(res)
+        }
     fun setFullScreenAdhan(v: Boolean) = viewModelScope.launch { settingsRepo.setFullScreenAdhan(v) }
 
     /**

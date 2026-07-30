@@ -48,6 +48,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -100,9 +101,41 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         }
     }
 
-    // أكورديون: عنوان القسم المفتوح حاليّاً (null = الكلّ مطويّ). فتح قسمٍ يطوي غيره.
-    var openSection by remember { mutableStateOf<String?>("الموقع وطريقة الحساب") }
-    fun toggle(title: String) { openSection = if (openSection == title) null else title }
+    // ----- النسخ الاحتياطيّ الانتقائيّ (تصدير/مشاركة/استيراد) -----
+    var backupSizes by remember { mutableStateOf<io.github.salehgnutux.gtsalat.data.BackupSizes?>(null) }
+    var exportMode by remember { mutableStateOf<String?>(null) }      // "export" أو "share" أو null
+    var pendingOpts by remember { mutableStateOf(io.github.salehgnutux.gtsalat.data.BackupOptions()) }
+    var importUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var importContents by remember { mutableStateOf<io.github.salehgnutux.gtsalat.data.BackupContents?>(null) }
+    var busy by remember { mutableStateOf<String?>(null) }   // نصّ رسالة الانتظار أو null
+
+    fun toast(msg: String) = android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+
+    // إنشاء ملفّ الحزمة (SAF) بعد اختيار المحتوى.
+    val exportZipLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip"),
+    ) { uri ->
+        if (uri != null) {
+            busy = "جارٍ تجهيز الحزمة…"
+            vm.exportBundle(uri, pendingOpts) { ok -> busy = null; toast(if (ok) "تمّ حفظ النسخة الاحتياطيّة" else "تعذّر التصدير") }
+        }
+    }
+    // اختيار حزمةٍ لاستيرادها ← فحصٌ ثمّ اختيار ما يُستعاد.
+    val importZipLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            busy = "جارٍ فحص الحزمة…"
+            vm.inspectBackup(uri) { c ->
+                busy = null
+                if (!c.anything) toast("الحزمة فارغةٌ أو غير صالحة") else { importUri = uri; importContents = c }
+            }
+        }
+    }
+
+    // أكورديون: القسم المفتوح مُخزَّنٌ في الإعدادات (يُتذكَّر عبر الجلسات؛ "" = الكلّ مطويّ).
+    val openSection: String? = settings.settingsOpenSection.ifBlank { null }
+    fun toggle(title: String) { vm.setSettingsSection(if (openSection == title) "" else title) }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -218,6 +251,26 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                     FilterChip(settings.timetableCalendar == CalendarKind.GREGORIAN, { vm.setTimetableCalendar(CalendarKind.GREGORIAN) }, { Text("ميلاديّ") })
                 }
             }
+            // تعديل التاريخ الهجريّ بالأيّام (لتصحيح فرق التقويم حسب المنطقة/الرؤية).
+            LabeledRow("تعديل التاريخ الهجريّ") {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FilledTonalButton(onClick = { vm.setHijriOffset(settings.hijriOffset - 1) }, enabled = settings.hijriOffset > -3) { Text("−", fontWeight = FontWeight.Bold) }
+                    val off = settings.hijriOffset
+                    Text(
+                        when { off == 0 -> "بدون" ; off > 0 -> "+$off يوم" ; else -> "$off يوم" },
+                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    FilledTonalButton(onClick = { vm.setHijriOffset(settings.hijriOffset + 1) }, enabled = settings.hijriOffset < 3) { Text("+", fontWeight = FontWeight.Bold) }
+                }
+            }
+            if (settings.hijriOffset != 0) {
+                Text(
+                    "التاريخ الهجريّ محسوبٌ محلّيّاً (أمّ القرى) بالإزاحة. أعِده إلى «بدون» للاعتماد على تاريخ الإنترنت.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
             LabeledRow("أسماء الأشهر الميلاديّة") {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -267,6 +320,19 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             }
         }
 
+        SectionCard("النسخ الاحتياطيّ والمشاركة", openSection == "النسخ الاحتياطيّ والمشاركة", { toggle("النسخ الاحتياطيّ والمشاركة") }) {
+            Text(
+                "صدّر إعداداتك ومواقيتك المخزّنة وما نزّلته من القرآن (صوتٌ/مصحف) في حزمةٍ واحدة، أو شاركها. عند الاستيراد تختار ما تستعيده.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalButton(onClick = { vm.loadBackupSizes { backupSizes = it; exportMode = "export" } }, modifier = Modifier.weight(1f)) { Text("تصدير") }
+                FilledTonalButton(onClick = { vm.loadBackupSizes { backupSizes = it; exportMode = "share" } }, modifier = Modifier.weight(1f)) { Text("مشاركة") }
+                FilledTonalButton(onClick = { importZipLauncher.launch(arrayOf("application/zip", "application/octet-stream")) }, modifier = Modifier.weight(1f)) { Text("استيراد") }
+            }
+        }
+
         SectionCard("حول", openSection == "حول", { toggle("حول") }) {
             InfoRow("النسخة", "GT-SALAT ${BuildConfig.VERSION_NAME}")
             InfoRow("الإصدار", if (BuildConfig.USES_GMS) "كاملة (خدمات Google)" else "حرّة (بلا Google)")
@@ -278,6 +344,146 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             LinkRow("مشاريع GNUTUX", "بقيّة مشاريع المطوّر") { openUrl(context, io.github.salehgnutux.gtsalat.domain.Credits.PROJECTS) }
         }
     }
+
+    // حوار اختيار محتوى التصدير/المشاركة.
+    val sizes = backupSizes
+    if (exportMode != null && sizes != null) {
+        val items = listOf(
+            BackupPickItem("settings", "الإعدادات", "كلّ تفضيلاتك", available = true),
+            BackupPickItem("prayers", "مواقيت الصلاة المخزّنة", "${sizes.prayersCount} يوماً", available = sizes.prayersCount > 0),
+            BackupPickItem("audio", "القرآن الصوتيّ المُنزَّل", formatBytes(sizes.audioBytes), available = sizes.audioBytes > 0),
+            BackupPickItem("mushaf", "المصحف المصوَّر المُنزَّل", formatBytes(sizes.mushafBytes), available = sizes.mushafBytes > 0),
+        )
+        val share = exportMode == "share"
+        BackupSelectionDialog(
+            title = if (share) "مشاركة نسخة" else "تصدير نسخة",
+            confirmLabel = if (share) "مشاركة" else "تصدير",
+            items = items,
+            onDismiss = { exportMode = null },
+            onConfirm = { opts ->
+                val chosen = exportMode
+                exportMode = null
+                pendingOpts = opts
+                if (chosen == "share") {
+                    busy = "جارٍ تجهيز الحزمة للمشاركة…"
+                    vm.shareBundle(opts) { uri ->
+                        busy = null
+                        if (uri == null) toast("تعذّر تجهيز الحزمة") else {
+                            val send = Intent(Intent.ACTION_SEND).apply {
+                                type = "application/zip"
+                                putExtra(Intent.EXTRA_STREAM, uri)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            runCatching { context.startActivity(Intent.createChooser(send, "مشاركة النسخة").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                        }
+                    }
+                } else {
+                    exportZipLauncher.launch("GT-SALAT-backup.zip")
+                }
+            },
+        )
+    }
+
+    // حوار اختيار ما يُستعاد من الحزمة (يعرض المتاح فيها فقط).
+    val contents = importContents
+    val uri = importUri
+    if (contents != null && uri != null) {
+        val items = listOf(
+            BackupPickItem("settings", "الإعدادات", "", available = contents.hasSettings),
+            BackupPickItem("prayers", "مواقيت الصلاة المخزّنة", "${contents.prayersCount} يوماً", available = contents.hasPrayers),
+            BackupPickItem("audio", "القرآن الصوتيّ", formatBytes(contents.audioBytes), available = contents.hasAudio),
+            BackupPickItem("mushaf", "المصحف المصوَّر", formatBytes(contents.mushafBytes), available = contents.hasMushaf),
+        )
+        BackupSelectionDialog(
+            title = "استيراد نسخة",
+            confirmLabel = "استيراد",
+            items = items,
+            onDismiss = { importContents = null; importUri = null },
+            onConfirm = { opts ->
+                importContents = null; importUri = null
+                busy = "جارٍ الاستيراد…"
+                vm.importBundle(uri, opts) { res ->
+                    busy = null
+                    toast(if (res.ok) "تمّ الاستيراد (${res.prayers} يوماً · ${res.files} ملفّاً)" else "تعذّر الاستيراد")
+                }
+            },
+        )
+    }
+
+    // حوار انتظارٍ غير قابلٍ للإغلاق أثناء تجهيز/فحص/استيراد الحزمة (قد تطول مع الملفّات الكبيرة).
+    busy?.let { msg ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { },
+            properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+            title = { Text("يرجى الانتظار") },
+            text = {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    androidx.compose.material3.CircularProgressIndicator()
+                    Text(msg)
+                }
+            },
+            confirmButton = { },
+        )
+    }
+}
+
+/** عنصرٌ في حوار اختيار محتوى النسخة. */
+private data class BackupPickItem(val key: String, val label: String, val subtitle: String, val available: Boolean)
+
+/** حوارٌ بقائمة اختياراتٍ (خانات) لمحتوى التصدير/المشاركة/الاستيراد. المتعذّر معطَّل. */
+@Composable
+private fun BackupSelectionDialog(
+    title: String,
+    confirmLabel: String,
+    items: List<BackupPickItem>,
+    onDismiss: () -> Unit,
+    onConfirm: (io.github.salehgnutux.gtsalat.data.BackupOptions) -> Unit,
+) {
+    val checked = remember { mutableStateMapOf<String, Boolean>().apply { items.forEach { put(it.key, it.available) } } }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                items.forEach { item ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable(enabled = item.available) { checked[item.key] = !(checked[item.key] ?: false) }.padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        androidx.compose.material3.Checkbox(
+                            checked = item.available && (checked[item.key] ?: false),
+                            onCheckedChange = { if (item.available) checked[item.key] = it },
+                            enabled = item.available,
+                        )
+                        Column(Modifier.weight(1f)) {
+                            Text(item.label, color = if (item.available) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline)
+                            if (item.subtitle.isNotBlank()) Text(item.subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                            else if (!item.available) Text("غير متوفّر", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            val opts = io.github.salehgnutux.gtsalat.data.BackupOptions(
+                settings = checked["settings"] == true,
+                prayers = checked["prayers"] == true,
+                audio = checked["audio"] == true,
+                mushaf = checked["mushaf"] == true,
+            )
+            androidx.compose.material3.TextButton(onClick = { onConfirm(opts) }, enabled = opts.any) { Text(confirmLabel) }
+        },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("إلغاء") } },
+    )
+}
+
+/** يصوغ حجماً بالبايت إلى نصٍّ مقروء (بأرقامٍ لاتينيّة 0-9). */
+private fun formatBytes(bytes: Long): String = when {
+    bytes <= 0 -> "لا شيء"
+    bytes < 1024 * 1024 -> String.format(java.util.Locale.US, "%.0f كيلوبايت", bytes / 1024.0)
+    bytes < 1024L * 1024 * 1024 -> String.format(java.util.Locale.US, "%.1f ميغابايت", bytes / (1024.0 * 1024))
+    else -> String.format(java.util.Locale.US, "%.2f غيغابايت", bytes / (1024.0 * 1024 * 1024))
 }
 
 private fun openUrl(context: Context, url: String) {

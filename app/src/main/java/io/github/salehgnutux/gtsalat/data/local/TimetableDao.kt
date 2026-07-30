@@ -22,4 +22,11 @@ interface TimetableDao {
 
     @Query("DELETE FROM timetable WHERE dateIso < :beforeIso")
     suspend fun deleteOlderThan(beforeIso: String)
+
+    /** كلّ الأيّام المخزّنة (للتصدير/النسخ الاحتياطيّ). */
+    @Query("SELECT * FROM timetable")
+    suspend fun all(): List<TimetableEntity>
+
+    @Query("SELECT COUNT(*) FROM timetable")
+    suspend fun count(): Int
 }
