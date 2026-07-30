@@ -108,7 +108,8 @@ fun MushafScreen(onBack: () -> Unit, vm: QuranMetaViewModel = hiltViewModel()) {
                 }
             }
         }
-        HorizontalPager(state = pager, modifier = Modifier.fillMaxSize().background(if (dark) MaterialTheme.colorScheme.surface else androidx.compose.ui.graphics.Color.White)) { index ->
+        // خلفيّةٌ رماديّةٌ داكنةٌ ثابتةٌ تُطابق لون صفحة المصحف المقلوبة (≈0.12) فتندمج الحواشي.
+        HorizontalPager(state = pager, modifier = Modifier.fillMaxSize().background(if (dark) androidx.compose.ui.graphics.Color(0xFF1E1E1E) else androidx.compose.ui.graphics.Color.White)) { index ->
             // يُفضّل الملفّ المحلّيّ إن نُزِّل لهذه الرواية، وإلّا يُبثّ (Coil يخزّنه).
             MushafPage(page = index + 1, invert = dark, riwaya = riwaya, local = vm.localPage(index + 1, riwaya))
         }
@@ -134,11 +135,13 @@ private fun MushafPage(page: Int, invert: Boolean, riwaya: String = "hafs", loca
     LaunchedEffect(state) {
         if (state is AsyncImagePainter.State.Error && idx < urls.lastIndex) idx++
     }
+    // قلبٌ ليليٌّ ناعم: خلفيّةٌ رماديّةٌ داكنة (لا أسود قاسٍ) ونصٌّ أبيضُ مائلٌ للدفء (لا أبيض ناصع)
+    // لتقليل إجهاد العين — الميل -0.73 والإزاحة 216 يحوّلان الأبيض 255→30 والأسود 0→216.
     val filter = remember(invert) {
         if (invert) ColorFilter.colorMatrix(ColorMatrix(floatArrayOf(
-            -1f, 0f, 0f, 0f, 255f,
-            0f, -1f, 0f, 0f, 255f,
-            0f, 0f, -1f, 0f, 255f,
+            -0.73f, 0f, 0f, 0f, 216f,
+            0f, -0.73f, 0f, 0f, 216f,
+            0f, 0f, -0.73f, 0f, 216f,
             0f, 0f, 0f, 1f, 0f,
         ))) else null
     }

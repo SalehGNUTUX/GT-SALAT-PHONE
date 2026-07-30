@@ -1,11 +1,18 @@
 package io.github.salehgnutux.gtsalat.ui.screens
 
+import android.content.Context
+import android.content.Intent
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.salehgnutux.gtsalat.alarm.AdhanAlarmActivity
 import io.github.salehgnutux.gtsalat.alarm.PrayerAlarmScheduler
 import io.github.salehgnutux.gtsalat.audio.AdhanPreviewer
+import io.github.salehgnutux.gtsalat.audio.AdhanService
 import io.github.salehgnutux.gtsalat.data.PrayerRepository
+import io.github.salehgnutux.gtsalat.util.Format
 import io.github.salehgnutux.gtsalat.data.settings.AdhanType
 import io.github.salehgnutux.gtsalat.data.settings.AppSettings
 import io.github.salehgnutux.gtsalat.data.settings.SettingsRepository
@@ -20,6 +27,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val settingsRepo: SettingsRepository,
     private val repo: PrayerRepository,
     private val scheduler: PrayerAlarmScheduler,
@@ -90,6 +98,26 @@ class SettingsViewModel @Inject constructor(
     fun setClock24h(v: Boolean) = viewModelScope.launch { settingsRepo.setClock24h(v) }
     fun setCheckUpdates(v: Boolean) = viewModelScope.launch { settingsRepo.setCheckUpdates(v) }
     fun setFullScreenAdhan(v: Boolean) = viewModelScope.launch { settingsRepo.setFullScreenAdhan(v) }
+
+    /**
+     * اختبارٌ فوريٌّ لنافذة ملء الشاشة (أذانٌ أو أذكار): يفتح النافذة ويشغّل الصوت،
+     * وزرّ الإيقاف فيها يوقفه. لمعاينة السلوك دون انتظار وقت الصلاة.
+     */
+    fun testFullScreen(isDhikr: Boolean) {
+        val prayer = if (isDhikr) "أذكارٌ (اختبار)" else "أذانٌ (اختبار)"
+        runCatching {
+            context.startActivity(
+                AdhanAlarmActivity.intent(context, prayer, Format.clock(System.currentTimeMillis()), isDhikr),
+            )
+        }
+        val svc = Intent(context, AdhanService::class.java).apply {
+            putExtra(AdhanService.EXTRA_PRAYER_AR, prayer)
+            putExtra(AdhanService.EXTRA_SOUND, if (isDhikr) AdhanService.SOUND_POST_DHIKR else AdhanService.SOUND_ADHAN)
+            putExtra(AdhanService.EXTRA_ALERT_MODE, "FULL")
+            putExtra(AdhanService.EXTRA_VOLUME, 100)
+        }
+        runCatching { ContextCompat.startForegroundService(context, svc) }
+    }
 
     /** يجدول تنبيهاً اختباريّاً بعد دقيقة (لقياس وصول التنبيهات والشاشة مغلقة). */
     fun testNotification() = scheduler.scheduleTest()

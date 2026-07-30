@@ -3,7 +3,9 @@ package io.github.salehgnutux.gtsalat.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -220,27 +222,74 @@ private fun HeroCard(ui: DashboardUi, tick: DashboardTick) {
 
             HorizontalDivider(Modifier.padding(vertical = 8.dp), color = onHero.copy(alpha = 0.25f))
 
-            // الصلاة القادمة
-            Text("الصلاة القادمة", style = MaterialTheme.typography.labelLarge, color = onHero.copy(alpha = 0.85f))
+            // الصلاة القادمة + حلقة تقدّمٍ حيّة تمتلئ باقتراب الوقت
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text(
-                    ui.next?.prayer?.id?.arabic ?: "—",
-                    style = MaterialTheme.typography.displaySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = onHero,
-                )
-                Text(
-                    ui.next?.let { Format.clock(it.prayer.epochMillis) } ?: "",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = onHero,
-                )
-            }
-            if (tick.countdownText.isNotBlank()) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("المتبقّي", style = MaterialTheme.typography.labelMedium, color = onHero.copy(alpha = 0.85f))
-                    Text(tick.countdownText, style = CountdownStyle, fontWeight = FontWeight.Bold, color = onHero)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("الصلاة القادمة", style = MaterialTheme.typography.labelLarge, color = onHero.copy(alpha = 0.85f))
+                    Text(
+                        ui.next?.prayer?.id?.arabic ?: "—",
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = onHero,
+                    )
+                    Text(
+                        ui.next?.let { Format.clock(it.prayer.epochMillis) } ?: "",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = onHero,
+                    )
                 }
+                CountdownRing(
+                    progress = tick.progress,
+                    countdown = tick.countdownText,
+                    ringColor = onHero,
+                    trackColor = onHero.copy(alpha = 0.22f),
+                    labelColor = onHero.copy(alpha = 0.85f),
+                )
             }
+        }
+    }
+}
+
+/** حلقةٌ دائريّةٌ تُظهر نسبة انقضاء الوقت حتى الصلاة القادمة، والعدّاد المتبقّي في مركزها. */
+@Composable
+private fun CountdownRing(
+    progress: Float,
+    countdown: String,
+    ringColor: androidx.compose.ui.graphics.Color,
+    trackColor: androidx.compose.ui.graphics.Color,
+    labelColor: androidx.compose.ui.graphics.Color,
+) {
+    // تمريرٌ سلسٌ للحلقة عند تحديث النسبة كلّ ثانية.
+    val animated by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = progress.coerceIn(0f, 1f),
+        animationSpec = androidx.compose.animation.core.tween(700),
+        label = "ringProgress",
+    )
+    Box(Modifier.size(112.dp), contentAlignment = Alignment.Center) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val stroke = 11.dp.toPx()
+            val inset = stroke / 2f
+            val arc = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
+            val topLeft = androidx.compose.ui.geometry.Offset(inset, inset)
+            drawArc(
+                color = trackColor, startAngle = -90f, sweepAngle = 360f, useCenter = false,
+                topLeft = topLeft, size = arc,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round),
+            )
+            drawArc(
+                color = ringColor, startAngle = -90f, sweepAngle = 360f * animated, useCenter = false,
+                topLeft = topLeft, size = arc,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round),
+            )
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("المتبقّي", style = MaterialTheme.typography.labelSmall, color = labelColor)
+            Text(
+                countdown.ifBlank { "—" },
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = ringColor,
+            )
         }
     }
 }

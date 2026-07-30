@@ -43,7 +43,7 @@ data class DashboardUi(
 
 /** حالةٌ خفيفةٌ تتغيّر كلّ ثانية (الساعة والعدّاد) — معزولةٌ عن [DashboardUi]
  *  حتّى لا يُعاد تركيب كامل بطاقات الرئيسيّة كلّ ثانية، بل نصوص الساعة/العدّاد فقط. */
-data class DashboardTick(val clock: String = "", val countdownText: String = "")
+data class DashboardTick(val clock: String = "", val countdownText: String = "", val progress: Float = 0f)
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
@@ -186,7 +186,17 @@ class DashboardViewModel @Inject constructor(
         _tick.value = DashboardTick(
             clock = clock,
             countdownText = next?.let { Format.countdown(it.remainingMillis) } ?: "",
+            progress = progressToNext(t, now, next),
         )
         if (next?.prayer?.id != lastNextId) rebuildUi()
+    }
+
+    /** نسبة انقضاء المدّة بين الصلاة السابقة والقادمة (0..1) — لحلقة التقدّم في الرئيسيّة. */
+    private fun progressToNext(t: DayTimetable, now: Long, next: NextPrayer?): Float {
+        val nextE = next?.prayer?.epochMillis ?: return 0f
+        val bounds = (t.prayers.filter { it.id.isPrayer }.map { it.epochMillis } + listOfNotNull(tomorrowFajr?.epochMillis)).sorted()
+        val prev = bounds.lastOrNull { it <= now } ?: return 0f
+        if (nextE <= prev) return 0f
+        return ((now - prev).toFloat() / (nextE - prev)).coerceIn(0f, 1f)
     }
 }

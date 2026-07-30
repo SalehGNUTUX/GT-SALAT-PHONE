@@ -36,11 +36,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.salehgnutux.gtsalat.audio.AdhanService
+import io.github.salehgnutux.gtsalat.ui.theme.AmiriQuran
 import io.github.salehgnutux.gtsalat.ui.theme.GtSalatTheme
 
 /**
@@ -105,17 +107,23 @@ class AdhanAlarmActivity : ComponentActivity() {
 
 @Composable
 private fun AdhanAlarmScreen(title: String, subtitle: String, isDhikr: Boolean, onStop: () -> Unit) {
-    // وميضٌ لطيف: تدرّجٌ يتنفّس بين لونين من ألوان السِمة.
-    val transition = rememberInfiniteTransition(label = "flash")
+    // تنفّسٌ لطيفٌ وبطيء: تدرّجٌ يتحوّل بين لونين من ألوان السِمة (لا وميضٌ عنيف).
+    val transition = rememberInfiniteTransition(label = "breathe")
     val t by transition.animateFloat(
         initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Reverse),
+        animationSpec = infiniteRepeatable(tween(2200, easing = LinearEasing), RepeatMode.Reverse),
         label = "t",
+    )
+    // نبضةٌ خفيفةٌ للرمز.
+    val pulse by transition.animateFloat(
+        initialValue = 0.94f, targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Reverse),
+        label = "pulse",
     )
     val c1 = MaterialTheme.colorScheme.primary
     val c2 = MaterialTheme.colorScheme.tertiary
     val top by animateColorAsState(lerp(c1, c2, t), label = "top")
-    val bottom by animateColorAsState(lerp(c2, c1, t), label = "bottom")
+    val bottom by animateColorAsState(lerp(c2, c1, t * 0.6f), label = "bottom")
 
     Column(
         Modifier
@@ -127,43 +135,55 @@ private fun AdhanAlarmScreen(title: String, subtitle: String, isDhikr: Boolean, 
     ) {
         Text(
             "GT-SALAT",
-            color = Color.White,
+            color = Color.White.copy(alpha = 0.92f),
             fontWeight = FontWeight.Bold,
-            fontSize = 22.sp,
+            fontSize = 20.sp,
+            letterSpacing = 2.sp,
+            textAlign = TextAlign.Center,
+        )
+        // رمز الكعبة بنبضةٍ لطيفة.
+        Text(
+            if (isDhikr) "📿" else "🕋",
+            fontSize = 72.sp,
+            modifier = Modifier
+                .padding(top = 20.dp)
+                .graphicsLayer(scaleX = pulse, scaleY = pulse),
             textAlign = TextAlign.Center,
         )
         Text(
-            if (isDhikr) "🕌 أذكارٌ بعد الصلاة" else "🕌 حان الآن وقت الصلاة",
+            if (isDhikr) "أذكارٌ بعد الصلاة" else "حان الآن وقت الصلاة",
             color = Color.White.copy(alpha = 0.9f),
-            fontSize = 16.sp,
-            modifier = Modifier.padding(top = 8.dp),
+            fontSize = 17.sp,
+            modifier = Modifier.padding(top = 18.dp),
             textAlign = TextAlign.Center,
         )
         Text(
             title,
             color = Color.White,
+            fontFamily = AmiriQuran,
             fontWeight = FontWeight.Bold,
-            fontSize = 40.sp,
-            modifier = Modifier.padding(top = 20.dp),
+            fontSize = 46.sp,
+            modifier = Modifier.padding(top = 10.dp),
             textAlign = TextAlign.Center,
         )
         if (subtitle.isNotBlank()) {
             Text(
                 subtitle,
                 color = Color.White.copy(alpha = 0.95f),
-                fontSize = 24.sp,
-                modifier = Modifier.padding(top = 8.dp),
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 6.dp),
                 textAlign = TextAlign.Center,
             )
         }
         Button(
             onClick = onStop,
-            modifier = Modifier.padding(top = 44.dp).size(width = 200.dp, height = 60.dp),
-            shape = RoundedCornerShape(30.dp),
+            modifier = Modifier.padding(top = 48.dp).size(width = 210.dp, height = 62.dp),
+            shape = RoundedCornerShape(31.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = c1),
         ) {
             Icon(Icons.Filled.Stop, contentDescription = null)
-            Text("إيقاف", fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(start = 8.dp))
+            Text("إيقاف", fontWeight = FontWeight.Bold, fontSize = 19.sp, modifier = Modifier.padding(start = 8.dp))
         }
     }
 }

@@ -2,8 +2,10 @@ package io.github.salehgnutux.gtsalat.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -13,6 +15,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+
+/** أشكالٌ موحّدةٌ عبر التطبيق لاتّساق حوافّ البطاقات والأزرار والحوارات. */
+val GtShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(16.dp),   // البطاقات الافتراضيّة
+    large = RoundedCornerShape(20.dp),
+    extraLarge = RoundedCornerShape(28.dp),
+)
 
 private val LightScheme = lightColorScheme(
     primary = GreenPrimary,
@@ -64,6 +76,7 @@ fun GtSalatTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = GtTypography,
+        shapes = GtShapes,
         content = content,
     )
 }

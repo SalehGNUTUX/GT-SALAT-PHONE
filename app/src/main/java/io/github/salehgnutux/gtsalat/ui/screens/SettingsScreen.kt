@@ -187,6 +187,12 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 SilenceControls(settings.silenceMinutes) { vm.setSilenceMinutes(it) }
             }
             SwitchRow("نافذة أذانٍ ملء الشاشة فوق القفل", settings.fullScreenAdhan) { vm.setFullScreenAdhan(it) }
+            if (settings.fullScreenAdhan) {
+                Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledTonalButton(onClick = { vm.testFullScreen(isDhikr = false) }, modifier = Modifier.weight(1f)) { Text("اختبار الأذان") }
+                    FilledTonalButton(onClick = { vm.testFullScreen(isDhikr = true) }, modifier = Modifier.weight(1f)) { Text("اختبار الأذكار") }
+                }
+            }
         }
 
         SectionCard("التذكيرات اليوميّة", openSection == "التذكيرات اليوميّة", { toggle("التذكيرات اليوميّة") }) {

@@ -3,6 +3,7 @@ package io.github.salehgnutux.gtsalat.ui.screens
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.unit.sp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -49,16 +53,43 @@ fun SetupScreen(vm: SetupViewModel = hiltViewModel()) {
         verticalArrangement = Arrangement.spacedBy(18.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("GT-SALAT", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        // بطاقة ترحيبٍ متدرّجة: اسم التطبيق + نبذة + ميزاتٌ سريعة
+        val cs = MaterialTheme.colorScheme
+        Card(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge) {
+            Column(
+                Modifier.fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(lerp(cs.primaryContainer, cs.primary, 0.18f), cs.primaryContainer)))
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text("🕌", fontSize = 60.sp)
+                Text("أهلاً بك في GT-SALAT", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = cs.onPrimaryContainer, textAlign = TextAlign.Center)
+                Text(
+                    "رفيقك الإسلاميّ الشامل — مواقيت وأذان وقرآن وأذكار وقبلة، تعمل كلّها دون إنترنت.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = cs.onPrimaryContainer.copy(alpha = 0.9f),
+                    textAlign = TextAlign.Center,
+                )
+                Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                    FeatureBadge("🕐", "مواقيت")
+                    FeatureBadge("📖", "قرآن")
+                    FeatureBadge("📿", "أذكار")
+                    FeatureBadge("🧭", "قبلة")
+                }
+            }
+        }
+
         Text(
-            "مواقيت الصلاة والأذان تعمل دون إنترنت.\nلنبدأ بضبط موقعك وطريقة الحساب.",
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
+            "لنبدأ بخطوتين بسيطتين:",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
         )
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("1. الموقع", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("📍 الخطوة 1 — الموقع", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 if (ui.detecting) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         CircularProgressIndicator(Modifier.padding(2.dp))
@@ -82,7 +113,7 @@ fun SetupScreen(vm: SetupViewModel = hiltViewModel()) {
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("2. طريقة الحساب", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("🧮 الخطوة 2 — طريقة الحساب", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 var expanded by remember { mutableStateOf(false) }
                 val info = CalculationMethods.infoOf(ui.methodId)
                 Text(
@@ -107,6 +138,15 @@ fun SetupScreen(vm: SetupViewModel = hiltViewModel()) {
             onClick = { vm.finish() },
             enabled = ui.hasLocation,
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("ابدأ") }
+        ) { Text(if (ui.hasLocation) "ابدأ الآن" else "حدّد موقعك أولاً") }
+    }
+}
+
+/** شارةُ ميزةٍ سريعة في بطاقة الترحيب: رمزٌ فوق تسمية. */
+@Composable
+private fun FeatureBadge(emoji: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(emoji, fontSize = 24.sp)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
     }
 }
