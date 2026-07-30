@@ -17,10 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.IconButton
@@ -94,24 +91,7 @@ fun DashboardScreen(onOpenSettings: () -> Unit = {}, vm: DashboardViewModel = hi
                         ThemeToggleButton()
                     }
                 }
-                val ctx = androidx.compose.ui.platform.LocalContext.current
-                val update by io.github.salehgnutux.gtsalat.data.UpdateInfo.available.collectAsStateWithLifecycle()
-                update?.let { u ->
-                    Card(
-                        Modifier.fillMaxWidth().clickable {
-                            runCatching { ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(u.url))) }
-                        },
-                        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
-                    ) {
-                        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Icon(Icons.Outlined.Download, null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
-                            Text("تحديثٌ متوفّر: v${u.version} — اضغط للتنزيل", Modifier.weight(1f), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
-                            IconButton(onClick = { io.github.salehgnutux.gtsalat.data.UpdateInfo.dismiss() }) {
-                                Icon(Icons.Outlined.Close, "إخفاء", tint = MaterialTheme.colorScheme.onTertiaryContainer)
-                            }
-                        }
-                    }
-                }
+                UpdateBanner()
                 HeroCard(ui, tick)
             }
         }
