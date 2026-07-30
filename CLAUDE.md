@@ -39,13 +39,14 @@ Room 2.6.1 · DataStore 1.1.1 · WorkManager 2.9.1 · OkHttp 4.12 · kotlinx.ser
 الأصول الثنائيّة (الخطوط/الأصوات/azkar) منقولة من `../GT-SALAT/resources` و`src/assets`.
 **نمط العمل:** بعد كلّ دفعة → `compileFossDebugKotlin` (تحقّق). التحزيم عند طلب المستخدم «حزّم» فقط.
 
-### طقس إصدارٍ تجريبيّ (يتكرّر كثيراً — نفّذه بالترتيب عند «حزّم/أصدر»)
+### طقس الإصدار (نفّذه بالترتيب عند «حزّم/أصدر»)
+> **قاعدة دائمة:** لا `push`/`tag`/`release` إلّا بإذنٍ صريح. نعمل على نسخ اختبارٍ محليّة أولاً (`GT-SALAT-vX.Y.Z-beta-test.apk` في الجذر، مُتجاهَلٌ في git)، وحفظٍ بـ commit محلّيّ عند الطلب، ثمّ نُصدر ونرفع بعد الموافقة.
 1. رفع `versionCode` (+1) و`versionName` في `app/build.gradle.kts`.
-2. إضافة مدخلٍ أعلى `CHANGELOG.md` (عربيّ)، وتحديث رقم النسخة في `README.md` و`docs/index.html` (سطر `.ver` + روابط تنزيل الـAPK المباشرة).
-3. `./gradlew assembleFossDebug` ثمّ نسخ الناتج إلى الجذر باسم `GT-SALAT-vX.Y.Z-beta-foss.apk` (الـAPK مُتجاهَلٌ في git؛ يُرفَع كأصل إصدار فقط). احذف APK الإصدار السابق من الجذر.
-4. commit عربيّ + `git tag vX.Y.Z-beta` + `git push origin main --tags`.
-5. `gh release create vX.Y.Z-beta "GT-SALAT-vX.Y.Z-beta-foss.apk" --prerelease --title … --notes …` (عربيّ).
-- المستودع البعيد قد يتقدّم برفعٍ من واجهة GitHub → عند رفض الدفع: `git pull --rebase origin main` ثمّ أعد الدفع.
+2. مدخلٌ أعلى `CHANGELOG.md` (عربيّ)، وتحديث رقم النسخة في `README.md` و`docs/index.html` (سطر `.ver` + **روابط تنزيل الـAPK لكلا النكهتين** foss/full).
+3. `./gradlew assembleFossDebug assembleFullDebug` ثمّ نسخ الناتجَين إلى الجذر باسمَي `GT-SALAT-vX.Y.Z-foss.apk` و`-full.apk` (الـAPK مُتجاهَلٌ في git). احذف APK الإصدار السابق ونسخة الاختبار من الجذر.
+4. commit عربيّ + `git tag vX.Y.Z` + `git push origin main` + `git push origin vX.Y.Z`.
+5. **`gh release create vX.Y.Z "GT-SALAT-vX.Y.Z-foss.apk" "GT-SALAT-vX.Y.Z-full.apk" --latest --title … --notes-file <ملفّ>`** — استعمل **`--notes-file` حصراً** (heredoc `<<'NOTES'`): نصوص العربيّة/الـbacktick في `--notes` تكسر bash (تُفسَّر كأوامر). للتجريبيّ استعمل `--prerelease` ووسم `-beta`.
+- الوسم البعيد قد يتقدّم برفعٍ من واجهة GitHub → عند رفض الدفع: `git pull --rebase origin main` ثمّ أعد الدفع. لنقل وسمٍ موجود: `git tag -f` + `git push -f origin <tag>` ثمّ `gh release upload <tag> … --clobber`.
 **محتوى `assets/content/*.json`** مُولَّد مرّةً بسكربت Node: أحاديث/أدعية/حِكَم/أسماء من `../GT-SQRM/GT-SIRM/GT-SIRM-WEB/*-data.js`،
 حصن المسلم من `../GT_HISNMUSLIM-main/assets/data/`، والتفسير الميسّر `tafsir.json` (~4MB، 6236 آية) نُزّل ودُمج من `api.alquran.cloud` (ar.muyassar + quran-uthmani).
 
@@ -60,6 +61,7 @@ Room 2.6.1 · DataStore 1.1.1 · WorkManager 2.9.1 · OkHttp 4.12 · kotlinx.ser
 app/src/main/java/io/github/salehgnutux/gtsalat/
 ├── domain/              ← نقيّة بلا Android (قابلة لإعادة الاستخدام لاحقاً)
 │   ├── PrayerModels.kt · CalculationMethods.kt (22 طريقة) · PrayerCalculator.kt (computeDay/Month + qibla + nextPrayer)
+│   ├── Ramadan.kt          كشف رمضان + يوم الشهر + النطاق الميلاديّ (java.time HijrahDate/أمّ القرى) — للبطاقة والإمساكيّة
 │   ├── MorningEveningAdhkar.kt (أذكار الصباح/المساء بعدد التكرار) — [أسماء الله انتقلت إلى assets/content/asma.json]
 │   ├── IslamicContent.kt   نماذج @Serializable للمحتوى (أحاديث/أدعية/حِكَم/أسماء/حصن/تفسير)
 │   ├── Quran.kt            نماذج القرآن + بُناة روابط (everyayah/mp3quran/صور) + `normalize` (تطبيع عربيّ للبحث) + AyahHit
@@ -71,10 +73,14 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 │   ├── QuranRepository.kt     quran_meta.json + نصّ من tafsir + بُناة روابط + searchAyat (بحثٌ شاملٌ عبر 6236 آية) + surahRecitersOnline
 │   ├── QuranDownloader.kt     تنزيل المصحف/السور إلى filesDir للعمل دون إنترنت (StateFlow للتقدّم)
 │   ├── AzkarRepository.kt     يقرأ azkar.txt (لذكر اليوم في الرئيسيّة)
+│   ├── UpdateRepository.kt    ★ فحص أحدث إصدار GitHub عند الإقلاع + `UpdateInfo` (StateFlow عالميّ لشريط الرئيسيّة)
+│   ├── UpdateInstaller.kt     ★ تنزيل الـAPK المطابق للنكهة (USES_GMS) بتقدّمٍ + استدعاء مثبّت النظام عبر FileProvider
+│   ├── BackupManager.kt       ★ نسخٌ احتياطيّ انتقائيّ ZIP (إعدادات/مواقيت/صوت/مصحف) + inspect (فحصٌ قبل استيراد انتقائيّ)
 │   ├── local/ remote/ location/ settings/   (Room · AladhanApi+GeoClients · LocationProvider · AppSettings+SettingsRepository)
 ├── alarm/               ★ حلّ «الأذان في وقته والتطبيق مغلق»
 │   ├── PrayerAlarmScheduler.kt  ★ الأذان بـ setAlarmClock (لا يؤجّله Doze) + scheduleTest + refreshStatus (إشعار دائم) + refreshWidgets
-│   ├── PrayerAlarmReceiver.kt   ACTION_ADHAN/PRENOTIFY/RESTORE_SOUND/POST_DHIKR/TEST (كتم تلقائيّ)
+│   ├── PrayerAlarmReceiver.kt   ACTION_ADHAN/PRENOTIFY/RESTORE_SOUND/POST_DHIKR/TEST (كتم تلقائيّ + full-screen intent للأذان/الأذكار)
+│   ├── AdhanAlarmActivity.kt    ★ نافذة أذانٍ ملء الشاشة فوق القفل (setShowWhenLocked/TurnScreenOn + وميض + زرّ إيقاف)
 │   ├── BootReceiver.kt (BOOT/MY_PACKAGE_REPLACED/TIME_SET/TIMEZONE_CHANGED) · RescheduleWorker (6س) · WorkScheduler
 ├── audio/       AdhanService.kt (mediaPlayback أذان) · QuranAudioService.kt (تلاوة القرآن، آية-بآية/سورة كاملة) + QuranPlayback (حالة StateFlow) + QuranAudio (أوامر) · AdhanPreviewer · RingerController (كتم)
 ├── sensor/Compass.kt       بوصلة (TYPE_ROTATION_VECTOR) كـFlow — للقبلة
@@ -84,10 +90,10 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 ├── ui/
 │   ├── MainActivity + RootViewModel + AppRoot (Box تدرّج + Scaffold + شريط سفليّ 5 تبويبات + المزيد nested-graph + بوّابة Setup)
 │   ├── theme/    Color (أخضر/ذهبيّ) + Type (Ubuntu Arabic + Amiri) + Theme (Material You + RTL)
-│   └── screens/  Dashboard · Timetable · Settings · Setup · Qibla · Tasbih · More · Events(بحث) · ThemeToggle · DownloadsSettings ·
-│                 Asma (Pager) · Hisn(بحث) · AdhkarSession · Content(حديث/أدعية/حِكَم) · Tafsir ·
-│                 QuranScreens (Hub + SurahIndex + TextReader + AudioRecitation + QuranMiniPlayer) · MushafScreen (+ViewModels)
-├── util/Format.kt   clock/countdown/clockNow/gregorianArabic/monthYear (أرقام مغربيّة 0-9 + أشهر إقليميّة)
+│   └── screens/  Dashboard(+حلقة تقدّم +RamadanCard) · Timetable · Settings(أكورديون محفوظ +نسخ احتياطيّ) · Setup(ترحيبيّ) · Qibla · Tasbih · More · Events(بحث) · ThemeToggle · DownloadsSettings ·
+│                 Asma (Pager) · Hisn(بحث) · AdhkarSession · Content(حديث/أدعية/حِكَم) · Tafsir · UpdateBanner(شريط التحديث) · ImsakiahScreen ·
+│                 QuranScreens (Hub + SurahIndex + TextReader(+إشارات) + QuranBookmarks + Wird + AudioRecitation + QuranMiniPlayer) · MushafScreen (+ViewModels)
+├── util/Format.kt   clock/countdown/clockNow/gregorianArabic/monthYear + hijriAdjusted/hijriForDate (إزاحة هجريّة) — أرقام مغربيّة 0-9
 └── GtSalatApp.kt    @HiltAndroidApp + Configuration.Provider + ensureChannels/ensurePeriodic + scheduleNext عند الإقلاع
 ```
 
@@ -105,7 +111,8 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 
 ## مزالق مثبتة
 - **RTL:** الجسم Rtl عبر `LocalLayoutDirection`؛ في `Row` استعمل أيقونات `Icons.AutoMirrored`.
-- **الأرقام:** استعمل **الأرقام المغربيّة 0-9 حصراً** في كامل المشروع (واجهة + توثيق + commits)، لا المشرقيّة ١-٩. (`Format` بـ`Locale.US`.) التاريخ الهجريّ من API فقط.
+- **الأرقام:** استعمل **الأرقام المغربيّة 0-9 حصراً** في كامل المشروع (واجهة + توثيق + commits)، لا المشرقيّة ١-٩. (`Format` بـ`Locale.US`.)
+- **التاريخ الهجريّ:** من API افتراضاً (إزاحة `hijriOffset == 0`)؛ وعند أيّ إزاحةٍ (±3) يُحسب **محلّيّاً بأمّ القرى** عبر `Format.hijriAdjusted`/`hijriForDate` — تنعكس على الرئيسيّة **وكلّ أيّام جدول المواقيت** (لكلّ تاريخٍ على حدة). رمضان يُكشَف بـ`HijrahDate` مباشرةً (لا يتأثّر بالإزاحة).
 - **الوضع الداكن + التدرّج:** `Scaffold` بخلفيّة `Color.Transparent` (لإظهار التدرّج) **يجب** أن يُمرَّر له `contentColor = onBackground` صراحةً، وإلّا سقط لون النصوص/الأيقونات الافتراضيّ إلى الأسود. أيّ شاشةٍ خارج الـScaffold تُلَفّ بـ`Surface`.
 - **الودجت (Glance):** احسب البيانات **محليّاً فوراً** (`PrayerCalculator`) داخل `runCatching` — لا تعتمد كاش/شبكة وإلّا فرغ الودجت لحظيّاً؛ واستعمل `SizeMode.Responsive` فلا يُقصّ المحتوى عند تغيير الحجم.
 - **الأصول الكبيرة:** فكّ ترميز JSON الكبير (tafsir ~4MB) على `Dispatchers.Default` لا الخيط الرئيسيّ.
@@ -124,6 +131,11 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 - **قلب صور المصحف:** استعمل سِمة التطبيق الفعليّة (`colorScheme.surface.luminance() < 0.5`) **لا** `isSystemInDarkTheme()` — وإلّا بهت المصحف عند فرض وضعٍ مخالفٍ للنظام.
 - **مشغّلٌ واحد:** التلاوة الجاريّة تُعرَض عبر `QuranMiniPlayer` العالميّ (فوق الشريط السفليّ) فقط — لا تُضِف شريطَ تشغيلٍ داخل الشاشات (يظهر مشغّلان). النقر على آيةٍ في القارئ **يحدّد** الموضع بلا تشغيل (tertiaryContainer)، والتشغيل من زرّ التشغيل يبدأ من المحدَّد. أيقونتا السابق/التالي **معكوستان** في RTL (السابق=SkipNext، التالي=SkipPrevious).
 - **المتابعة تفاعليّة ومزدوجة:** موضعا القراءة والاستماع **منفصلان** (`lastRead*`/`lastListen*` في الإعدادات) وتفاعليّان (`combine(settings, surahs)`) — لا تحسبهما مرّةً في `init` وإلّا علِقا. المشغّل يشتقّ اسم السورة من الفهرس لا من `play.surahName` (يضيع في التتابع التلقائيّ).
+- **مؤشّرات الرئيسيّة (LazyColumn):** ثوابت التمرير (`I_DHIKR=3`…) تربط الأزرارَ بفهارس عناصر ثابتة — **لا تُدرِج عنصراً علويّاً جديداً** (ولا عنصراً شرطيّاً) قبلها وإلّا انزاحت. البطاقات الجديدة (شريط التحديث، رمضان) تُوضَع **داخل** Column العنصر 0 لا كعنصرٍ مستقلّ.
+- **إشعار full-screen intent:** نافذة القفل (`AdhanAlarmActivity`) تُطلَق عبر `setFullScreenIntent` على قناة `CH_ADHAN` عالية الأولويّة فقط (لا القناة المنخفضة للخدمة)، بشرط `USE_FULL_SCREEN_INTENT`. للاختبار من داخل التطبيق (المقدّمة) أطلق النشاط مباشرةً (لا يُطلق النظام الـfull-screen intent والتطبيق مفتوح).
+- **FileProvider:** سلطته `${applicationId}.fileprovider` (تختلف بالنكهة تلقائيّاً) + `res/xml/file_paths.xml` (`updates/` للتحديث، `backups/` cache للمشاركة). التثبيت يحتاج `REQUEST_INSTALL_PACKAGES` + سماح «مصادر مجهولة» (يُوجَّه إليه المستخدم). التوقيع debug: التحديث الذاتيّ يعمل ما دام نفس المفتاح؛ الانتقال لتوقيع release يكسر التحديث للمثبَّت بـdebug.
+- **النسخ الاحتياطيّ (`BackupManager`):** حزمة ZIP انتقائيّة — تصدير/مشاركة يختار المُصدِّر محتواها، والاستيراد يُفحَص أولاً (`inspect`) ثمّ يختار المستورِد ما يستعيد. امنع الهروب من `filesDir` (رفض `../`). العمليّات على `Dispatchers.IO` مع **حوار انتظارٍ غير قابلٍ للإغلاق** (قد تطول مع الصوت/المصحف الكبير). المواقيت تُصدَّر JSON عبر `TimetableDao.all()`.
+- **حالة قابلة للتخزين في DataStore:** ما يجب تذكّره عبر الجلسات (آخر قسم إعداداتٍ مفتوح `settingsOpenSection`، الإشارات، الوِرد، إزاحة الهجريّ) حقولٌ في `AppSettings` تُقاد الواجهة منها مباشرةً (لا `remember` محلّيّ). الوِرد **مطفأٌ افتراضيّاً** (`enableWird=false`) وتذكيره في الإشعارات مستقلّ.
 
 ---
 
@@ -154,10 +166,12 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
   الصوت عبر **`audio/QuranAudioService`** (خدمة مقدّمة mediaPlayback، تعمل الشاشة مغلقة) + **`QuranPlayback`** (حالة عالميّة StateFlow للتظليل) + **`QuranAudio`** (أوامر) + **`data/QuranRepository`/`QuranDownloader`** + **`domain/Quran`** (نماذج + بُناة روابط + `normalize`).
   الروايات: **ورش عن نافع** (المغرب، ومنهم يونس اسويلص `souilass`) · حفص · قالون · الدوري.
   ✅ **بحثٌ شاملٌ داخل الآيات** (`quran_read/{n}?ayah=`) · ✅ **متابعتان تفاعليّتان** (قراءة/استماع منفصلتان) · ✅ **اختيار الرواية في القارئ النصّيّ** (نصّ + تنزيل صوت آياته) · ✅ **تنزيلٌ بالنسبة المئويّة + حذفٌ بمهلة تراجع** · ✅ **زرّ تبديل السِمة** في الترويسات.
-  المتبقّي: وِرد + إشارات مرجعيّة + قالون/الدوري بالصور (لا مصدر مؤكّد). **م3 مكتملة.**
-- **م5 (بدأت):** ✅ **الإذاعات** (`ui/screens/RadiosScreen` + `data/RadioRepository` + `assets/content/radios.json` من `../GT_QURANRADIO`، 36 إذاعة): بثٌّ حيٌّ في الخلفيّة عبر `audio/{RadioService (خدمة مقدّمة + WifiLock), RadioPlayback, RadioAudio}` · تعديل رابط · مخصّصة · مفضّلة (تصعد للرأس) · إعادة (فرديّ/شامل) · حذفٌ بتراجع · مشغّلٌ مصغّرٌ عالميّ (`RadioMiniPlayer`) + `usesCleartextTraffic` لروابط HTTP. المتبقّي: رمضان · آية اليوم · مشاركة.
+  ✅ **إشارات مرجعيّة** (`QuranBookmarks` + زرّ لكلّ آية، `bookmarks` في الإعدادات) · ✅ **وِرد التلاوة اليوميّ** (بطاقةٌ اختياريّة بهدفٍ وسلسلة أيّام، `WirdCard`). المتبقّي: قالون/الدوري بالصور (لا مصدر مؤكّد). **م3 مكتملة.**
+- **م5:** ✅ **الإذاعات** (`RadiosScreen` + `RadioRepository` + `radios.json`، 36 إذاعة؛ `audio/{RadioService+WifiLock, RadioPlayback, RadioAudio}` + `RadioMiniPlayer` + `usesCleartextTraffic`) ·
+  ✅ **رمضان** (`domain/Ramadan` + `RamadanCard` في الرئيسيّة بعدٍّ للإفطار/السحور + `ImsakiahScreen` جدولٌ شهريّ) · ✅ **آية اليوم + مشاركة** (بطاقات آية/ذكر/حكمة بزرّ `ACTION_SEND`). **م5 مكتملة.**
 - **م4:** قرآن مترجَم + تفسير مترجَم + لغات.
-- **الإصدار المستقرّ الأوّل: v1.0** (versionCode 19).
+- **بنية تحتيّة (v1.1–v1.3):** إشعار تحديثٍ داخليّ + تنزيل/تثبيت (`UpdateRepository`/`UpdateInstaller`/`UpdateBanner`) · نافذة أذانٍ ملء الشاشة فوق القفل (`AdhanAlarmActivity`) · نسخٌ احتياطيّ ومشاركةٌ انتقائيّة (`BackupManager`) · إزاحة التاريخ الهجريّ · زرّ 12/24 وحلقة تقدّمٍ في الرئيسيّة.
+- **الإصدار المستقرّ الحاليّ: v1.3** (versionCode 22). أوّل مستقرّ: v1.0 (versionCode 19).
 
 ## المصادر الحرّة المدروسة (للإلهام لا النسخ)
 Five-Prayers (النموذج الهجين للجدولة، سلسلة السقوط، الكاتم، USAGE_ALARM، Nominatim بلا Google) ·
