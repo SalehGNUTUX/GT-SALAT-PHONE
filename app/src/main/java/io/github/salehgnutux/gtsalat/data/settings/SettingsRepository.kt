@@ -51,6 +51,10 @@ class SettingsRepository @Inject constructor(
         val EN_DAILY_AYAH = booleanPreferencesKey("en_daily_ayah")
         val EN_RECITATION = booleanPreferencesKey("en_recitation")
         val EN_WHITEDAYS = booleanPreferencesKey("en_whitedays")
+        val EN_MORNING_ADHKAR = booleanPreferencesKey("en_morning_adhkar")
+        val EN_EVENING_ADHKAR = booleanPreferencesKey("en_evening_adhkar")
+        val MORNING_ADHKAR_HOUR = intPreferencesKey("morning_adhkar_hour")
+        val EVENING_ADHKAR_HOUR = intPreferencesKey("evening_adhkar_hour")
         val REMINDER_HOUR = intPreferencesKey("reminder_hour")
         val USE_API = booleanPreferencesKey("use_api")
         val DND = booleanPreferencesKey("dnd")
@@ -72,6 +76,7 @@ class SettingsRepository @Inject constructor(
         val SETTINGS_OPEN_SECTION = stringPreferencesKey("settings_open_section")
         val CHECK_UPDATES = booleanPreferencesKey("check_updates")
         val FULLSCREEN_ADHAN = booleanPreferencesKey("fullscreen_adhan")
+        val KEEP_ADHAN_SCREEN = booleanPreferencesKey("keep_adhan_screen")
         val SETUP = booleanPreferencesKey("setup_completed")
         val LAST_READ_SURAH = intPreferencesKey("last_read_surah")
         val LAST_READ_AYAH = intPreferencesKey("last_read_ayah")
@@ -123,6 +128,10 @@ class SettingsRepository @Inject constructor(
             enableDailyAyah = this[Keys.EN_DAILY_AYAH] ?: true,
             enableRecitationReminder = this[Keys.EN_RECITATION] ?: true,
             enableWhiteDaysReminder = this[Keys.EN_WHITEDAYS] ?: true,
+            enableMorningAdhkar = this[Keys.EN_MORNING_ADHKAR] ?: false,
+            enableEveningAdhkar = this[Keys.EN_EVENING_ADHKAR] ?: false,
+            morningAdhkarHour = (this[Keys.MORNING_ADHKAR_HOUR] ?: 6).coerceIn(0, 23),
+            eveningAdhkarHour = (this[Keys.EVENING_ADHKAR_HOUR] ?: 17).coerceIn(0, 23),
             reminderHour = (this[Keys.REMINDER_HOUR] ?: 8).coerceIn(0, 23),
             useApiTimetables = this[Keys.USE_API] ?: true,
             doNotDisturb = this[Keys.DND] ?: false,
@@ -147,6 +156,7 @@ class SettingsRepository @Inject constructor(
             settingsOpenSection = this[Keys.SETTINGS_OPEN_SECTION] ?: "الموقع وطريقة الحساب",
             checkUpdates = this[Keys.CHECK_UPDATES] ?: true,
             fullScreenAdhan = this[Keys.FULLSCREEN_ADHAN] ?: true,
+            keepAdhanScreen = this[Keys.KEEP_ADHAN_SCREEN] ?: false,
             setupCompleted = this[Keys.SETUP] ?: false,
             lastReadSurah = this[Keys.LAST_READ_SURAH] ?: 0,
             lastReadAyah = this[Keys.LAST_READ_AYAH] ?: 1,
@@ -307,6 +317,10 @@ class SettingsRepository @Inject constructor(
     suspend fun setEnableDailyAyah(v: Boolean) = context.dataStore.edit { it[Keys.EN_DAILY_AYAH] = v }
     suspend fun setEnableRecitationReminder(v: Boolean) = context.dataStore.edit { it[Keys.EN_RECITATION] = v }
     suspend fun setEnableWhiteDaysReminder(v: Boolean) = context.dataStore.edit { it[Keys.EN_WHITEDAYS] = v }
+    suspend fun setEnableMorningAdhkar(v: Boolean) = context.dataStore.edit { it[Keys.EN_MORNING_ADHKAR] = v }
+    suspend fun setEnableEveningAdhkar(v: Boolean) = context.dataStore.edit { it[Keys.EN_EVENING_ADHKAR] = v }
+    suspend fun setMorningAdhkarHour(h: Int) = context.dataStore.edit { it[Keys.MORNING_ADHKAR_HOUR] = h.coerceIn(0, 23) }
+    suspend fun setEveningAdhkarHour(h: Int) = context.dataStore.edit { it[Keys.EVENING_ADHKAR_HOUR] = h.coerceIn(0, 23) }
     suspend fun setReminderHour(h: Int) = context.dataStore.edit { it[Keys.REMINDER_HOUR] = h.coerceIn(0, 23) }
     suspend fun setUseApi(v: Boolean) = context.dataStore.edit { it[Keys.USE_API] = v }
     suspend fun setDnd(v: Boolean) = context.dataStore.edit { it[Keys.DND] = v }
@@ -320,6 +334,7 @@ class SettingsRepository @Inject constructor(
     suspend fun setSettingsOpenSection(title: String) = context.dataStore.edit { it[Keys.SETTINGS_OPEN_SECTION] = title }
     suspend fun setCheckUpdates(v: Boolean) = context.dataStore.edit { it[Keys.CHECK_UPDATES] = v }
     suspend fun setFullScreenAdhan(v: Boolean) = context.dataStore.edit { it[Keys.FULLSCREEN_ADHAN] = v }
+    suspend fun setKeepAdhanScreen(v: Boolean) = context.dataStore.edit { it[Keys.KEEP_ADHAN_SCREEN] = v }
     suspend fun setTheme(t: ThemeMode) = context.dataStore.edit { it[Keys.THEME] = t.name }
     suspend fun setDynamicColor(v: Boolean) = context.dataStore.edit { it[Keys.DYNAMIC] = v }
     suspend fun setSeedColor(argb: Int) = context.dataStore.edit { it[Keys.SEED_COLOR] = argb }

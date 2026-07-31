@@ -5,9 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -41,8 +43,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dagger.hilt.android.AndroidEntryPoint
+import io.github.salehgnutux.gtsalat.audio.AdhanPlayback
 import io.github.salehgnutux.gtsalat.audio.AdhanService
+import io.github.salehgnutux.gtsalat.data.settings.SettingsRepository
 import io.github.salehgnutux.gtsalat.ui.theme.AmiriQuran
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 import io.github.salehgnutux.gtsalat.ui.theme.GtSalatTheme
 
 /**
@@ -50,11 +58,16 @@ import io.github.salehgnutux.gtsalat.ui.theme.GtSalatTheme
  * اسم الصلاة/الذكر ووقتها، وزرّ إيقافٍ يوقف صوت الأذان.
  * تُطلَق عبر full-screen intent من إشعار الأذان (المحدّد بالإعداد `fullScreenAdhan`).
  */
+@AndroidEntryPoint
 class AdhanAlarmActivity : ComponentActivity() {
+
+    @Inject lateinit var settingsRepo: SettingsRepository
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         showOverLockScreen()
+        forceWakeScreen()
 
         val title = intent.getStringExtra(EXTRA_TITLE) ?: "GT-SALAT"
         val subtitle = intent.getStringExtra(EXTRA_SUBTITLE).orEmpty()
@@ -62,15 +75,42 @@ class AdhanAlarmActivity : ComponentActivity() {
 
         setContent {
             GtSalatTheme {
-                AdhanAlarmScreen(title = title, subtitle = subtitle, isDhikr = isDhikr) {
-                    // إيقاف الصوت ثمّ إغلاق النافذة.
-                    runCatching {
-                        startService(Intent(this, AdhanService::class.java).setAction(AdhanService.ACTION_STOP))
-                    }
-                    finish()
-                }
+                AdhanAlarmScreen(title = title, subtitle = subtitle, isDhikr = isDhikr, onStop = { closeWindow() })
             }
         }
+
+        // إغلاقٌ تلقائيٌّ عند انتهاء الصوت — ما لم يطلب المستخدم إبقاء النافذة حتى يغلقها يدويّاً.
+        lifecycleScope.launch {
+            val keep = runCatching { settingsRepo.settings.first().keepAdhanScreen }.getOrDefault(false)
+            if (keep) return@launch
+            var wasActive = false
+            AdhanPlayback.active.collect { active ->
+                if (active) wasActive = true
+                else if (wasActive) { finish() }
+            }
+        }
+    }
+
+    private fun closeWindow() {
+        runCatching { startService(Intent(this, AdhanService::class.java).setAction(AdhanService.ACTION_STOP)) }
+        finish()
+    }
+
+    /** يوقظ الشاشة فعليّاً (لبعض الأجهزة لا يكفي setTurnScreenOn). */
+    private fun forceWakeScreen() {
+        runCatching {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            @Suppress("DEPRECATION")
+            wakeLock = pm.newWakeLock(
+                PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP or PowerManager.ON_AFTER_RELEASE,
+                "gtsalat:adhanscreen",
+            ).apply { acquire(5 * 60_000L) }
+        }
+    }
+
+    override fun onDestroy() {
+        runCatching { if (wakeLock?.isHeld == true) wakeLock?.release() }
+        super.onDestroy()
     }
 
     /** يُظهر النافذة فوق القفل ويوقظ الشاشة (يومضها) — بديل الأعلام القديمة على أندرويد 8.1+. */

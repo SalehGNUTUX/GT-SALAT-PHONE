@@ -96,6 +96,8 @@ class NotificationHelper @Inject constructor(
     }
 
     fun showRecitationReminder() = nm.notify(ID_RECITATION, reminder("📖 وِرد التلاوة", "لا تنسَ وردك اليوميّ من تلاوة القرآن الكريم."))
+    fun showMorningAdhkar() = nm.notify(ID_MORNING_ADHKAR, reminder("🌅 أذكار الصباح", "حان وقت أذكار الصباح — «أصبحنا وأصبح الملك لله»."))
+    fun showEveningAdhkar() = nm.notify(ID_EVENING_ADHKAR, reminder("🌇 أذكار المساء", "حان وقت أذكار المساء — «أمسينا وأمسى الملك لله»."))
     fun showWhiteDaysReminder(text: String) = nm.notify(ID_WHITEDAYS, reminder("🌕 الأيّام البيض", text))
     fun showDailyAyah(surah: String, n: Int, text: String) = nm.notify(ID_AYAH, reminder("آية اليوم — سورة $surah [$n]", text))
 
@@ -195,6 +197,8 @@ class NotificationHelper @Inject constructor(
         const val ID_TEST = 2008
         const val ID_RADIO = 2009
         const val ID_UPDATE = 2010
+        const val ID_MORNING_ADHKAR = 2011
+        const val ID_EVENING_ADHKAR = 2012
         val PI_FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     }
 }

@@ -108,6 +108,12 @@ class QuranMetaViewModel @Inject constructor(
     /** ملفّ صفحة المصحف المحلّيّ إن نُزِّل (حسب الرواية). */
     fun localPage(page: Int, riwaya: String = "hafs"): java.io.File? = downloader.localPage(page, riwaya)
 
+    /** تنزيل/حذف صور المصحف (متاحٌ داخل قسم المصحف نفسه). */
+    val mushafDownload = downloader.mushaf
+    fun downloadMushaf(riwaya: String) = viewModelScope.launch { downloader.downloadMushaf(riwaya) }
+    fun deleteMushaf(riwaya: String) = downloader.deleteMushaf(riwaya)
+    fun mushafCount(riwaya: String): Int = downloader.mushafDownloadedCount(riwaya)
+
     /** هل نُزِّلت سورةٌ لقارئٍ محليّاً؟ */
     fun surahDownloaded(reciterId: String, surah: Int): Boolean = downloader.localSurah(reciterId, surah) != null
 

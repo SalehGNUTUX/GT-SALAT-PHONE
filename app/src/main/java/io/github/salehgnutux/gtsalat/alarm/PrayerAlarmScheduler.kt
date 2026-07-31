@@ -33,6 +33,7 @@ class PrayerAlarmScheduler @Inject constructor(
         refreshStatus(s)          // الإشعار الدائم مستقلٌّ عن حارسات الأذان أدناه
         refreshWidgets()          // وكذلك ودجتات سطح الهاتف
         scheduleDailyReminder()   // والتذكيرات اليوميّة (وِرد/أيّام بيض/آية)
+        scheduleAdhkarReminders(s) // وأذكار الصباح/المساء (إن فُعّلت)
         if (!s.setupCompleted || !s.hasLocation || s.doNotDisturb || !s.enableSalatNotify) return
 
         val now = System.currentTimeMillis()
@@ -97,6 +98,37 @@ class PrayerAlarmScheduler @Inject constructor(
             action = DailyReminderReceiver.ACTION_DAILY_REMINDER
         }
         return PendingIntent.getBroadcast(context, RC_REMINDER, i, FLAGS)
+    }
+
+    /** جدولة تذكيرَي أذكار الصباح/المساء عند ساعتيهما (يعيد كلٌّ جدولة نفسه). */
+    fun scheduleAdhkarReminders(s: io.github.salehgnutux.gtsalat.data.settings.AppSettings) {
+        am.cancel(adhkarIntent(morning = true))
+        am.cancel(adhkarIntent(morning = false))
+        if (s.enableMorningAdhkar) setExact(nextDailyMillis(s.morningAdhkarHour), adhkarIntent(morning = true))
+        if (s.enableEveningAdhkar) setExact(nextDailyMillis(s.eveningAdhkarHour), adhkarIntent(morning = false))
+    }
+
+    /** إعادة جدولة تذكير أذكارٍ واحدٍ لليوم التالي (يُستدعى من المُستقبِل). */
+    suspend fun rescheduleAdhkar(morning: Boolean) {
+        val s = settingsRepo.current()
+        val on = if (morning) s.enableMorningAdhkar else s.enableEveningAdhkar
+        if (!on) return
+        val hour = if (morning) s.morningAdhkarHour else s.eveningAdhkarHour
+        setExact(nextDailyMillis(hour), adhkarIntent(morning))
+    }
+
+    private fun nextDailyMillis(hour: Int): Long {
+        val now = java.time.LocalDateTime.now()
+        var at = now.withHour(hour.coerceIn(0, 23)).withMinute(0).withSecond(0).withNano(0)
+        if (!at.isAfter(now)) at = at.plusDays(1)
+        return at.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+    }
+
+    private fun adhkarIntent(morning: Boolean): PendingIntent {
+        val i = Intent(context, DailyReminderReceiver::class.java).apply {
+            action = if (morning) DailyReminderReceiver.ACTION_MORNING_ADHKAR else DailyReminderReceiver.ACTION_EVENING_ADHKAR
+        }
+        return PendingIntent.getBroadcast(context, if (morning) RC_MORNING_ADHKAR else RC_EVENING_ADHKAR, i, FLAGS)
     }
 
     /** تحديث الإشعار الدائم بالصلاة القادمة (عدٌّ تنازليّ حيّ)، أو إلغاؤه. */
@@ -184,6 +216,8 @@ class PrayerAlarmScheduler @Inject constructor(
         private const val RC_SHOW = 1005
         private const val RC_REMINDER = 1006
         private const val RC_TEST = 1007
+        private const val RC_MORNING_ADHKAR = 1008
+        private const val RC_EVENING_ADHKAR = 1009
         private const val RC_ADHAN_BASE = 1100     // 1100..1107
         private const val RC_PRENOTIFY_BASE = 1200 // 1200..1207
         private val FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE

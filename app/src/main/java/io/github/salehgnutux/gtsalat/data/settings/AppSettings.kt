@@ -37,6 +37,10 @@ data class AppSettings(
     val enableDailyAyah: Boolean = true,          // بطاقة آية اليوم في الرئيسيّة
     val enableRecitationReminder: Boolean = true, // تذكير وِرد التلاوة
     val enableWhiteDaysReminder: Boolean = true,  // تذكير الأيّام البيض (13/14/15 هجريّ)
+    val enableMorningAdhkar: Boolean = false,     // تذكير أذكار الصباح
+    val enableEveningAdhkar: Boolean = false,     // تذكير أذكار المساء
+    val morningAdhkarHour: Int = 6,               // ساعة تذكير أذكار الصباح
+    val eveningAdhkarHour: Int = 17,              // ساعة تذكير أذكار المساء
     val reminderHour: Int = 8,                    // ساعة التذكيرات اليوميّة
     val useApiTimetables: Boolean = true,
     val doNotDisturb: Boolean = false,
@@ -59,6 +63,7 @@ data class AppSettings(
     val settingsOpenSection: String = "الموقع وطريقة الحساب",  // آخر قسم إعداداتٍ مفتوح ("" = الكلّ مطويّ)
     val checkUpdates: Boolean = true,             // إشعارٌ عند توفّر نسخةٍ جديدة
     val fullScreenAdhan: Boolean = true,          // نافذة أذانٍ ملء الشاشة فوق القفل
+    val keepAdhanScreen: Boolean = false,         // إبقاء نافذة ملء الشاشة بعد انتهاء الصوت حتى يغلقها المستخدم
     val setupCompleted: Boolean = false,
     // موضع القراءة والاستماع الأخيرين (كلٌّ مستقلّ) + آخر قارئٍ مختار + آخر صفحة مصحف
     val lastReadSurah: Int = 0,      // 0 = لا يوجد

@@ -55,6 +55,20 @@ fun QiblaScreen(vm: QiblaViewModel = hiltViewModel()) {
             !ui.hasLocation -> HintCard("حدّد موقعك أوّلاً من الإعدادات لعرض اتّجاه القبلة.")
             !ui.sensorAvailable -> HintCard("لا يتوفّر في جهازك مستشعر بوصلة، فلا يمكن عرض الاتّجاه الحيّ.\nاتّجاه القبلة من موقعك: ${Format.degrees(ui.qiblaBearing)} عن الشمال.")
             else -> {
+                if (ui.needsCalibration) {
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    ) {
+                        Text(
+                            "⚠️ دقّة البوصلة منخفضة — عايِر الجهاز: حرّكه في الهواء على شكل الرقم 8 عدّة مرّات، بعيداً عن المعادن.",
+                            Modifier.padding(14.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
                 CompassDial(
                     deviceBearing = ui.deviceBearing,
                     qiblaBearing = ui.qiblaBearing,

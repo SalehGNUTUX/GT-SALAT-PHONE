@@ -31,6 +31,19 @@ class DailyReminderReceiver : BroadcastReceiver() {
         val pending = goAsync()
         CoroutineScope(Dispatchers.Default).launch {
             try {
+                // تذكيرا أذكار الصباح/المساء مستقلّان عن التذكير اليوميّ الرئيسيّ.
+                when (intent.action) {
+                    ACTION_MORNING_ADHKAR -> {
+                        if (settingsRepo.current().enableMorningAdhkar) notifications.showMorningAdhkar()
+                        scheduler.rescheduleAdhkar(morning = true)
+                        return@launch
+                    }
+                    ACTION_EVENING_ADHKAR -> {
+                        if (settingsRepo.current().enableEveningAdhkar) notifications.showEveningAdhkar()
+                        scheduler.rescheduleAdhkar(morning = false)
+                        return@launch
+                    }
+                }
                 val s = settingsRepo.current()
                 if (s.enableRecitationReminder) notifications.showRecitationReminder()
 
@@ -61,5 +74,7 @@ class DailyReminderReceiver : BroadcastReceiver() {
 
     companion object {
         const val ACTION_DAILY_REMINDER = "io.github.salehgnutux.gtsalat.ACTION_DAILY_REMINDER"
+        const val ACTION_MORNING_ADHKAR = "io.github.salehgnutux.gtsalat.ACTION_MORNING_ADHKAR"
+        const val ACTION_EVENING_ADHKAR = "io.github.salehgnutux.gtsalat.ACTION_EVENING_ADHKAR"
     }
 }

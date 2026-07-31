@@ -64,6 +64,7 @@ class DashboardViewModel @Inject constructor(
     private var settings: AppSettings? = null
     private var today: DayTimetable? = null
     private var tomorrowFajr: PrayerTime? = null
+    private var yesterdayIsha: PrayerTime? = null   // للحلقة بين العشاء والفجر (بعد منتصف الليل)
     private var loadedDate: LocalDate? = null   // لكشف تغيّر اليوم وإعادة التحميل
     private var lastNextId: PrayerId? = null     // لإعادة بناء ui.next عند تبدّل الصلاة القادمة فقط
 
@@ -133,6 +134,9 @@ class DashboardViewModel @Inject constructor(
         tomorrowFajr = PrayerCalculator
             .computeDay(LocalDate.now().plusDays(1), s.lat!!, s.lon!!, s.methodId, s.madhab)
             .time(PrayerId.FAJR)
+        yesterdayIsha = PrayerCalculator
+            .computeDay(LocalDate.now().minusDays(1), s.lat!!, s.lon!!, s.methodId, s.madhab)
+            .time(PrayerId.ISHA)
         rebuildUi()
     }
 
@@ -197,7 +201,11 @@ class DashboardViewModel @Inject constructor(
     /** نسبة انقضاء المدّة بين الصلاة السابقة والقادمة (0..1) — لحلقة التقدّم في الرئيسيّة. */
     private fun progressToNext(t: DayTimetable, now: Long, next: NextPrayer?): Float {
         val nextE = next?.prayer?.epochMillis ?: return 0f
-        val bounds = (t.prayers.filter { it.id.isPrayer }.map { it.epochMillis } + listOfNotNull(tomorrowFajr?.epochMillis)).sorted()
+        // نُضمِّن عشاء الأمس كحدٍّ سابق حتى تعمل الحلقة بين العشاء والفجر (بعد منتصف الليل).
+        val bounds = (
+            t.prayers.filter { it.id.isPrayer }.map { it.epochMillis } +
+                listOfNotNull(yesterdayIsha?.epochMillis, tomorrowFajr?.epochMillis)
+            ).sorted()
         val prev = bounds.lastOrNull { it <= now } ?: return 0f
         if (nextE <= prev) return 0f
         return ((now - prev).toFloat() / (nextE - prev)).coerceIn(0f, 1f)

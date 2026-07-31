@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -100,6 +102,15 @@ fun MushafScreen(onBack: () -> Unit, vm: QuranMetaViewModel = hiltViewModel()) {
                 }
                 androidx.compose.material3.FilterChip(riwaya == "hafs", { riwaya = "hafs" }, { Text("حفص") })
                 androidx.compose.material3.FilterChip(riwaya == "warsh", { riwaya = "warsh" }, { Text("ورش") })
+                // تنزيل صور الرواية الحاليّة كاملةً للعمل دون إنترنت (بتقدّمٍ)، أو حذفها إن اكتملت.
+                val dl by vm.mushafDownload.collectAsStateWithLifecycle()
+                val downloadingThis = dl.running && dl.riwaya == riwaya
+                val count = remember(riwaya, dl) { vm.mushafCount(riwaya) }
+                when {
+                    downloadingThis -> Text("${dl.done * 100 / dl.total}٪", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    count >= Quran.TOTAL_PAGES -> IconButton(onClick = { vm.deleteMushaf(riwaya) }) { Icon(Icons.Filled.DownloadDone, "المصحف مُنزَّل (اضغط للحذف)", tint = MaterialTheme.colorScheme.primary) }
+                    else -> IconButton(onClick = { vm.downloadMushaf(riwaya) }, enabled = !dl.running) { Icon(Icons.Filled.Download, "تنزيل صور الرواية للعمل دون إنترنت", tint = MaterialTheme.colorScheme.outline) }
+                }
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                     currentSurah?.let {
                         Text("سورة ${it.ar}", fontFamily = AmiriQuran, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, maxLines = 1)

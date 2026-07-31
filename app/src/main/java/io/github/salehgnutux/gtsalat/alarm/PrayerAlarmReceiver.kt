@@ -63,8 +63,10 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                             scheduler.schedulePostDhikr(now + s.postDhikrMinutes * 60_000L)
                         }
                         if (s.enableSalatNotify && !s.doNotDisturb) {
-                            // نافذة الأذان ملء الشاشة فوق القفل (إن فُعّلت) — عبر full-screen intent.
+                            // نافذة الأذان ملء الشاشة فوق القفل (إن فُعّلت) — عبر full-screen intent
+                            // + محاولة إطلاقٍ مباشر (تعمل والتطبيق نشطٌ في المقدّمة).
                             val fs = if (s.fullScreenAdhan) {
+                                launchFullScreen(context, prayerAr, io.github.salehgnutux.gtsalat.util.Format.clock(now), isDhikr = false)
                                 notifications.fullScreenAdhanIntent(prayerAr, io.github.salehgnutux.gtsalat.util.Format.clock(now), isDhikr = false)
                             } else null
                             notifications.notify(
@@ -87,6 +89,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     ACTION_POST_DHIKR -> {
                         if (s.enablePostDhikr && !s.doNotDisturb) {
                             val fs = if (s.fullScreenAdhan) {
+                                launchFullScreen(context, prayerAr, "", isDhikr = true)
                                 notifications.fullScreenAdhanIntent(prayerAr, "", isDhikr = true)
                             } else null
                             notifications.notify(
@@ -102,6 +105,11 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                 pending.finish()
             }
         }
+    }
+
+    /** محاولة إطلاق نافذة ملء الشاشة مباشرةً (تنجح والتطبيق نشطٌ؛ وإلّا يتكفّل الـfull-screen intent). */
+    private fun launchFullScreen(context: Context, prayerAr: String, subtitle: String, isDhikr: Boolean) {
+        runCatching { context.startActivity(AdhanAlarmActivity.intent(context, prayerAr, subtitle, isDhikr)) }
     }
 
     /** إطلاق خدمة الأذان المقدّمة بنوع الصوت المطلوب (يعمل والشاشة مغلقة). */

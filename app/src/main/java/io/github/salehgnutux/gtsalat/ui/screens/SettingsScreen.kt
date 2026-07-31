@@ -144,6 +144,17 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         SectionCard("الموقع وطريقة الحساب", openSection == "الموقع وطريقة الحساب", { toggle("الموقع وطريقة الحساب") }) {
             InfoRow("الموقع الحاليّ", listOf(settings.city, settings.country).filter { it.isNotBlank() }.joinToString("، ").ifBlank { "غير محدّد" })
             ClickRow("إعادة اكتشاف الموقع") { vm.redetectLocation() }
+            val locStatus by vm.locationStatus.collectAsStateWithLifecycle()
+            locStatus?.let { st ->
+                if (st.isEmpty()) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        androidx.compose.material3.CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Text("يجري تحديد موقعك… قد يستغرق لحظات.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    Text(st, style = MaterialTheme.typography.bodySmall, color = if (st.startsWith("✓")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                }
+            }
             HorizontalDivider()
             MethodDropdown(settings.methodId) { vm.setMethod(it) }
             LabeledRow("مذهب حساب العصر") {
@@ -221,6 +232,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             }
             SwitchRow("نافذة أذانٍ ملء الشاشة فوق القفل", settings.fullScreenAdhan) { vm.setFullScreenAdhan(it) }
             if (settings.fullScreenAdhan) {
+                SwitchRow("إبقاء النافذة حتى أغلقها يدويّاً (بعد انتهاء الصوت)", settings.keepAdhanScreen) { vm.setKeepAdhanScreen(it) }
                 Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilledTonalButton(onClick = { vm.testFullScreen(isDhikr = false) }, modifier = Modifier.weight(1f)) { Text("اختبار الأذان") }
                     FilledTonalButton(onClick = { vm.testFullScreen(isDhikr = true) }, modifier = Modifier.weight(1f)) { Text("اختبار الأذكار") }
@@ -234,6 +246,11 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             SwitchRow("بطاقة وِرد التلاوة في القرآن (هدفٌ وسلسلة أيّام)", settings.enableWird) { vm.setEnableWird(it) }
             SwitchRow("تذكير الأيّام البيض (13/14/15 هجريّ)", settings.enableWhiteDaysReminder) { vm.setEnableWhiteDaysReminder(it) }
             MinutesSlider("ساعة التذكير:", settings.reminderHour, 0, 23, suffix = "") { vm.setReminderHour(it) }
+            HorizontalDivider()
+            SwitchRow("تذكير أذكار الصباح", settings.enableMorningAdhkar) { vm.setEnableMorningAdhkar(it) }
+            if (settings.enableMorningAdhkar) MinutesSlider("ساعة تذكير الصباح:", settings.morningAdhkarHour, 0, 23, suffix = "") { vm.setMorningAdhkarHour(it) }
+            SwitchRow("تذكير أذكار المساء", settings.enableEveningAdhkar) { vm.setEnableEveningAdhkar(it) }
+            if (settings.enableEveningAdhkar) MinutesSlider("ساعة تذكير المساء:", settings.eveningAdhkarHour, 0, 23, suffix = "") { vm.setEveningAdhkarHour(it) }
         }
 
         ReliabilityCard(openSection == "موثوقيّة التنبيهات", { toggle("موثوقيّة التنبيهات") }, { vm.testNotification() })

@@ -35,7 +35,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -94,6 +97,7 @@ fun DashboardScreen(onOpenSettings: () -> Unit = {}, vm: DashboardViewModel = hi
                         ThemeToggleButton()
                     }
                 }
+                NotificationPermissionBanner()
                 UpdateBanner()
                 HeroCard(ui, tick)
                 RamadanCard(ui, tick)
@@ -248,6 +252,48 @@ private fun HeroCard(ui: DashboardUi, tick: DashboardTick) {
                     labelColor = onHero.copy(alpha = 0.85f),
                 )
             }
+        }
+    }
+}
+
+/** بطاقةٌ تظهر ما دامت إشعارات التطبيق مُعطَّلة (بعد أوّل تثبيت غالباً)، بزرٍّ يفتح إعدادات الإشعارات. */
+@Composable
+private fun NotificationPermissionBanner() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    var enabled by remember { mutableStateOf(true) }
+    // نُعيد الفحص كلّما عادت الشاشة للمقدّمة (فتختفي البطاقة فور تفعيل المستخدم للإشعارات).
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                enabled = androidx.core.app.NotificationManagerCompat.from(ctx).areNotificationsEnabled()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
+    if (enabled) return
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("🔔 الإشعارات معطّلة", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+            Text(
+                "لن يصلك الأذان ولا التنبيهات ما لم تُفعّل إشعارات التطبيق. اضغط الزرّ ثمّ فعّل «السماح بالإشعارات».",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            androidx.compose.material3.Button(
+                onClick = {
+                    val i = android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, ctx.packageName)
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    runCatching { ctx.startActivity(i) }.onFailure {
+                        runCatching { ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${ctx.packageName}")).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    }
+                },
+            ) { Text("فتح إعدادات الإشعارات") }
         }
     }
 }
@@ -421,11 +467,12 @@ private fun DailyCard(
 ) {
     val clipboard = LocalClipboardManager.current
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    // نصّ المشاركة: المتن + المصدر (إن وُجد) + توقيع التطبيق.
+    // نصّ المشاركة: المتن + المصدر (إن وُجد) + توقيع التطبيق + رابط الموقع.
     val shareText = buildString {
         append(body.trim())
         if (!caption.isNullOrBlank()) append("\n").append(caption)
         append("\n\n— $title عبر تطبيق GT-SALAT")
+        append("\n").append(io.github.salehgnutux.gtsalat.domain.Credits.WEBSITE)
     }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {

@@ -90,6 +90,10 @@ class SettingsViewModel @Inject constructor(
     fun setEnableRecitationReminder(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableRecitationReminder(v); reschedule() }
     fun setEnableWhiteDaysReminder(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableWhiteDaysReminder(v); reschedule() }
     fun setReminderHour(h: Int) = viewModelScope.launch { settingsRepo.setReminderHour(h); reschedule() }
+    fun setEnableMorningAdhkar(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableMorningAdhkar(v); reschedule() }
+    fun setEnableEveningAdhkar(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableEveningAdhkar(v); reschedule() }
+    fun setMorningAdhkarHour(h: Int) = viewModelScope.launch { settingsRepo.setMorningAdhkarHour(h); reschedule() }
+    fun setEveningAdhkarHour(h: Int) = viewModelScope.launch { settingsRepo.setEveningAdhkarHour(h); reschedule() }
     fun setUseApi(v: Boolean) = viewModelScope.launch { settingsRepo.setUseApi(v) }
     fun setDnd(v: Boolean) = viewModelScope.launch { settingsRepo.setDnd(v); reschedule() }
     fun setAutoSilence(v: Boolean) = viewModelScope.launch { settingsRepo.setAutoSilence(v) }
@@ -136,6 +140,7 @@ class SettingsViewModel @Inject constructor(
             done(res)
         }
     fun setFullScreenAdhan(v: Boolean) = viewModelScope.launch { settingsRepo.setFullScreenAdhan(v) }
+    fun setKeepAdhanScreen(v: Boolean) = viewModelScope.launch { settingsRepo.setKeepAdhanScreen(v) }
 
     /**
      * اختبارٌ فوريٌّ لنافذة ملء الشاشة (أذانٌ أو أذكار): يفتح النافذة ويشغّل الصوت،
@@ -165,7 +170,23 @@ class SettingsViewModel @Inject constructor(
     fun resetGradient(dark: Boolean) = viewModelScope.launch { settingsRepo.resetGradient(dark) }
     fun setMonthScheme(s: io.github.salehgnutux.gtsalat.domain.MonthScheme) = viewModelScope.launch { settingsRepo.setMonthScheme(s) }
     fun setTimetableCalendar(k: io.github.salehgnutux.gtsalat.domain.CalendarKind) = viewModelScope.launch { settingsRepo.setTimetableCalendar(k) }
-    fun redetectLocation() = viewModelScope.launch { repo.detectAndSaveLocation(); repo.prefetchMonths(3); reschedule() }
+    /** حالة إعادة اكتشاف الموقع لعرض رسالةٍ ذكيّة: null=خامل، ""=جارٍ، غيرها=نتيجة. */
+    private val _locationStatus = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val locationStatus: StateFlow<String?> = _locationStatus
+
+    fun redetectLocation() = viewModelScope.launch {
+        _locationStatus.value = ""   // جارٍ
+        val loc = runCatching { repo.detectAndSaveLocation() }.getOrNull()
+        if (loc != null) {
+            repo.prefetchMonths(3); reschedule()
+            val place = listOf(loc.city, loc.country).filter { it.isNotBlank() }.joinToString("، ").ifBlank { "موقعك" }
+            _locationStatus.value = "✓ حُدّث الموقع: $place"
+        } else {
+            _locationStatus.value = "تعذّر تحديد الموقع — فعّل صلاحيّة الموقع و GPS ثمّ أعِد المحاولة."
+        }
+    }
+
+    fun clearLocationStatus() { _locationStatus.value = null }
 
     override fun onCleared() {
         previewer.stop()

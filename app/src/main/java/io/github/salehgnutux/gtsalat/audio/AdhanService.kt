@@ -20,8 +20,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+/** حالةٌ عالميّةٌ: هل يُشغَّل صوت أذان/ذكرٍ الآن؟ تراقبها نافذة ملء الشاشة لتُغلَق عند الانتهاء. */
+object AdhanPlayback {
+    private val _active = MutableStateFlow(false)
+    val active: StateFlow<Boolean> = _active.asStateFlow()
+    fun set(v: Boolean) { _active.value = v }
+}
 
 /**
  * تشغيل الأذان كاملاً عبر خدمة مقدّمة (mediaPlayback) بـ MediaPlayer.
@@ -62,6 +72,8 @@ class AdhanService : Service() {
             else -> "🔊 يُشغَّل الآن أذان $prayerAr"
         }
         startForeground(NotificationHelper.ID_SERVICE, notifications.serviceNotification(title, stopPendingIntent()))
+        // إعلام نافذة ملء الشاشة أنّ التشغيل بدأ (للأذان/الأذكار)، فتبقى ما دام الصوت جارياً.
+        if (sound == SOUND_ADHAN || sound == SOUND_POST_DHIKR) AdhanPlayback.set(true)
 
         scope.launch {
             val s = settingsRepo.current()
@@ -137,6 +149,7 @@ class AdhanService : Service() {
     private fun stopEverything() {
         releasePlayer()
         abandonFocus()
+        AdhanPlayback.set(false)   // انتهى الصوت → تُغلَق نافذة ملء الشاشة (ما لم يطلب المستخدم إبقاءها)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }

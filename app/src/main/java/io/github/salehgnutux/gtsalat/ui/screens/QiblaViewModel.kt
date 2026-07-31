@@ -21,6 +21,8 @@ data class QiblaUi(
     val qiblaBearing: Float = 0f,
     /** اتّجاه الجهاز عن الشمال الحقيقيّ بالدرجات (مُصحَّح بالانحراف المغناطيسيّ). */
     val deviceBearing: Float = 0f,
+    /** دقّة المستشعر منخفضةٌ → يلزم معايرةٌ (تحريك الجهاز على شكل 8). */
+    val needsCalibration: Boolean = false,
 ) {
     /** زاوية دوران سهم القبلة على الشاشة: موجبٌ إلى اليمين. */
     val arrowAngle: Float get() = ((qiblaBearing - deviceBearing) + 360f) % 360f
@@ -60,6 +62,12 @@ class QiblaViewModel @Inject constructor(
                 val trueNorth = (magnetic + declination + 360f) % 360f
                 smoothed = if (smoothed.isNaN()) trueNorth else lowPass(smoothed, trueNorth)
                 _ui.value = _ui.value.copy(deviceBearing = smoothed)
+            }
+        }
+        viewModelScope.launch {
+            // 0 = غير موثوق، 1 = دقّةٌ منخفضة → نطلب المعايرة.
+            compass.accuracy.collect { acc ->
+                _ui.value = _ui.value.copy(needsCalibration = acc in 0..1)
             }
         }
     }
