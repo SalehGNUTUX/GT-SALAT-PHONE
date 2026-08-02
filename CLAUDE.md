@@ -171,7 +171,9 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
   ✅ **رمضان** (`domain/Ramadan` + `RamadanCard` في الرئيسيّة بعدٍّ للإفطار/السحور + `ImsakiahScreen` جدولٌ شهريّ) · ✅ **آية اليوم + مشاركة** (بطاقات آية/ذكر/حكمة بزرّ `ACTION_SEND`). **م5 مكتملة.**
 - **م4:** قرآن مترجَم + تفسير مترجَم + لغات.
 - **بنية تحتيّة (v1.1–v1.3):** إشعار تحديثٍ داخليّ + تنزيل/تثبيت (`UpdateRepository`/`UpdateInstaller`/`UpdateBanner`) · نافذة أذانٍ ملء الشاشة فوق القفل (`AdhanAlarmActivity`) · نسخٌ احتياطيّ ومشاركةٌ انتقائيّة (`BackupManager`) · إزاحة التاريخ الهجريّ · زرّ 12/24 وحلقة تقدّمٍ في الرئيسيّة.
-- **الإصدار المستقرّ الحاليّ: v1.3** (versionCode 22). أوّل مستقرّ: v1.0 (versionCode 19).
+- **v1.4:** إيقاظ الشاشة للأذان + نافذة ملء الشاشة والتطبيق نشط + إبقاؤها بعد الصوت (`AdhanPlayback`/`keepAdhanScreen`) · إصلاح حلقة المتبقّي بين العشاء والفجر · تذكير أذكار الصباح/المساء · بطاقة تفعيل الإشعارات · تنزيل المصحف داخل قسمه · إرفاق رابط الموقع بالمشاركة. (البوصلة: خللٌ عتاديٌّ لا برمجيّ — انظر مزلق البوصلة.)
+- **v1.5:** **إعدادٌ أوّليٌّ يعمل دون إنترنت** — تثبيتٌ حيٌّ من GPS (`PlatformLocationProvider.freshFix` في foss) + زرّ تفعيل خدمة الموقع + **قاعدة مواقع مُضمَّنة** (`assets/content/places.json` + `ContentRepository.places()` + `domain/Place`) باختيارٍ بحثيّ يقترح الطريقة + إدخال إحداثيّات يدويّ + استيراد نسخة + زرّ تخطّي (`SetupScreen`/`SetupViewModel`) · **إشعاراتٌ ذكيّة deep-link** (`MainActivity.EXTRA_ROUTE` + `AppRoot(deepLink)`) · **تسبيحٌ مختلط** (`TasbihUi.MIXED`) · **مشاركة/نسخ برابطي الهاتف وسطح المكتب** (`util/Share.kt` + `Credits.DESKTOP_WEBSITE`). المواقيت تُحسَب محليّاً (adhan) فلا حاجة لقاعدة بيانات مواقيت.
+- **الإصدار المستقرّ الحاليّ: v1.5** (versionCode 24). أوّل مستقرّ: v1.0 (versionCode 19).
 
 ## المصادر الحرّة المدروسة (للإلهام لا النسخ)
 Five-Prayers (النموذج الهجين للجدولة، سلسلة السقوط، الكاتم، USAGE_ALARM، Nominatim بلا Google) ·
