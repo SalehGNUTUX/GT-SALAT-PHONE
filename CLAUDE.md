@@ -88,12 +88,12 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 ├── widget/      NextPrayerWidget + TodayTimesWidget (Glance، خلفيّة شفّافة) + WidgetData (Hilt EntryPoint، حساب محلّيّ)
 ├── di/          AppModule + LocationModule (@Binds حسب النكهة)
 ├── ui/
-│   ├── MainActivity + RootViewModel + AppRoot (Box تدرّج + Scaffold + شريط سفليّ 5 تبويبات + المزيد nested-graph + بوّابة Setup)
+│   ├── MainActivity + RootViewModel + AppRoot (Box تدرّج + Scaffold + شريط سفليّ 5 تبويبات + المزيد nested-graph + بوّابة Setup + deep-link إشعارات عبر `EXTRA_ROUTE`)
 │   ├── theme/    Color (أخضر/ذهبيّ) + Type (Ubuntu Arabic + Amiri) + Theme (Material You + RTL)
-│   └── screens/  Dashboard(+حلقة تقدّم +RamadanCard) · Timetable · Settings(أكورديون محفوظ +نسخ احتياطيّ) · Setup(ترحيبيّ) · Qibla · Tasbih · More · Events(بحث) · ThemeToggle · DownloadsSettings ·
+│   └── screens/  Dashboard(+حلقة تقدّم +RamadanCard) · Timetable · Settings(أكورديون محفوظ +نسخ احتياطيّ) · Setup(offline: GPS حيّ+قاعدة مواقع+يدويّ+استيراد+تخطّي) · Qibla · Tasbih(+مختلط) · More · Events(بحث) · ThemeToggle · DownloadsSettings ·
 │                 Asma (Pager) · Hisn(بحث) · AdhkarSession · Content(حديث/أدعية/حِكَم) · Tafsir · UpdateBanner(شريط التحديث) · ImsakiahScreen ·
 │                 QuranScreens (Hub + SurahIndex + TextReader(+إشارات) + QuranBookmarks + Wird + AudioRecitation + QuranMiniPlayer) · MushafScreen (+ViewModels)
-├── util/Format.kt   clock/countdown/clockNow/gregorianArabic/monthYear + hijriAdjusted/hijriForDate (إزاحة هجريّة) — أرقام مغربيّة 0-9
+├── util/   Format.kt (clock/countdown/gregorianArabic + hijriAdjusted/hijriForDate — أرقام مغربيّة 0-9) · Share.kt (تذييل نسخ/مشاركة برابطي الهاتف وسطح المكتب)
 └── GtSalatApp.kt    @HiltAndroidApp + Configuration.Provider + ensureChannels/ensurePeriodic + scheduleNext عند الإقلاع
 ```
 
@@ -136,6 +136,8 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 - **FileProvider:** سلطته `${applicationId}.fileprovider` (تختلف بالنكهة تلقائيّاً) + `res/xml/file_paths.xml` (`updates/` للتحديث، `backups/` cache للمشاركة). التثبيت يحتاج `REQUEST_INSTALL_PACKAGES` + سماح «مصادر مجهولة» (يُوجَّه إليه المستخدم). التوقيع debug: التحديث الذاتيّ يعمل ما دام نفس المفتاح؛ الانتقال لتوقيع release يكسر التحديث للمثبَّت بـdebug.
 - **النسخ الاحتياطيّ (`BackupManager`):** حزمة ZIP انتقائيّة — تصدير/مشاركة يختار المُصدِّر محتواها، والاستيراد يُفحَص أولاً (`inspect`) ثمّ يختار المستورِد ما يستعيد. امنع الهروب من `filesDir` (رفض `../`). العمليّات على `Dispatchers.IO` مع **حوار انتظارٍ غير قابلٍ للإغلاق** (قد تطول مع الصوت/المصحف الكبير). المواقيت تُصدَّر JSON عبر `TimetableDao.all()`.
 - **حالة قابلة للتخزين في DataStore:** ما يجب تذكّره عبر الجلسات (آخر قسم إعداداتٍ مفتوح `settingsOpenSection`، الإشارات، الوِرد، إزاحة الهجريّ) حقولٌ في `AppSettings` تُقاد الواجهة منها مباشرةً (لا `remember` محلّيّ). الوِرد **مطفأٌ افتراضيّاً** (`enableWird=false`) وتذكيره في الإشعارات مستقلّ.
+- **الموقع والعمل دون إنترنت:** **المواقيت تُحسَب محليّاً دائماً** (`PrayerCalculator`/adhan؛ سلسلة السقوط Room→API→محلّيّ)، فلا حاجة لقاعدة بيانات مواقيت — **العائق الوحيد offline هو تحديد الموقع**. حلوله (كلّها في `SetupScreen`): تثبيتٌ حيٌّ من GPS (`freshFix` في foss، إحداثيّات الأقمار دون إنترنت؛ اسم المدينة فقط يحتاج Nominatim) · قاعدة `places.json` المُضمَّنة · إدخال يدويّ · استيراد نسخة. `detectAndSaveLocation` يحفظ الإحداثيّات حتى لو فشل الترميز العكسيّ (city="").
+- **deep-link الإشعارات:** الإشعار يمرّر `MainActivity.EXTRA_ROUTE` (مثل `adhkar_session/morning`) بـ `PendingIntent` ذي **requestCode مميّز** (وإلّا أعاد النظام استعمال نيّةٍ قديمة)، و`AppRoot(deepLink)` ينتقل مرّةً عبر `LaunchedEffect` ثمّ يُمسَح.
 
 ---
 
