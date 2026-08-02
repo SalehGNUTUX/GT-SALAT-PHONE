@@ -447,15 +447,6 @@ private fun TodayPrayersCard(ui: DashboardUi) {
     }
 }
 
-/** يفتح ورقة مشاركة النظام بنصٍّ (آية/ذكر/حكمة). */
-private fun launchShare(context: android.content.Context, text: String) {
-    val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(android.content.Intent.EXTRA_TEXT, text)
-    }
-    runCatching { context.startActivity(android.content.Intent.createChooser(send, "مشاركة").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
-}
-
 /** بطاقة محتوى يوميّ (ذكر/حكمة) بنصٍّ بخطّ أميري وأزرار مشاركةٍ وتجديدٍ ونسخ. */
 @Composable
 private fun DailyCard(
@@ -467,22 +458,15 @@ private fun DailyCard(
 ) {
     val clipboard = LocalClipboardManager.current
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    // نصّ المشاركة: المتن + المصدر (إن وُجد) + توقيع التطبيق + رابط الموقع.
-    val shareText = buildString {
-        append(body.trim())
-        if (!caption.isNullOrBlank()) append("\n").append(caption)
-        append("\n\n— $title عبر تطبيق GT-SALAT")
-        append("\n").append(io.github.salehgnutux.gtsalat.domain.Credits.WEBSITE)
-    }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { launchShare(ctx, shareText) }, enabled = body.isNotBlank()) {
+                    TextButton(onClick = { io.github.salehgnutux.gtsalat.util.Share.send(ctx, body, caption) }, enabled = body.isNotBlank()) {
                         Icon(Icons.Filled.Share, contentDescription = "مشاركة")
                     }
-                    TextButton(onClick = { clipboard.setText(AnnotatedString(body)) }) {
+                    TextButton(onClick = { clipboard.setText(AnnotatedString(io.github.salehgnutux.gtsalat.util.Share.decorate(body, caption))) }) {
                         Icon(Icons.Filled.ContentCopy, contentDescription = "نسخ")
                     }
                     TextButton(onClick = onRefresh) {

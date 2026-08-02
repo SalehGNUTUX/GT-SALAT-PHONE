@@ -53,19 +53,35 @@ fun TasbihScreen(onBack: () -> Unit, vm: TasbihViewModel = hiltViewModel()) {
             verticalArrangement = Arrangement.spacedBy(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // اختيار الذِّكر
-            LazyChips(
-                options = TasbihUi.DHIKR_LIST,
-                selectedIndex = ui.dhikrIndex,
-                onSelect = { vm.setDhikr(it) },
-            )
+            // اختيار الوضع: عاديّ (ذكرٌ واحد) أو مختلط (دبر الصلاة بعدد السنّة)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = !ui.mixed, onClick = { vm.setMixed(false) }, label = { Text("عاديّ") })
+                FilterChip(selected = ui.mixed, onClick = { vm.setMixed(true) }, label = { Text("مختلط (دبر الصلاة)") })
+            }
+
+            // في الوضع العاديّ فقط: اختيار الذِّكر
+            if (!ui.mixed) {
+                LazyChips(
+                    options = TasbihUi.DHIKR_LIST,
+                    selectedIndex = ui.dhikrIndex,
+                    onSelect = { vm.setDhikr(it) },
+                )
+            } else {
+                Text(
+                    "الخطوة ${ui.mixedStep + 1} من ${TasbihUi.MIXED.size} · المجموع ${ui.mixedOverall} / ${TasbihUi.MIXED_TOTAL}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
 
             Text(
                 ui.dhikr,
                 fontFamily = AmiriQuran,
-                fontSize = 30.sp,
+                fontSize = if (ui.mixed) 24.sp else 30.sp,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
 
             // دائرة العدّ الكبيرة — انقر في أيّ مكانٍ منها للتسبيح
@@ -84,14 +100,14 @@ fun TasbihScreen(onBack: () -> Unit, vm: TasbihViewModel = hiltViewModel()) {
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        "${ui.count}",
+                        "${ui.inLap}",
                         fontSize = 72.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
-                    if (ui.target > 0) {
+                    if (ui.stepTarget > 0) {
                         Text(
-                            "${ui.inLap} / ${ui.target}",
+                            "${ui.inLap} / ${ui.stepTarget}",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
@@ -99,18 +115,22 @@ fun TasbihScreen(onBack: () -> Unit, vm: TasbihViewModel = hiltViewModel()) {
                 }
             }
 
-            if (ui.laps > 0) {
+            if (ui.mixed && ui.mixedDone) {
+                Text("✓ تمّ تسبيح دبر الصلاة (${TasbihUi.MIXED_TOTAL}) — تقبّل الله", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            } else if (!ui.mixed && ui.laps > 0) {
                 Text("اكتملت ${ui.laps} لفّة", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             }
 
-            // الأهداف
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TasbihUi.TARGETS.forEach { t ->
-                    FilterChip(
-                        selected = ui.target == t,
-                        onClick = { vm.setTarget(t) },
-                        label = { Text(if (t == 0) "بلا حدّ" else "$t") },
-                    )
+            // الأهداف (الوضع العاديّ فقط)
+            if (!ui.mixed) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TasbihUi.TARGETS.forEach { t ->
+                        FilterChip(
+                            selected = ui.target == t,
+                            onClick = { vm.setTarget(t) },
+                            label = { Text(if (t == 0) "بلا حدّ" else "$t") },
+                        )
+                    }
                 }
             }
 
@@ -121,9 +141,9 @@ fun TasbihScreen(onBack: () -> Unit, vm: TasbihViewModel = hiltViewModel()) {
         }
     }
 
-    // اهتزازٌ واضحٌ مرّةً واحدة عند بلوغ مضاعفات الهدف (مفتاحه العدّ فلا يتكرّر).
-    androidx.compose.runtime.LaunchedEffect(ui.count) {
-        if (ui.justReachedTarget()) vibrateOnce(context)
+    // اهتزازٌ واضحٌ مرّةً واحدة عند بلوغ حدٍّ (هدفٍ أو نهاية خطوةٍ مختلطة) — مفتاحه pulse فلا يتكرّر.
+    androidx.compose.runtime.LaunchedEffect(ui.pulse) {
+        if (ui.pulse > 0) vibrateOnce(context)
     }
 }
 

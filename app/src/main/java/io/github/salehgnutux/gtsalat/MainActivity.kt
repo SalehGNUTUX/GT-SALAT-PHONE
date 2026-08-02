@@ -49,9 +49,19 @@ class MainActivity : ComponentActivity() {
     private val notifPermLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
+    // وجهةٌ يُطلبها الإشعار (deep-link) لفتح القسم مباشرةً.
+    private val deepLinkRoute = mutableStateOf<String?>(null)
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        deepLinkRoute.value = intent.getStringExtra(EXTRA_ROUTE)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        deepLinkRoute.value = intent?.getStringExtra(EXTRA_ROUTE)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -85,11 +95,21 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(s.clock24h) { io.github.salehgnutux.gtsalat.util.Format.use24 = s.clock24h }
                 GtSalatTheme(darkTheme = dark, dynamicColor = s.dynamicColor, seedColor = s.seedColor) {
                     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                        AppRoot(setupCompleted = s.setupCompleted, gradientTop = gradTop, gradientBottom = gradBot)
+                        AppRoot(
+                            setupCompleted = s.setupCompleted,
+                            gradientTop = gradTop,
+                            gradientBottom = gradBot,
+                            deepLink = deepLinkRoute.value,
+                            onDeepLinkHandled = { deepLinkRoute.value = null },
+                        )
                     }
                 }
             }
         }
+    }
+
+    companion object {
+        const val EXTRA_ROUTE = "open_route"
     }
 }
 

@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
@@ -188,8 +189,14 @@ fun HisnCategoryScreen(onBack: () -> Unit, vm: HisnCategoryViewModel = hiltViewM
                             color = if (isDone) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                         )
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                            IconButton(onClick = { clipboard.setText(AnnotatedString(dhikr.text)) }) {
-                                Icon(Icons.Filled.ContentCopy, contentDescription = "نسخ", tint = MaterialTheme.colorScheme.primary)
+                            val ctx = androidx.compose.ui.platform.LocalContext.current
+                            Row {
+                                IconButton(onClick = { io.github.salehgnutux.gtsalat.util.Share.send(ctx, dhikr.text) }) {
+                                    Icon(Icons.Filled.Share, contentDescription = "مشاركة", tint = MaterialTheme.colorScheme.primary)
+                                }
+                                IconButton(onClick = { clipboard.setText(AnnotatedString(io.github.salehgnutux.gtsalat.util.Share.decorate(dhikr.text))) }) {
+                                    Icon(Icons.Filled.ContentCopy, contentDescription = "نسخ", tint = MaterialTheme.colorScheme.primary)
+                                }
                             }
                             CounterBadge(left = left, total = dhikr.count, done = isDone)
                         }

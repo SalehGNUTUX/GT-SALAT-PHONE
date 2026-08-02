@@ -53,6 +53,11 @@ class ContentRepository @Inject constructor(
         json.decodeFromString<T>(read(file))
     }
 
+    private var placesCache: List<io.github.salehgnutux.gtsalat.domain.Place>? = null
+    /** المواقع المُضمَّنة (بلد/مدينة + إحداثيّات) لاختيار الموقع دون GPS/إنترنت. */
+    suspend fun places(): List<io.github.salehgnutux.gtsalat.domain.Place> =
+        placesCache ?: load<io.github.salehgnutux.gtsalat.domain.PlacesFile>("places.json").places.also { placesCache = it }
+
     suspend fun asma(): List<AsmaName> = asmaCache ?: load<AsmaFile>("asma.json").items.also { asmaCache = it }
 
     suspend fun hadithCollections(): List<HadithCollection> = hadithCache

@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
@@ -59,7 +60,7 @@ fun HadithScreen(onBack: () -> Unit, vm: HadithViewModel = hiltViewModel()) {
                         subtitle = h.narrator,
                         body = h.text,
                         chips = listOfNotNull(h.source.ifBlank { null }, h.grade.ifBlank { null }),
-                        onCopy = { clipboard.setText(AnnotatedString(h.text)) },
+                        shareCaption = h.source,
                     )
                 }
             }
@@ -92,7 +93,7 @@ fun DuasScreen(onBack: () -> Unit, vm: DuasViewModel = hiltViewModel()) {
                         subtitle = d.context,
                         body = d.text,
                         chips = listOfNotNull(d.source.ifBlank { null }),
-                        onCopy = { clipboard.setText(AnnotatedString(d.text)) },
+                        shareCaption = d.source,
                     )
                 }
             }
@@ -125,7 +126,7 @@ fun HikamScreen(onBack: () -> Unit, vm: HikamViewModel = hiltViewModel()) {
                         subtitle = w.sayer,
                         body = w.text,
                         chips = listOfNotNull(w.source.ifBlank { null }),
-                        onCopy = { clipboard.setText(AnnotatedString(w.text)) },
+                        shareCaption = w.source,
                     )
                 }
             }
@@ -150,8 +151,12 @@ private fun ContentCard(
     subtitle: String,
     body: String,
     chips: List<String>,
-    onCopy: () -> Unit,
+    shareCaption: String? = null,
 ) {
+    val clipboard = LocalClipboardManager.current
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    // المصدر المرفق بالنسخ/المشاركة (المتحدّث + المرجع إن وُجدا).
+    val caption = listOfNotNull(subtitle.ifBlank { null }, shareCaption?.ifBlank { null }).joinToString(" — ").ifBlank { null }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.Top) {
@@ -163,8 +168,13 @@ private fun ContentCard(
                         Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                     }
                 }
-                IconButton(onClick = onCopy) {
-                    Icon(Icons.Filled.ContentCopy, contentDescription = "نسخ", tint = MaterialTheme.colorScheme.primary)
+                Row {
+                    IconButton(onClick = { io.github.salehgnutux.gtsalat.util.Share.send(ctx, body, caption) }) {
+                        Icon(Icons.Filled.Share, contentDescription = "مشاركة", tint = MaterialTheme.colorScheme.primary)
+                    }
+                    IconButton(onClick = { clipboard.setText(AnnotatedString(io.github.salehgnutux.gtsalat.util.Share.decorate(body, caption))) }) {
+                        Icon(Icons.Filled.ContentCopy, contentDescription = "نسخ", tint = MaterialTheme.colorScheme.primary)
+                    }
                 }
             }
             Text(

@@ -52,7 +52,7 @@ class NotificationHelper @Inject constructor(
         )
     }
 
-    private fun reminder(title: String, text: String): Notification =
+    private fun reminder(title: String, text: String, route: String? = null, requestCode: Int = 0): Notification =
         NotificationCompat.Builder(context, CH_REMINDERS)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
@@ -60,7 +60,7 @@ class NotificationHelper @Inject constructor(
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
-            .setContentIntent(contentIntent())
+            .setContentIntent(contentIntent(route, requestCode))
             .build()
 
     /** تنبيهٌ اختباريٌّ (لقياس وصول التنبيهات والشاشة مغلقة) — على قناة الأذان ليُسمَع كالأذان. */
@@ -96,15 +96,16 @@ class NotificationHelper @Inject constructor(
     }
 
     fun showRecitationReminder() = nm.notify(ID_RECITATION, reminder("📖 وِرد التلاوة", "لا تنسَ وردك اليوميّ من تلاوة القرآن الكريم."))
-    fun showMorningAdhkar() = nm.notify(ID_MORNING_ADHKAR, reminder("🌅 أذكار الصباح", "حان وقت أذكار الصباح — «أصبحنا وأصبح الملك لله»."))
-    fun showEveningAdhkar() = nm.notify(ID_EVENING_ADHKAR, reminder("🌇 أذكار المساء", "حان وقت أذكار المساء — «أمسينا وأمسى الملك لله»."))
+    fun showMorningAdhkar() = nm.notify(ID_MORNING_ADHKAR, reminder("🌅 أذكار الصباح", "حان وقت أذكار الصباح — «أصبحنا وأصبح الملك لله».", "adhkar_session/morning", 91))
+    fun showEveningAdhkar() = nm.notify(ID_EVENING_ADHKAR, reminder("🌇 أذكار المساء", "حان وقت أذكار المساء — «أمسينا وأمسى الملك لله».", "adhkar_session/evening", 92))
     fun showWhiteDaysReminder(text: String) = nm.notify(ID_WHITEDAYS, reminder("🌕 الأيّام البيض", text))
     fun showDailyAyah(surah: String, n: Int, text: String) = nm.notify(ID_AYAH, reminder("آية اليوم — سورة $surah [$n]", text))
 
-    private fun contentIntent(): PendingIntent {
+    private fun contentIntent(route: String? = null, requestCode: Int = 0): PendingIntent {
         val i = Intent(context, MainActivity::class.java)
             .setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        return PendingIntent.getActivity(context, 0, i, PI_FLAGS)
+        if (route != null) i.putExtra(MainActivity.EXTRA_ROUTE, route)
+        return PendingIntent.getActivity(context, requestCode, i, PI_FLAGS)
     }
 
     fun prayerNotification(prayerName: String, fullScreen: PendingIntent? = null): Notification =

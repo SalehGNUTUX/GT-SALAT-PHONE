@@ -11,6 +11,7 @@ object Credits {
     const val GITHUB = "https://github.com/SalehGNUTUX"
     const val REPO = "https://github.com/SalehGNUTUX/GT-SALAT-PHONE"
     const val WEBSITE = "https://salehgnutux.github.io/GT-SALAT-PHONE/"
+    const val DESKTOP_WEBSITE = "https://salehgnutux.github.io/GT-SALAT/"
     const val PROJECTS = "https://salehgnutux.github.io/gnutux/"
 
     val SOURCES = listOf(

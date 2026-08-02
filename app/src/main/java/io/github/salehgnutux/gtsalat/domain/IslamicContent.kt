@@ -104,3 +104,10 @@ data class HistoryEvent(
 
 @Serializable
 data class HistoryFile(val events: List<HistoryEvent>)
+
+/** موقعٌ جغرافيٌّ مُضمَّن (بلد/مدينة + إحداثيّات) — لاختيار الموقع دون GPS ولا إنترنت. */
+@Serializable
+data class Place(val country: String, val city: String, val lat: Double, val lon: Double)
+
+@Serializable
+data class PlacesFile(val places: List<Place>)

@@ -5,6 +5,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,7 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import android.content.Intent
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Card
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.lerp
@@ -23,7 +27,12 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -47,6 +56,18 @@ fun SetupScreen(vm: SetupViewModel = hiltViewModel()) {
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { vm.detectLocation() }
+
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> if (uri != null) vm.importBackup(uri) { } }
+
+    // حقلا الإدخال اليدويّ للإحداثيّات (يعمل دون إنترنت).
+    var latText by remember { mutableStateOf("") }
+    var lonText by remember { mutableStateOf("") }
+    // قائمة المواقع المُضمَّنة (دون GPS/إنترنت).
+    val places by vm.places.collectAsStateWithLifecycle()
+    var showPlaces by remember { mutableStateOf(false) }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
@@ -96,18 +117,61 @@ fun SetupScreen(vm: SetupViewModel = hiltViewModel()) {
                         Text("يجري اكتشاف الموقع…")
                     }
                 } else if (ui.hasLocation) {
-                    Text(
-                        "✓ " + listOf(ui.city, ui.country).filter { it.isNotBlank() }.joinToString("، ").ifBlank { "تمّ تحديد الموقع" },
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+                    val place = listOf(ui.city, ui.country).filter { it.isNotBlank() }.joinToString("، ")
+                    val coords = if (ui.lat != null && ui.lon != null) String.format(java.util.Locale.US, "%.4f، %.4f", ui.lat, ui.lon) else ""
+                    Text("✓ " + place.ifBlank { coords.ifBlank { "تمّ تحديد الموقع" } }, color = MaterialTheme.colorScheme.primary)
                 }
                 ui.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
-                OutlinedButton(
+                ui.info?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium) }
+                Button(
                     onClick = {
                         permLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
                     },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text(if (ui.hasLocation) "إعادة الاكتشاف" else "اكتشف موقعي") }
+                ) { Text(if (ui.hasLocation) "إعادة الاكتشاف" else "اكتشف موقعي تلقائيّاً (GPS)") }
+                // إن كانت خدمة الموقع مطفأة، وجّه المستخدم لتفعيلها (GPS يعمل دون إنترنت).
+                if (!locationEnabled(ctx)) {
+                    OutlinedButton(
+                        onClick = { runCatching { ctx.startActivity(Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("⚙️ فعّل خدمة الموقع (GPS) أولاً") }
+                }
+
+                HorizontalDivider()
+                // الأسهل دون إنترنت: اختيارٌ من قائمة بلدانٍ ومدنٍ مُضمَّنة.
+                FilledTonalButton(onClick = { showPlaces = true }, modifier = Modifier.fillMaxWidth(), enabled = places.isNotEmpty()) {
+                    Text("🌍 اختر بلدك ومدينتك من القائمة (دون إنترنت)")
+                }
+
+                HorizontalDivider()
+                Text("أو أدخِل الإحداثيّات يدويّاً (يعمل دون إنترنت):", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = latText, onValueChange = { latText = it.filter { c -> c.isDigit() || c == '.' || c == '-' } },
+                        label = { Text("خط العرض") }, singleLine = true, modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    )
+                    OutlinedTextField(
+                        value = lonText, onValueChange = { lonText = it.filter { c -> c.isDigit() || c == '.' || c == '-' } },
+                        label = { Text("خط الطول") }, singleLine = true, modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    )
+                }
+                OutlinedButton(
+                    onClick = {
+                        val la = latText.toDoubleOrNull(); val lo = lonText.toDoubleOrNull()
+                        if (la != null && lo != null && la in -90.0..90.0 && lo in -180.0..180.0) vm.setManualLocation(la, lo)
+                        else android.widget.Toast.makeText(ctx, "أدخِل إحداثيّاتٍ صحيحة (العرض −90..90، الطول −180..180)", android.widget.Toast.LENGTH_SHORT).show()
+                    },
+                    enabled = latText.isNotBlank() && lonText.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("حفظ الإحداثيّات") }
+
+                HorizontalDivider()
+                FilledTonalButton(
+                    onClick = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("📥 استيراد نسخةٍ احتياطيّة (فيها موقعك وإعداداتك)") }
             }
         }
 
@@ -139,8 +203,24 @@ fun SetupScreen(vm: SetupViewModel = hiltViewModel()) {
             enabled = ui.hasLocation,
             modifier = Modifier.fillMaxWidth(),
         ) { Text(if (ui.hasLocation) "ابدأ الآن" else "حدّد موقعك أولاً") }
+        OutlinedButton(onClick = { vm.skip() }, modifier = Modifier.fillMaxWidth()) {
+            Text("تخطّي الآن (يمكنك تحديد الموقع لاحقاً)")
+        }
+    }
+
+    if (showPlaces) {
+        PlacePickerDialog(places = places, onDismiss = { showPlaces = false }) { p ->
+            vm.pickPlace(p); showPlaces = false
+        }
     }
 }
+
+/** هل خدمة الموقع (GPS/الشبكة) مفعّلةٌ في النظام؟ */
+private fun locationEnabled(ctx: android.content.Context): Boolean = runCatching {
+    val lm = ctx.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
+    lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER) ||
+        lm.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)
+}.getOrDefault(true)
 
 /** شارةُ ميزةٍ سريعة في بطاقة الترحيب: رمزٌ فوق تسمية. */
 @Composable
@@ -149,4 +229,49 @@ private fun FeatureBadge(emoji: String, label: String) {
         Text(emoji, fontSize = 24.sp)
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
     }
+}
+
+/** حوارُ اختيار موقعٍ من القائمة المُضمَّنة، ببحثٍ بالبلد أو المدينة. */
+@Composable
+private fun PlacePickerDialog(
+    places: List<io.github.salehgnutux.gtsalat.domain.Place>,
+    onDismiss: () -> Unit,
+    onPick: (io.github.salehgnutux.gtsalat.domain.Place) -> Unit,
+) {
+    var q by remember { mutableStateOf("") }
+    val nq = io.github.salehgnutux.gtsalat.domain.Quran.normalize(q)
+    val shown = remember(nq, places) {
+        if (nq.isBlank()) places
+        else places.filter {
+            io.github.salehgnutux.gtsalat.domain.Quran.normalize("${it.country} ${it.city}").contains(nq)
+        }
+    }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("اختر موقعك") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = q, onValueChange = { q = it }, singleLine = true,
+                    label = { Text("ابحث ببلدٍ أو مدينة") }, modifier = Modifier.fillMaxWidth(),
+                )
+                androidx.compose.foundation.lazy.LazyColumn(
+                    Modifier.fillMaxWidth().heightIn(max = 340.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    items(shown) { p ->
+                        Column(
+                            Modifier.fillMaxWidth().clickable { onPick(p) }.padding(vertical = 8.dp),
+                        ) {
+                            Text(p.city, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                            Text(p.country, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                        }
+                        HorizontalDivider()
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("إغلاق") } },
+    )
 }

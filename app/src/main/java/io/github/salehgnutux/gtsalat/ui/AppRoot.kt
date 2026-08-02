@@ -25,6 +25,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,7 +88,13 @@ private enum class Dest(val route: String, val label: String, val icon: ImageVec
 }
 
 @Composable
-fun AppRoot(setupCompleted: Boolean, gradientTop: Int = 0, gradientBottom: Int = 0) {
+fun AppRoot(
+    setupCompleted: Boolean,
+    gradientTop: Int = 0,
+    gradientBottom: Int = 0,
+    deepLink: String? = null,
+    onDeepLinkHandled: () -> Unit = {},
+) {
     if (!setupCompleted) {
         // Surface يوفّر لون المحتوى الصحيح (onBackground) لشاشة الإعداد خارج الـScaffold.
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -96,6 +103,12 @@ fun AppRoot(setupCompleted: Boolean, gradientTop: Int = 0, gradientBottom: Int =
         return
     }
     val nav = rememberNavController()
+    // فتحٌ مباشرٌ لوجهةٍ من الإشعار (deep-link) — يُنفَّذ مرّةً ثمّ يُمسَح.
+    LaunchedEffect(deepLink) {
+        val route = deepLink ?: return@LaunchedEffect
+        runCatching { nav.navigate(route) { launchSingleTop = true } }
+        onDeepLinkHandled()
+    }
     val backStack by nav.currentBackStackEntryAsState()
     val currentDest = backStack?.destination
     // رسالةٌ عند إعادة النقر على «المزيد» ونحن داخل أحد أقسامه.
