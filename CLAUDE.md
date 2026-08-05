@@ -85,7 +85,7 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 ├── audio/       AdhanService.kt (mediaPlayback أذان) · QuranAudioService.kt (تلاوة القرآن، آية-بآية/سورة كاملة) + QuranPlayback (حالة StateFlow) + QuranAudio (أوامر) · AdhanPreviewer · RingerController (كتم)
 ├── sensor/Compass.kt       بوصلة (TYPE_ROTATION_VECTOR) كـFlow — للقبلة
 ├── notification/NotificationHelper.kt  ★ 5 قنوات (adhan/prenotify/service/status/reminders). صوت الأذان عبر الخدمة لا القناة.
-├── widget/      NextPrayerWidget + TodayTimesWidget (Glance، خلفيّة شفّافة) + WidgetData (Hilt EntryPoint، حساب محلّيّ)
+├── widget/      NextPrayerWidget + TodayTimesWidget + PrayerProgressWidget (ساعة + شريط تقدّم بين صلاتين) — Glance خلفيّة شفّافة + WidgetData (Hilt EntryPoint، حساب محلّيّ)
 ├── di/          AppModule + LocationModule (@Binds حسب النكهة)
 ├── ui/
 │   ├── MainActivity + RootViewModel + AppRoot (Box تدرّج + Scaffold + شريط سفليّ 5 تبويبات + المزيد nested-graph + بوّابة Setup + deep-link إشعارات عبر `EXTRA_ROUTE`)
@@ -175,7 +175,8 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 - **بنية تحتيّة (v1.1–v1.3):** إشعار تحديثٍ داخليّ + تنزيل/تثبيت (`UpdateRepository`/`UpdateInstaller`/`UpdateBanner`) · نافذة أذانٍ ملء الشاشة فوق القفل (`AdhanAlarmActivity`) · نسخٌ احتياطيّ ومشاركةٌ انتقائيّة (`BackupManager`) · إزاحة التاريخ الهجريّ · زرّ 12/24 وحلقة تقدّمٍ في الرئيسيّة.
 - **v1.4:** إيقاظ الشاشة للأذان + نافذة ملء الشاشة والتطبيق نشط + إبقاؤها بعد الصوت (`AdhanPlayback`/`keepAdhanScreen`) · إصلاح حلقة المتبقّي بين العشاء والفجر · تذكير أذكار الصباح/المساء · بطاقة تفعيل الإشعارات · تنزيل المصحف داخل قسمه · إرفاق رابط الموقع بالمشاركة. (البوصلة: خللٌ عتاديٌّ لا برمجيّ — انظر مزلق البوصلة.)
 - **v1.5:** **إعدادٌ أوّليٌّ يعمل دون إنترنت** — تثبيتٌ حيٌّ من GPS (`PlatformLocationProvider.freshFix` في foss) + زرّ تفعيل خدمة الموقع + **قاعدة مواقع مُضمَّنة** (`assets/content/places.json` + `ContentRepository.places()` + `domain/Place`) باختيارٍ بحثيّ يقترح الطريقة + إدخال إحداثيّات يدويّ + استيراد نسخة + زرّ تخطّي (`SetupScreen`/`SetupViewModel`) · **إشعاراتٌ ذكيّة deep-link** (`MainActivity.EXTRA_ROUTE` + `AppRoot(deepLink)`) · **تسبيحٌ مختلط** (`TasbihUi.MIXED`) · **مشاركة/نسخ برابطي الهاتف وسطح المكتب** (`util/Share.kt` + `Credits.DESKTOP_WEBSITE`). المواقيت تُحسَب محليّاً (adhan) فلا حاجة لقاعدة بيانات مواقيت.
-- **الإصدار المستقرّ الحاليّ: v1.5** (versionCode 24). أوّل مستقرّ: v1.0 (versionCode 19).
+- **v1.6:** **عرضٌ بطاقيٌّ عامّ** لأقسام الأذكار/المحتوى (بأسلوب أسماء الله الحسنى، `HorizontalPager`) — مفتاحٌ واحدٌ عامّ `adhkarCardView` (افتراضيّ true) يتبدّل بزرّ `AdhkarViewToggleButton` بجانب زرّ السِمة المدمج في `SubScreenHeader` (لا تُضِف `ThemeToggleButton` ثانيةً)، يشمل: الأذكار/حصن/الأدعية/الأحاديث/الحِكَم/التفسير. الأذكار: انتقالٌ تلقائيٌّ عند إكمال العدّ + «تصفير» يعود للبطاقة 0 (حالة الـpager مرفوعة). · **بحثٌ داخل السورة** + **بحثٌ في الأحاديث**. · **مهلة قراءةٍ حسب طول الآية بسرعات** (`quranScrollSpeed`) + حفظ آخر رواية (`lastRiwaya`). · **ودجت الساعة وتقدّم الصلاة** (`PrayerProgressWidget`). · **`Quran.normalize` يحذف الألف** (وكلّ التشكيل وعلامات التلاوة والهمزة) فيطابق «جنات» «جَنّٰتٍ».
+- **الإصدار المستقرّ الحاليّ: v1.6** (versionCode 25). أوّل مستقرّ: v1.0 (versionCode 19).
 
 ## المصادر الحرّة المدروسة (للإلهام لا النسخ)
 Five-Prayers (النموذج الهجين للجدولة، سلسلة السقوط، الكاتم، USAGE_ALARM، Nominatim بلا Google) ·
