@@ -72,10 +72,14 @@ data class AppSettings(
     val lastListenAyah: Int = 1,
     val lastReciterId: String = "",
     val lastMushafPage: Int = 1,
+    val lastRiwaya: String = "hafs",              // آخر روايةٍ مختارة في القارئ النصّيّ (تُستعاد)
+    val quranScrollSpeed: Int = 100,              // مهلة القراءة التلقائيّة (٪): 70 أسرع … 220 تدبُّر
     // إشارات القرآن المرجعيّة: مجموعة مفاتيح "سورة:آية" (مثل "2:255").
     val bookmarks: Set<String> = emptySet(),
     // وِرد التلاوة اليوميّ (يدويّ): بطاقةٌ اختياريّةٌ مطفأةٌ افتراضيّاً (التذكير في الإشعارات مستقلٌّ ومفعّل).
     val enableWird: Boolean = false,
+    // طريقة عرض أقسام الأذكار: true = بطاقاتٌ سلايد (افتراضيّ، بأسلوب أسماء الله الحسنى)، false = قائمة.
+    val adhkarCardView: Boolean = true,
     // الوحدة والعدد + آخر يومٍ أُتمَّ فيه + سلسلة الأيّام المتتالية.
     val wirdGoalUnit: String = "juz",   // juz | hizb | pages | ayat
     val wirdGoalCount: Int = 1,

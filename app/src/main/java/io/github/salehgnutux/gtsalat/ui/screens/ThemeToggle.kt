@@ -2,8 +2,10 @@ package io.github.salehgnutux.gtsalat.ui.screens
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Notes
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +36,12 @@ class ThemeToggleViewModel @Inject constructor(
         .map { it.clock24h }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val adhkarCardView = settingsRepo.settings
+        .map { it.adhkarCardView }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun toggleAdhkarView(current: Boolean) = viewModelScope.launch { settingsRepo.setAdhkarCardView(!current) }
+
     /** يبدّل بين الفاتح والداكن؛ إن كان تابعاً للنظام قلبَ إلى عكس وضع النظام الحاليّ. */
     fun toggle(effectiveDark: Boolean) = viewModelScope.launch {
         settingsRepo.setTheme(if (effectiveDark) ThemeMode.LIGHT else ThemeMode.DARK)
@@ -51,6 +59,19 @@ fun ClockFormatToggleButton(vm: ThemeToggleViewModel = hiltViewModel()) {
             if (is24) "24" else "12",
             color = MaterialTheme.colorScheme.primary,
             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+        )
+    }
+}
+
+/** زرٌّ لتبديل طريقة عرض الأذكار (قائمة ↔ بطاقات سلايد) — يُوضَع بجانب زرّ السِمة. */
+@Composable
+fun AdhkarViewToggleButton(vm: ThemeToggleViewModel = hiltViewModel()) {
+    val cards by vm.adhkarCardView.collectAsStateWithLifecycle()
+    IconButton(onClick = { vm.toggleAdhkarView(cards) }) {
+        Icon(
+            if (cards) Icons.Outlined.Notes else Icons.Outlined.AutoStories,
+            contentDescription = if (cards) "العرض كقائمة" else "العرض كبطاقات",
+            tint = MaterialTheme.colorScheme.primary,
         )
     }
 }

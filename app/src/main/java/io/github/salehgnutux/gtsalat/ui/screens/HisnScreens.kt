@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import io.github.salehgnutux.gtsalat.ui.theme.AmiriQuran
 
 /* ============ قائمة أبواب حصن المسلم (132) ============ */
@@ -149,14 +150,18 @@ fun HisnCategoryScreen(onBack: () -> Unit, vm: HisnCategoryViewModel = hiltViewM
     val done = remaining.count { it == 0 }
     val total = items.size
 
+    val cards by androidx.hilt.navigation.compose.hiltViewModel<ThemeToggleViewModel>().adhkarCardView.collectAsStateWithLifecycle()
+    val pager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { items.size })
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.weight(1f)) { SubScreenHeader(name.ifBlank { "حصن المسلم" }, onBack) }
-            TextButton(onClick = { vm.reset() }) {
+        SubScreenHeader(name.ifBlank { "حصن المسلم" }, onBack, actions = {
+            TextButton(onClick = { vm.reset(); scope.launch { if (items.isNotEmpty()) pager.scrollToPage(0) } }) {
                 Icon(Icons.Filled.Refresh, contentDescription = null)
-                Text("  تصفير")
+                Text("تصفير")
             }
-        }
+            AdhkarViewToggleButton()
+        })
         if (total > 0) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Text("أكملتَ $done من $total", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
@@ -165,6 +170,32 @@ fun HisnCategoryScreen(onBack: () -> Unit, vm: HisnCategoryViewModel = hiltViewM
                     modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
                 )
             }
+        }
+        if (cards && items.isNotEmpty()) {
+            // عرضٌ بطاقيّ (سلايد) بأسلوب أسماء الله الحسنى.
+            androidx.compose.foundation.pager.HorizontalPager(
+                state = pager,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 28.dp),
+                pageSpacing = 12.dp,
+            ) { page ->
+                val dhikr = items[page]
+                val left = remaining.getOrElse(page) { dhikr.count }
+                AdhkarCard(text = dhikr.text, count = dhikr.count, left = left, done = left == 0, onTap = {
+                    vm.tap(page)
+                    if (left <= 1 && page < items.lastIndex) {
+                        scope.launch { kotlinx.coroutines.delay(350); pager.animateScrollToPage(page + 1) }
+                    }
+                })
+            }
+            Text(
+                "${pager.currentPage + 1} / ${items.size}",
+                style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+            )
+            return@Column
         }
         LazyColumn(
             Modifier.fillMaxSize(),

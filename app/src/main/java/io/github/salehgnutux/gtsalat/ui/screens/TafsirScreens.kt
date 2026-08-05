@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -105,15 +106,54 @@ class TafsirSurahViewModel @Inject constructor(
 @Composable
 fun TafsirSurahScreen(onBack: () -> Unit, vm: TafsirSurahViewModel = hiltViewModel()) {
     val surah by vm.surah.collectAsStateWithLifecycle()
+    val cards by androidx.hilt.navigation.compose.hiltViewModel<ThemeToggleViewModel>().adhkarCardView.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxSize()) {
-        SubScreenHeader("سورة ${surah?.name ?: ""}".trim(), onBack)
+        SubScreenHeader("سورة ${surah?.name ?: ""}".trim(), onBack, actions = { AdhkarViewToggleButton() })
         val ayahs = surah?.ayahs ?: emptyList()
+        if (cards && ayahs.isNotEmpty()) {
+            val pager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { ayahs.size })
+            androidx.compose.foundation.pager.HorizontalPager(
+                state = pager,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 20.dp),
+                pageSpacing = 12.dp,
+            ) { page -> AyahTafsirPagerCard(ayahs[page]) }
+            Text(
+                "${pager.currentPage + 1} / ${ayahs.size}",
+                style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            )
+            return@Column
+        }
         LazyColumn(
             Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(ayahs, key = { it.n }) { a -> AyahCard(a) }
+        }
+    }
+}
+
+/** بطاقةُ آيةٍ + تفسيرها للعرض السلايد (ملء الارتفاع، محتوًى قابلٌ للتمرير). */
+@Composable
+private fun AyahTafsirPagerCard(a: TafsirAyah) {
+    Card(Modifier.fillMaxSize().padding(vertical = 12.dp)) {
+        Column(
+            Modifier.fillMaxSize().padding(20.dp).verticalScroll(androidx.compose.foundation.rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                Modifier.size(34.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) { Text("${a.n}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer) }
+            Text(a.text, fontFamily = AmiriQuran, fontSize = 24.sp, lineHeight = 46.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            if (a.tafsir.isNotBlank()) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Text(a.tafsir, style = MaterialTheme.typography.bodyMedium, lineHeight = 28.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }

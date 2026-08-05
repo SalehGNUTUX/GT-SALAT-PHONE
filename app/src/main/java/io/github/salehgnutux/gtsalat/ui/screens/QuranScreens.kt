@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -585,6 +586,7 @@ class TextReaderViewModel @Inject constructor(
         if (_riwaya.value?.id == r.id) return
         _riwaya.value = r
         viewModelScope.launch {
+            settingsRepo.setLastRiwaya(r.id)   // تُستعاد عند العودة للتطبيق
             _textLoading.value = true
             _ayat.value = repo.ayatForRiwaya(n, r.apiSlug)
             _textLoading.value = false
@@ -641,16 +643,30 @@ class TextReaderViewModel @Inject constructor(
     /** حذف صوت آيات السورة الحاليّة لقارئ. */
     fun deleteAyat(reciterId: String) { downloader.deleteAyat(reciterId, n, _ayat.value.size) }
 
+    /** مهلة القراءة التلقائيّة (٪) — تُقرأ من الإعدادات وتُطبَّق حيّاً في حلقة القراءة. */
+    val scrollSpeed: StateFlow<Int> = settingsRepo.settings.map { it.quranScrollSpeed }
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), 100)
+
+    fun setScrollSpeed(pct: Int) = viewModelScope.launch { settingsRepo.setQuranScrollSpeed(pct) }
+
     init {
         viewModelScope.launch {
             _surah.value = repo.surah(n)
             _ayat.value = repo.ayat(n)
             _riwayat.value = repo.riwayat()
-            _riwaya.value = repo.riwayat().firstOrNull { it.id == "hafs" }
+            val cur = settingsRepo.current()
+            // نستعيد آخر روايةٍ مختارة (لا نعود دائماً لحفص)؛ وإن كانت غير حفص نجلب نصّها.
+            val savedRiwaya = repo.riwayat().firstOrNull { it.id == cur.lastRiwaya }
+                ?: repo.riwayat().firstOrNull { it.id == "hafs" }
+            _riwaya.value = savedRiwaya
+            if (savedRiwaya != null && savedRiwaya.id != "hafs") {
+                _textLoading.value = true
+                _ayat.value = repo.ayatForRiwaya(n, savedRiwaya.apiSlug)
+                _textLoading.value = false
+            }
             // القرّاء ذوو صوت آية-بآية فقط
             val list = repo.reciters().filter { it.hasAyahAudio }
             _reciters.value = list
-            val cur = settingsRepo.current()
             _reciter.value = list.firstOrNull { it.id == cur.lastReciterId }
                 ?: list.firstOrNull { it.id == "alafasy" } ?: list.firstOrNull()
             // آية البحث لها الأولويّة، وإلّا نتابع من الآية المحفوظة لنفس السورة، وإلّا من أوّلها.
@@ -678,6 +694,14 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
     val riwaya by vm.riwaya.collectAsStateWithLifecycle()
     val textLoading by vm.textLoading.collectAsStateWithLifecycle()
     val bookmarked by vm.bookmarkedAyat.collectAsStateWithLifecycle()
+    val scrollSpeed by vm.scrollSpeed.collectAsStateWithLifecycle()
+    // بحثٌ داخل السورة (بالكلمات) للوصول إلى آيةٍ معيّنة.
+    var showSearch by remember { mutableStateOf(false) }
+    var searchQ by remember { mutableStateOf("") }
+    val shownAyat = remember(ayat, searchQ) {
+        val nq = io.github.salehgnutux.gtsalat.domain.Quran.normalize(searchQ)
+        if (nq.isBlank()) ayat else ayat.filter { io.github.salehgnutux.gtsalat.domain.Quran.normalize(it.text).contains(nq) }
+    }
 
     val here = play.active && play.mode == QuranMode.AYAH && play.surah == vm.n
     val playingAyah = if (here) play.ayah else 0
@@ -710,7 +734,9 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
             while (cur <= ayat.size) {
                 vm.setTarget(cur)
                 val len = ayat.getOrNull(cur - 1)?.text?.length ?: 40
-                kotlinx.coroutines.delay((len * 90L).coerceIn(2500L, 15000L))
+                // المهلة حسب طول الآية × مهلة القراءة المختارة (٪) — تُقرأ حيّاً فتنطبق فوراً.
+                val speed = vm.scrollSpeed.value
+                kotlinx.coroutines.delay(maxOf(2600L, len * 95L) * speed / 100L)
                 cur++
             }
             readingMode = false
@@ -719,7 +745,21 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        SubScreenHeader("سورة ${surah?.ar ?: ""}".trim(), onBack)
+        SubScreenHeader("سورة ${surah?.ar ?: ""}".trim(), onBack, actions = {
+            IconButton(onClick = { showSearch = !showSearch; if (!showSearch) searchQ = "" }) {
+                Icon(if (showSearch) Icons.Filled.Close else Icons.Filled.Search, contentDescription = "بحثٌ في السورة")
+            }
+        })
+        if (showSearch) {
+            OutlinedTextField(
+                value = searchQ, onValueChange = { searchQ = it },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+                placeholder = { Text("ابحث بكلمةٍ داخل السورة…") },
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                trailingIcon = { if (searchQ.isNotEmpty()) IconButton(onClick = { searchQ = "" }) { Icon(Icons.Filled.Close, "مسح") } },
+                singleLine = true,
+            )
+        }
 
         // شريط التحكّم: اختيار القارئ + تشغيل/إيقاف.
         Surface(color = MaterialTheme.colorScheme.surfaceVariant, shadowElevation = 1.dp) {
@@ -774,6 +814,26 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
             }
         }
 
+        // مهلة القراءة التلقائيّة (تظهر في وضع القراءة): حسب طول الآية × النسبة المختارة.
+        if (readingMode && !here) {
+            Surface(color = MaterialTheme.colorScheme.surface) {
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("مهلة القراءة:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
+                    listOf(70 to "أسرع", 100 to "معتاد", 150 to "أمهل", 220 to "تدبُّر").forEach { (pct, label) ->
+                        androidx.compose.material3.FilterChip(
+                            selected = scrollSpeed == pct,
+                            onClick = { vm.setScrollSpeed(pct) },
+                            label = { Text(label) },
+                        )
+                    }
+                }
+            }
+        }
+
         // اختيار رواية النصّ (ورش/حفص/قالون/الدوري) — غير حفص يُجلب مرّةً ويُخزَّن.
         if (riwayat.isNotEmpty()) {
             Surface(color = MaterialTheme.colorScheme.surface) {
@@ -796,13 +856,16 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
             }
         }
 
+        if (showSearch && shownAyat.isEmpty() && searchQ.isNotBlank()) {
+            Text("لا آيةَ تطابق «$searchQ» في هذه السورة.", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.outline)
+        }
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            items(ayat, key = { it.n }) { a ->
+            items(shownAyat, key = { it.n }) { a ->
                 val isPlaying = a.n == playingAyah                 // الآية الجاريّة أثناء التلاوة (أخضر)
                 val isResume = playingAyah == 0 && a.n == target && target > 1  // موضع المتابعة (لونٌ مميّز)
                 val container = when {
@@ -1024,6 +1087,8 @@ fun DownloadedSurahsScreen(vm: QuranMetaViewModel = hiltViewModel(), onOpenRecit
     val ctx = LocalContext.current
     val surahs by vm.surahs.collectAsStateWithLifecycle()
     val play by QuranPlayback.state.collectAsStateWithLifecycle()
+    // نراقب قائمة القرّاء (تفاعليّاً) ليظهر اسم القارئ فور تحميلها لا مُعرّفه الخام.
+    val reciters by vm.surahReciters.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.ensureOnlineReciters() }
     var refresh by remember { mutableIntStateOf(0) }
     val byReciter = remember(refresh) { vm.downloadedByReciter() }
@@ -1042,7 +1107,7 @@ fun DownloadedSurahsScreen(vm: QuranMetaViewModel = hiltViewModel(), onOpenRecit
             }
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 byReciter.forEach { (rid, surahNums) ->
-                    val r = vm.surahReciterById(rid)
+                    val r = reciters.firstOrNull { it.id == rid } ?: vm.surahReciterById(rid)
                     val visible = surahNums.sorted().filter { "$rid-$it" !in hidden }
                     if (visible.isNotEmpty()) {
                         item("h_$rid") {

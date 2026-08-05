@@ -84,8 +84,11 @@ class SettingsRepository @Inject constructor(
         val LAST_LISTEN_AYAH = intPreferencesKey("last_listen_ayah")
         val LAST_RECITER = stringPreferencesKey("last_reciter_id")
         val LAST_MUSHAF_PAGE = intPreferencesKey("last_mushaf_page")
+        val LAST_RIWAYA = stringPreferencesKey("last_riwaya")
+        val QURAN_SCROLL_SPEED = intPreferencesKey("quran_scroll_speed")
         val BOOKMARKS = androidx.datastore.preferences.core.stringSetPreferencesKey("quran_bookmarks")
         val ENABLE_WIRD = booleanPreferencesKey("enable_wird")
+        val ADHKAR_CARD_VIEW = booleanPreferencesKey("adhkar_card_view")
         val WIRD_UNIT = stringPreferencesKey("wird_goal_unit")
         val WIRD_COUNT = intPreferencesKey("wird_goal_count")
         val WIRD_LAST_DATE = stringPreferencesKey("wird_last_done_date")
@@ -164,8 +167,11 @@ class SettingsRepository @Inject constructor(
             lastListenAyah = this[Keys.LAST_LISTEN_AYAH] ?: 1,
             lastReciterId = this[Keys.LAST_RECITER] ?: "",
             lastMushafPage = this[Keys.LAST_MUSHAF_PAGE] ?: 1,
+            lastRiwaya = this[Keys.LAST_RIWAYA] ?: "hafs",
+            quranScrollSpeed = (this[Keys.QURAN_SCROLL_SPEED] ?: 100).coerceIn(50, 300),
             bookmarks = this[Keys.BOOKMARKS] ?: emptySet(),
             enableWird = this[Keys.ENABLE_WIRD] ?: false,
+            adhkarCardView = this[Keys.ADHKAR_CARD_VIEW] ?: false,
             wirdGoalUnit = this[Keys.WIRD_UNIT] ?: "juz",
             wirdGoalCount = this[Keys.WIRD_COUNT] ?: 1,
             wirdLastDoneDate = this[Keys.WIRD_LAST_DATE] ?: "",
@@ -175,6 +181,7 @@ class SettingsRepository @Inject constructor(
 
     /** يفعّل/يطفئ بطاقة الوِرد في القرآن (لا يمسّ تذكير الإشعارات). */
     suspend fun setEnableWird(v: Boolean) = context.dataStore.edit { it[Keys.ENABLE_WIRD] = v }
+    suspend fun setAdhkarCardView(v: Boolean) = context.dataStore.edit { it[Keys.ADHKAR_CARD_VIEW] = v }
 
     /** يضبط هدف الوِرد اليوميّ (الوحدة والعدد). */
     suspend fun setWirdGoal(unit: String, count: Int) = context.dataStore.edit {
@@ -274,6 +281,8 @@ class SettingsRepository @Inject constructor(
         it[Keys.LAST_LISTEN_AYAH] = ayah
     }
     suspend fun setLastReciter(id: String) = context.dataStore.edit { it[Keys.LAST_RECITER] = id }
+    suspend fun setLastRiwaya(id: String) = context.dataStore.edit { it[Keys.LAST_RIWAYA] = id }
+    suspend fun setQuranScrollSpeed(pct: Int) = context.dataStore.edit { it[Keys.QURAN_SCROLL_SPEED] = pct.coerceIn(50, 300) }
 
     suspend fun setLocation(lat: Double, lon: Double, city: String, country: String) {
         context.dataStore.edit {

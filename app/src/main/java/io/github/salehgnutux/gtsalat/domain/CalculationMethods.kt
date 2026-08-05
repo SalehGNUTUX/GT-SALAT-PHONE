@@ -47,12 +47,13 @@ object CalculationMethods {
             Regex("kuwait|الكويت").containsMatchIn(lc) -> 9
             Regex("qatar|قطر").containsMatchIn(lc) -> 10
             Regex("emirates|uae|الإمارات|دبي").containsMatchIn(lc) -> 8
-            Regex("bahrain|البحرين|oman|عمان").containsMatchIn(lc) -> 8
+            Regex("bahrain|البحرين|oman|عمان|عُمان").containsMatchIn(lc) -> 8
             Regex("turkey|türkiye|تركيا").containsMatchIn(lc) -> 13
+            Regex("pakistan|باكستان|bangladesh|بنغلاديش").containsMatchIn(lc) -> 1
             Regex("malaysia|ماليزيا").containsMatchIn(lc) -> 17
             Regex("indonesia|إندونيسيا").containsMatchIn(lc) -> 20
             Regex("france|فرنسا").containsMatchIn(lc) -> 12
-            Regex("united states|canada|أمريكا|كندا").containsMatchIn(lc) -> 2
+            Regex("united states|canada|أمريكا|الولايات المتحدة|كندا").containsMatchIn(lc) -> 2
             Regex("singapore|سنغافورة").containsMatchIn(lc) -> 11
             Regex("russia|روسيا").containsMatchIn(lc) -> 14
             Regex("iran|إيران").containsMatchIn(lc) -> 7
