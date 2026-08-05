@@ -3,4 +3,5 @@
     <string name="app_name">GT-SALAT</string>
     <string name="widget_next_prayer_desc">الصلاة القادمة ووقتها</string>
     <string name="widget_today_times_desc">مواقيت اليوم الخمسة</string>
+    <string name="widget_prayer_progress_desc">الساعة وشريط تقدّمٍ بين الصلاتين</string>
 </resources>

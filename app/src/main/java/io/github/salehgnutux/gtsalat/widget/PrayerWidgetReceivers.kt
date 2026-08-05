@@ -12,3 +12,8 @@ class NextPrayerWidgetReceiver : GlanceAppWidgetReceiver() {
 class TodayTimesWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = TodayTimesWidget()
 }
+
+/** مُستقبِل ودجت «الساعة وتقدّم الصلاة». */
+class PrayerProgressWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = PrayerProgressWidget()
+}

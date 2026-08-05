@@ -23,6 +23,9 @@ data class WidgetSnapshot(
     val nextId: PrayerId?,
     /** الصلوات الخمس: (الاسم، الوقت، المعرّف). */
     val prayers: List<Triple<String, String, PrayerId>>,
+    val clockNow: String = "",       // الساعة الحاليّة لحظة التحديث (لودجت الساعة)
+    val prevName: String = "",       // اسم الصلاة السابقة (لشريط التقدّم)
+    val progress: Float = 0f,        // نسبة انقضاء المدّة بين الصلاة السابقة والقادمة (0..1)
 )
 
 /** نقطة دخول Hilt لجلب المستودعات داخل الودجت (خارج دورة حياة Compose). */
@@ -33,7 +36,7 @@ interface WidgetEntryPoint {
     fun settingsRepository(): SettingsRepository
 }
 
-private val EMPTY = WidgetSnapshot(false, "", "", "", "", "", null, emptyList())
+private val EMPTY = WidgetSnapshot(false, "", "", "", "", "", null, emptyList(), "", "", 0f)
 
 /**
  * لقطة الودجت. المواقيت تُحسَب **محليّاً فوراً** (PrayerCalculator) فلا تعتمد على الكاش أو
@@ -52,7 +55,20 @@ suspend fun loadWidgetSnapshot(context: Context): WidgetSnapshot = runCatching {
     val tomorrowFajr = PrayerCalculator
         .computeDay(LocalDate.now().plusDays(1), lat, lon, settings.methodId, settings.madhab)
         .time(PrayerId.FAJR)
+    val yesterdayIsha = PrayerCalculator
+        .computeDay(LocalDate.now().minusDays(1), lat, lon, settings.methodId, settings.madhab)
+        .time(PrayerId.ISHA)
     val next = PrayerCalculator.nextPrayer(today, tomorrowFajr, now)
+
+    // شريط التقدّم: نسبة انقضاء المدّة بين الصلاة السابقة والقادمة (عشاء الأمس حدٌّ بعد منتصف الليل).
+    val todayPrayers = today.prayers.filter { it.id.isPrayer }
+    val bounds = (todayPrayers.map { it.epochMillis } + listOfNotNull(yesterdayIsha?.epochMillis, tomorrowFajr?.epochMillis)).sorted()
+    val prevBound = bounds.lastOrNull { it <= now }
+    val nextE = next?.prayer?.epochMillis
+    val progress = if (prevBound != null && nextE != null && nextE > prevBound)
+        ((now - prevBound).toFloat() / (nextE - prevBound)).coerceIn(0f, 1f) else 0f
+    val prevName = todayPrayers.lastOrNull { it.epochMillis <= now }?.id?.arabic
+        ?: if (prevBound == yesterdayIsha?.epochMillis) PrayerId.ISHA.arabic else ""
 
     // التاريخ الهجريّ من الكاش إن توفّر بسرعة (لا يُوقِف العرض إن فشل)
     val hijri = runCatching { ep.prayerRepository().todayTimetable()?.hijri }.getOrNull().orEmpty()
@@ -70,5 +86,8 @@ suspend fun loadWidgetSnapshot(context: Context): WidgetSnapshot = runCatching {
         remaining = next?.let { Format.countdown(it.remainingMillis) } ?: "",
         nextId = next?.prayer?.id,
         prayers = prayers,
+        clockNow = Format.clock(now),
+        prevName = prevName,
+        progress = progress,
     )
 }.getOrDefault(EMPTY)

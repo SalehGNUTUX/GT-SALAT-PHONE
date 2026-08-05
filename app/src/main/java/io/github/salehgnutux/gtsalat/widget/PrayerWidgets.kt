@@ -133,8 +133,68 @@ private fun TimesRow(snap: WidgetSnapshot) {
     }
 }
 
+/* ============ ودجت 3: الساعة وتقدّم الصلاة ============ */
+
+class PrayerProgressWidget : GlanceAppWidget() {
+    override val sizeMode = SizeMode.Exact
+
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val snap = loadWidgetSnapshot(context)
+        val open = openApp(context)
+        provideContent {
+            Column(
+                GlanceModifier.fillMaxWidth().background(Scrim).cornerRadius(20.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp).clickable(open),
+            ) {
+                if (!snap.hasLocation) {
+                    Text("افتح التطبيق لتحديد موقعك", style = TextStyle(color = ColorProvider(White)))
+                    return@Column
+                }
+                // الساعة الكبيرة
+                Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(snap.clockNow, style = TextStyle(color = ColorProvider(White), fontSize = 34.sp, fontWeight = FontWeight.Bold))
+                    Spacer(GlanceModifier.defaultWeight())
+                    if (snap.hijri.isNotBlank()) {
+                        Text(snap.hijri, style = TextStyle(color = ColorProvider(Faint), fontSize = 11.sp))
+                    }
+                }
+                Spacer(GlanceModifier.height(8.dp))
+                // طرفا الشريط: الصلاة السابقة ← القادمة (بوقتها)
+                Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(snap.prevName, style = TextStyle(color = ColorProvider(Faint), fontSize = 13.sp))
+                    Spacer(GlanceModifier.defaultWeight())
+                    Text("${snap.nextName} ${snap.nextTime}", style = TextStyle(color = ColorProvider(Gold), fontSize = 13.sp, fontWeight = FontWeight.Bold))
+                }
+                Spacer(GlanceModifier.height(5.dp))
+                ProgressBar(snap.progress)
+                if (snap.remaining.isNotBlank()) {
+                    Spacer(GlanceModifier.height(5.dp))
+                    Text("المتبقّي ${snap.remaining}", style = TextStyle(color = ColorProvider(Faint), fontSize = 12.sp))
+                }
+            }
+        }
+    }
+}
+
+/** شريط تقدّمٍ أفقيّ (نسبة 0..1) — يُرسَم يدويّاً بعرضٍ مشتقٍّ من عرض الودجت فيعمل عبر إصدارات Glance. */
+@androidx.compose.runtime.Composable
+private fun ProgressBar(progress: Float) {
+    val p = progress.coerceIn(0f, 1f)
+    // العرض المتاح ≈ عرض الودجت ناقص الحاشية الأفقيّة (16dp × 2).
+    val trackW = (LocalSize.current.width - 32.dp).coerceAtLeast(0.dp)
+    Row(
+        GlanceModifier.fillMaxWidth().height(10.dp).background(Color(0x55FFFFFF)).cornerRadius(5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (p > 0f) {
+            Row(GlanceModifier.width(trackW * p).height(10.dp).background(Gold).cornerRadius(5.dp)) {}
+        }
+    }
+}
+
 /** يحدّث كلّ ودجتات الصلاة (يُستدعى من مسارات الخلفيّة). */
 suspend fun updateAllPrayerWidgets(context: Context) {
     NextPrayerWidget().updateAll(context)
     TodayTimesWidget().updateAll(context)
+    PrayerProgressWidget().updateAll(context)
 }
