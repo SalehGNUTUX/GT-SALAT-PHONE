@@ -8,4 +8,5 @@
     android:widgetCategory="home_screen"
     android:description="@string/widget_prayer_progress_desc"
     android:updatePeriodMillis="1800000"
+    android:previewLayout="@layout/widget_preview_progress"
     android:initialLayout="@layout/glance_default_loading_layout" />

@@ -320,6 +320,12 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                     color = MaterialTheme.colorScheme.outline,
                 )
             }
+            LabeledRow("نمط ودجت الساعة والتقدّم") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(settings.widgetProgressStyle != "center", { vm.setWidgetProgressStyle("classic") }, { Text("كلاسيكيّ") })
+                    FilterChip(settings.widgetProgressStyle == "center", { vm.setWidgetProgressStyle("center") }, { Text("مركزيّ") })
+                }
+            }
         }
 
         SectionCard("تنزيل المحتوى", openSection == "تنزيل المحتوى", { toggle("تنزيل المحتوى") }) {

@@ -80,6 +80,8 @@ data class AppSettings(
     val enableWird: Boolean = false,
     // طريقة عرض أقسام الأذكار: true = بطاقاتٌ سلايد (افتراضيّ، بأسلوب أسماء الله الحسنى)، false = قائمة.
     val adhkarCardView: Boolean = true,
+    // نمط ودجت الساعة/التقدّم: classic (كلاسيكيّ، الساعة يميناً) أو center (مركزيّ).
+    val widgetProgressStyle: String = "classic",
     // الوحدة والعدد + آخر يومٍ أُتمَّ فيه + سلسلة الأيّام المتتالية.
     val wirdGoalUnit: String = "juz",   // juz | hizb | pages | ayat
     val wirdGoalCount: Int = 1,

@@ -89,6 +89,7 @@ class SettingsRepository @Inject constructor(
         val BOOKMARKS = androidx.datastore.preferences.core.stringSetPreferencesKey("quran_bookmarks")
         val ENABLE_WIRD = booleanPreferencesKey("enable_wird")
         val ADHKAR_CARD_VIEW = booleanPreferencesKey("adhkar_card_view")
+        val WIDGET_PROGRESS_STYLE = stringPreferencesKey("widget_progress_style")
         val WIRD_UNIT = stringPreferencesKey("wird_goal_unit")
         val WIRD_COUNT = intPreferencesKey("wird_goal_count")
         val WIRD_LAST_DATE = stringPreferencesKey("wird_last_done_date")
@@ -172,6 +173,7 @@ class SettingsRepository @Inject constructor(
             bookmarks = this[Keys.BOOKMARKS] ?: emptySet(),
             enableWird = this[Keys.ENABLE_WIRD] ?: false,
             adhkarCardView = this[Keys.ADHKAR_CARD_VIEW] ?: false,
+            widgetProgressStyle = this[Keys.WIDGET_PROGRESS_STYLE] ?: "classic",
             wirdGoalUnit = this[Keys.WIRD_UNIT] ?: "juz",
             wirdGoalCount = this[Keys.WIRD_COUNT] ?: 1,
             wirdLastDoneDate = this[Keys.WIRD_LAST_DATE] ?: "",
@@ -182,6 +184,7 @@ class SettingsRepository @Inject constructor(
     /** يفعّل/يطفئ بطاقة الوِرد في القرآن (لا يمسّ تذكير الإشعارات). */
     suspend fun setEnableWird(v: Boolean) = context.dataStore.edit { it[Keys.ENABLE_WIRD] = v }
     suspend fun setAdhkarCardView(v: Boolean) = context.dataStore.edit { it[Keys.ADHKAR_CARD_VIEW] = v }
+    suspend fun setWidgetProgressStyle(v: String) = context.dataStore.edit { it[Keys.WIDGET_PROGRESS_STYLE] = v }
 
     /** يضبط هدف الوِرد اليوميّ (الوحدة والعدد). */
     suspend fun setWirdGoal(unit: String, count: Int) = context.dataStore.edit {

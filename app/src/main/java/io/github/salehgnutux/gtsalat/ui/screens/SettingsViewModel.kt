@@ -100,7 +100,10 @@ class SettingsViewModel @Inject constructor(
     fun setSilenceMinutes(m: Int) = viewModelScope.launch { settingsRepo.setSilenceMinutes(m) }
     fun setPersistentNotification(v: Boolean) = viewModelScope.launch { settingsRepo.setPersistentNotification(v); reschedule() }
     fun setTheme(t: ThemeMode) = viewModelScope.launch { settingsRepo.setTheme(t) }
-    fun setClock24h(v: Boolean) = viewModelScope.launch { settingsRepo.setClock24h(v) }
+    fun setClock24h(v: Boolean) = viewModelScope.launch { settingsRepo.setClock24h(v); refreshWidgets() }
+    /** نمط ودجت الساعة/التقدّم (classic | center) — يُحدّث الودجتات فوراً. */
+    fun setWidgetProgressStyle(style: String) = viewModelScope.launch { settingsRepo.setWidgetProgressStyle(style); refreshWidgets() }
+    private suspend fun refreshWidgets() = runCatching { io.github.salehgnutux.gtsalat.widget.updateAllPrayerWidgets(context) }
     fun setCheckUpdates(v: Boolean) = viewModelScope.launch { settingsRepo.setCheckUpdates(v) }
     fun setEnableWird(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableWird(v) }
     fun setHijriOffset(days: Int) = viewModelScope.launch { settingsRepo.setHijriOffset(days) }

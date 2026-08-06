@@ -141,6 +141,12 @@ class QuranMetaViewModel @Inject constructor(
     /** قارئٌ من القائمة بمُعرّفه. */
     fun surahReciterById(id: String): io.github.salehgnutux.gtsalat.domain.SurahReciter? =
         _surahReciters.value.firstOrNull { it.id == id }
+
+    /** بطاقة القارئ المحفوظة على القرص (تعمل دون إنترنت ودون قائمة القرّاء). */
+    fun savedReciterMeta(id: String): io.github.salehgnutux.gtsalat.domain.SurahReciter? = downloader.reciterMeta(id)
+
+    /** يحفظ بطاقة القارئ بجانب تنزيلاته ليظهر اسمه لاحقاً دون شبكة. */
+    fun saveReciterMeta(reciter: io.github.salehgnutux.gtsalat.domain.SurahReciter) = downloader.saveReciterMeta(reciter)
     private val _surahs = MutableStateFlow<List<SurahMeta>>(emptyList())
     val surahs: StateFlow<List<SurahMeta>> = _surahs.asStateFlow()
     private val _reciters = MutableStateFlow<List<Reciter>>(emptyList())
@@ -1009,7 +1015,10 @@ fun ReciterSurahsScreen(reciterId: String, vm: QuranMetaViewModel = hiltViewMode
     val reciters by vm.surahReciters.collectAsStateWithLifecycle()
     val play by QuranPlayback.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.ensureOnlineReciters() }
-    val reciter = remember(reciters, reciterId) { reciters.firstOrNull { it.id == reciterId } }
+    // اسم القارئ: من قائمة الشبكة، وإلّا المُضمَّنون، وإلّا البطاقة المحفوظة على القرص (دون إنترنت).
+    val reciter = remember(reciters, reciterId) {
+        reciters.firstOrNull { it.id == reciterId } ?: vm.surahReciterById(reciterId) ?: vm.savedReciterMeta(reciterId)
+    }
 
     var showSearch by remember { mutableStateOf(false) }
     var q by remember { mutableStateOf("") }
@@ -1050,6 +1059,7 @@ fun ReciterSurahsScreen(reciterId: String, vm: QuranMetaViewModel = hiltViewMode
                         onPlay = { reciter?.let { QuranAudio.playSurah(ctx, s.n, s.ar, it.id, it.ar, it.server) } },
                         onDownload = {
                             reciter?.let { r ->
+                                vm.saveReciterMeta(r)   // نحفظ اسم القارئ ليظهر لاحقاً دون شبكة
                                 progress = progress + (s.n to 0)
                                 vm.downloadSurah(r.id, r.server, s.n, onProgress = { p -> progress = progress + (s.n to p) }) { ok ->
                                     progress = progress - s.n
@@ -1092,6 +1102,10 @@ fun DownloadedSurahsScreen(vm: QuranMetaViewModel = hiltViewModel(), onOpenRecit
     LaunchedEffect(Unit) { vm.ensureOnlineReciters() }
     var refresh by remember { mutableIntStateOf(0) }
     val byReciter = remember(refresh) { vm.downloadedByReciter() }
+    // متى تأكّد اسمُ قارئٍ من قائمة الشبكة، نحفظه بجانب تنزيلاته ليبقى ظاهراً دون إنترنت مستقبلاً.
+    LaunchedEffect(reciters, byReciter) {
+        byReciter.keys.forEach { rid -> reciters.firstOrNull { it.id == rid }?.let { vm.saveReciterMeta(it) } }
+    }
 
     val snackbar = remember { androidx.compose.material3.SnackbarHostState() }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -1107,7 +1121,7 @@ fun DownloadedSurahsScreen(vm: QuranMetaViewModel = hiltViewModel(), onOpenRecit
             }
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 byReciter.forEach { (rid, surahNums) ->
-                    val r = reciters.firstOrNull { it.id == rid } ?: vm.surahReciterById(rid)
+                    val r = reciters.firstOrNull { it.id == rid } ?: vm.surahReciterById(rid) ?: vm.savedReciterMeta(rid)
                     val visible = surahNums.sorted().filter { "$rid-$it" !in hidden }
                     if (visible.isNotEmpty()) {
                         item("h_$rid") {

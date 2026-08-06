@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- عدّادٌ تنازليٌّ حيّ (Chronometer) يُضبَط أساسه من الكود — للمتبقّي في ودجت الصلاة القادمة. -->
+<Chronometer xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_chrono"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layoutDirection="rtl"
+    android:textColor="#E0E0E0"
+    android:textSize="13sp" />

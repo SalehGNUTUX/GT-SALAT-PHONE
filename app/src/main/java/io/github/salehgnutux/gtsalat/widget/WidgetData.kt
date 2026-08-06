@@ -26,6 +26,10 @@ data class WidgetSnapshot(
     val clockNow: String = "",       // الساعة الحاليّة لحظة التحديث (لودجت الساعة)
     val prevName: String = "",       // اسم الصلاة السابقة (لشريط التقدّم)
     val progress: Float = 0f,        // نسبة انقضاء المدّة بين الصلاة السابقة والقادمة (0..1)
+    val gregorian: String = "",      // التاريخ الميلاديّ المختصر (تحت الهجريّ)
+    val remainingMillis: Long = 0L,  // المدّة المتبقّية للصلاة القادمة (لعدّاد Chronometer الحيّ)
+    val use24: Boolean = true,       // نظام 24/12 ساعة (لساعة TextClock الحيّة)
+    val progressStyle: String = "classic", // نمط ودجت التقدّم: classic | center
 )
 
 /** نقطة دخول Hilt لجلب المستودعات داخل الودجت (خارج دورة حياة Compose). */
@@ -36,7 +40,7 @@ interface WidgetEntryPoint {
     fun settingsRepository(): SettingsRepository
 }
 
-private val EMPTY = WidgetSnapshot(false, "", "", "", "", "", null, emptyList(), "", "", 0f)
+private val EMPTY = WidgetSnapshot(false, "", "", "", "", "", null, emptyList(), "", "", 0f, "", 0L, true, "classic")
 
 /**
  * لقطة الودجت. المواقيت تُحسَب **محليّاً فوراً** (PrayerCalculator) فلا تعتمد على الكاش أو
@@ -72,6 +76,10 @@ suspend fun loadWidgetSnapshot(context: Context): WidgetSnapshot = runCatching {
 
     // التاريخ الهجريّ من الكاش إن توفّر بسرعة (لا يُوقِف العرض إن فشل)
     val hijri = runCatching { ep.prayerRepository().todayTimetable()?.hijri }.getOrNull().orEmpty()
+    // التاريخ الميلاديّ المختصر (يُحسَب محليّاً وفق مخطّط الأشهر الإقليميّ)
+    val scheme = io.github.salehgnutux.gtsalat.domain.GregorianMonths.effective(settings.monthScheme, settings.country)
+    val td = LocalDate.now()
+    val gregorian = "${td.dayOfMonth} ${io.github.salehgnutux.gtsalat.domain.GregorianMonths.monthName(td.monthValue, scheme)} ${td.year}"
 
     val prayers = today.prayers
         .filter { it.id.isPrayer }
@@ -89,5 +97,9 @@ suspend fun loadWidgetSnapshot(context: Context): WidgetSnapshot = runCatching {
         clockNow = Format.clock(now),
         prevName = prevName,
         progress = progress,
+        gregorian = gregorian,
+        remainingMillis = next?.remainingMillis ?: 0L,
+        use24 = settings.clock24h,
+        progressStyle = settings.widgetProgressStyle,
     )
 }.getOrDefault(EMPTY)

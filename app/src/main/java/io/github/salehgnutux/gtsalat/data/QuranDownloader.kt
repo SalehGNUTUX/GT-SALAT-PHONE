@@ -4,6 +4,8 @@ import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.salehgnutux.gtsalat.domain.Quran
 import kotlinx.coroutines.Dispatchers
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -49,6 +51,24 @@ class QuranDownloader @Inject constructor(
         File(audioDir(reciterId), "${surah.toString().padStart(3, '0')}.mp3")
     fun localSurah(reciterId: String, surah: Int): File? =
         surahFile(reciterId, surah).takeIf { it.exists() && it.length() > 0 }
+
+    // ---- بطاقة القارئ المحفوظة (اسم/رواية/خادم) — ليظهر الاسم دون إنترنت ودون قائمة القرّاء ----
+    private val metaJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+    private fun reciterMetaFile(reciterId: String): File = File(context.filesDir, "audio/$reciterId/reciter.json")
+
+    /** يحفظ بطاقة القارئ بجانب سوره المُنزَّلة (يُستدعى عند التنزيل وعند تأكيد الاسم من الشبكة). */
+    fun saveReciterMeta(reciter: io.github.salehgnutux.gtsalat.domain.SurahReciter) {
+        runCatching {
+            audioDir(reciter.id) // يضمن وجود المجلّد
+            reciterMetaFile(reciter.id).writeText(metaJson.encodeToString(reciter))
+        }
+    }
+
+    /** يقرأ بطاقة القارئ المحفوظة إن وُجدت (بلا شبكة). */
+    fun reciterMeta(reciterId: String): io.github.salehgnutux.gtsalat.domain.SurahReciter? = runCatching {
+        reciterMetaFile(reciterId).takeIf { it.exists() && it.length() > 0 }
+            ?.let { metaJson.decodeFromString<io.github.salehgnutux.gtsalat.domain.SurahReciter>(it.readText()) }
+    }.getOrNull()
 
     // ---- صوت القرآن النصّيّ آية-بآية (audio_ayat/{reciter}/SSSAAA.mp3) ----
     private fun ayatDir(reciterId: String): File = File(context.filesDir, "audio_ayat/$reciterId").apply { mkdirs() }
