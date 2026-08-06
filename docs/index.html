@@ -16,14 +16,14 @@
     --tint:#1c3a2c; --ic-bg:#17362a; --line:#243b30;
     --text:#EAF2EC; --muted:#9db6a8; --accent:#83D3AC;
     --grad-a:#2E8B63; --grad-b:#1B6B4C; --grad-c:#134E37;
-    --nav-bg:rgba(11,20,16,.86); --glow:rgba(27,107,76,.28);
+    --nav-bg:rgba(11,20,16,.86); --glow:rgba(27,107,76,.28); --halo:rgba(52,167,116,.55);
     --radius:20px; --maxw:1120px; --shadow:0 18px 50px -22px rgba(0,0,0,.7);
   }
   :root[data-theme="light"]{
     --bg:#F5F9F5; --bg-2:#EDF4EE; --surface:#FFFFFF; --surface-2:#F1F6F1;
     --tint:#E6F1EA; --ic-bg:#E6F1EA; --line:#DBE8E0;
     --text:#132018; --muted:#5B756A; --accent:#1B6B4C;
-    --nav-bg:rgba(245,249,245,.86); --glow:rgba(27,107,76,.16);
+    --nav-bg:rgba(245,249,245,.86); --glow:rgba(27,107,76,.16); --halo:rgba(27,107,76,.32);
     --shadow:0 18px 50px -26px rgba(19,78,55,.28);
   }
   *{box-sizing:border-box}
@@ -53,6 +53,10 @@
   .nav-links{margin-inline-start:auto;display:flex;gap:6px;align-items:center}
   .nav-links a{padding:8px 12px;border-radius:10px;color:var(--muted);font-weight:500}
   .nav-links a:hover{color:var(--text);background:var(--surface-2)}
+  .nav-cta{padding:8px 13px;border-radius:11px;border:1px solid var(--line);
+    background:var(--surface);color:var(--text)!important;font-weight:700;font-size:.9rem;white-space:nowrap;
+    transition:border-color .18s,transform .18s}
+  .nav-cta:hover{border-color:var(--gold);transform:translateY(-1px);background:var(--surface)!important}
   .icon-btn{width:40px;height:40px;border-radius:11px;border:1px solid var(--line);
     background:var(--surface);color:var(--text);cursor:pointer;font-size:1.05rem;line-height:1}
   .icon-btn:hover{border-color:var(--gold)}
@@ -60,11 +64,19 @@
 
   /* البطل */
   .hero{text-align:center;padding:70px 0 26px}
-  .arch{width:196px;height:236px;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;
-    background:linear-gradient(180deg,var(--tint),var(--surface));
-    border:1.5px solid var(--gold);
-    border-radius:98px 98px 26px 26px/130px 130px 26px 26px;box-shadow:var(--shadow)}
-  .arch img{width:122px;height:122px;border-radius:22px}
+  /* الشعار: بلا إطار، بهالةٍ مشعّةٍ متحرّكةٍ خلفه، وحوافٌّ تتماهى بحلكةٍ خفيفةٍ مع الخلفيّة */
+  .arch{position:relative;width:210px;height:210px;margin:0 auto 8px;display:flex;
+    align-items:center;justify-content:center;background:none;border:0;box-shadow:none}
+  .arch::before{content:"";position:absolute;width:220px;height:220px;border-radius:50%;z-index:0;
+    background:radial-gradient(circle at 50% 50%, var(--halo) 0%, rgba(0,0,0,0) 60%);
+    filter:blur(12px);animation:halo 5s ease-in-out infinite;will-change:transform,opacity}
+  .arch img{position:relative;z-index:1;width:164px;height:164px;border-radius:36px;
+    -webkit-mask-image:radial-gradient(circle at 50% 48%, #000 76%, transparent 100%);
+    mask-image:radial-gradient(circle at 50% 48%, #000 76%, transparent 100%)}
+  /* إطارٌ أبيض بسيطٌ يحدّ الشعار المتماهي (غير مقنَّعٍ فيبقى واضحاً) */
+  .arch::after{content:"";position:absolute;z-index:2;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:164px;height:164px;border-radius:36px;border:2px solid rgba(255,255,255,.6);pointer-events:none}
+  @keyframes halo{0%,100%{opacity:.5;transform:scale(.9)}50%{opacity:1;transform:scale(1.12)}}
   .hero h1{font-size:52px;margin:14px 0 6px;letter-spacing:1px}
   .tag{font-size:1.18rem;color:var(--muted);max-width:660px;margin:0 auto}
   .badges{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:24px 0 6px}
@@ -133,7 +145,7 @@
 
   .reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s ease}
   .reveal.in{opacity:1;transform:none}
-  @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto}.reveal{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto}.reveal{opacity:1;transform:none}.arch::before{animation:none}}
   @media(max-width:640px){.hero h1{font-size:40px}.sec-head h2{font-size:27px}}
 </style>
 </head>
@@ -147,6 +159,7 @@
       <a class="hide-sm" href="#download">التنزيل</a>
       <a class="hide-sm" href="#sources">المصادر</a>
       <a class="hide-sm" href="#dev">المطوّر</a>
+      <a class="nav-cta" target="_blank" rel="noopener noreferrer" href="https://salehgnutux.github.io/GT-SALAT/">🖥️ نسخة سطح المكتب</a>
       <button class="icon-btn" id="themeBtn" aria-label="تبديل الوضع">🌙</button>
     </nav>
   </div>
@@ -166,8 +179,8 @@
       <span class="badge">🤖 أندرويد 8+</span>
     </div>
     <div class="cta reveal">
-      <a class="btn primary" href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE/releases/download/v1.7/GT-SALAT-v1.7-foss.apk">⬇️ تنزيل GT‑SALAT v1.7</a>
-      <a class="btn ghost" href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE">‹/› المستودع على GitHub</a>
+      <a class="btn primary" target="_blank" rel="noopener noreferrer" href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE/releases/download/v1.7/GT-SALAT-v1.7-foss.apk">⬇️ تنزيل GT‑SALAT v1.7</a>
+      <a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE">‹/› المستودع على GitHub</a>
     </div>
   </section>
 </div>
@@ -214,18 +227,18 @@
   <section class="section" id="download">
     <div class="download reveal">
       <div class="eyebrow">الإصدار المستقرّ</div>
-      <h2>حمّل التطبيق</h2>
+      <h2>نزّل التطبيق</h2>
       <span class="ver">v1.7 مستقرّ</span>
       <p class="muted"><b>الحرّة (foss)</b>: بلا خدمات Google — للخصوصيّة ولـF‑Droid · <b>Google (full)</b>: موقعٌ أدقّ عبر خدمات Google.</p>
       <p class="muted" style="margin-top:6px">📱 أندرويد</p>
       <div class="cta" style="margin-top:10px">
-        <a class="btn primary" href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE/releases/download/v1.7/GT-SALAT-v1.7-foss.apk">⬇️ النسخة الحرّة (foss)</a>
-        <a class="btn ghost" href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE/releases/download/v1.7/GT-SALAT-v1.7-full.apk">⬇️ نسخة Google (full)</a>
+        <a class="btn primary" target="_blank" rel="noopener noreferrer" href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE/releases/download/v1.7/GT-SALAT-v1.7-foss.apk">⬇️ النسخة الحرّة (foss)</a>
+        <a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE/releases/download/v1.7/GT-SALAT-v1.7-full.apk">⬇️ نسخة Google (full)</a>
       </div>
       <p class="muted" style="margin-top:22px">💻 نسخة سطح المكتب (غنو/لينكس) — <b>متكاملةٌ مع نسخة الهاتف</b> بالميزات نفسها، بصِيَغ <b>AppImage · deb · rpm</b>.</p>
       <div class="cta" style="margin-top:10px">
-        <a class="btn ghost" href="https://salehgnutux.github.io/GT-SALAT/">🌐 موقع نسخة سطح المكتب</a>
-        <a class="btn ghost" href="https://github.com/SalehGNUTUX/GT-SALAT/releases/latest">⬇️ تنزيل مباشر</a>
+        <a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://salehgnutux.github.io/GT-SALAT/">🌐 موقع نسخة سطح المكتب</a>
+        <a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://github.com/SalehGNUTUX/GT-SALAT/releases/latest">⬇️ تنزيل مباشر</a>
       </div>
       <p class="note">بعد تثبيت نسخة أندرويد (فعّل «مصادر غير معروفة»)، فعّل <b>إعفاء البطاريّة + التشغيل التلقائيّ</b> من بطاقة الموثوقيّة لضمان وصول الأذان في وقته. — نسختا <b>لينكس للهاتف</b> (PostmarketOS/Mobian) و<b>iOS</b> قيد الدراسة مستقبلاً.</p>
     </div>
@@ -240,18 +253,18 @@
       <p>محتوىً وبياناتٌ من مشاريع GNUTUX ومصادرَ إسلاميّةٍ حرّة، بالشكر والتقدير.</p>
     </div>
     <div class="src-grid">
-      <a class="src" href="https://github.com/SalehGNUTUX/GT_HISNMUSLIM"><b>GT_HISNMUSLIM</b><span>حصن المسلم المصنّف (132 باباً)</span></a>
-      <a class="src" href="https://github.com/SalehGNUTUX"><b>GT‑SIRM</b><span>أحاديث · أدعية · حِكَم · أسماء الله</span></a>
-      <a class="src" href="https://github.com/SalehGNUTUX/GT_QURANRADIO"><b>GT_QURANRADIO</b><span>قائمة إذاعات القرآن</span></a>
-      <a class="src" href="https://github.com/SalehGNUTUX/GT-QURANREADER"><b>GT‑QURANREADER</b><span>فهرس القرآن والروايات والقرّاء</span></a>
-      <a class="src" href="https://alquran.cloud"><b>alquran.cloud</b><span>النصّ العثمانيّ والتفسير الميسّر</span></a>
-      <a class="src" href="https://everyayah.com"><b>everyayah.com</b><span>صوت القرآن آية-بآية</span></a>
-      <a class="src" href="https://mp3quran.net"><b>mp3quran.net</b><span>تلاوات السور الكاملة بالقرّاء</span></a>
-      <a class="src" href="https://github.com/SalehGNUTUX/Quran-PNG"><b>Quran‑PNG</b><span>صور صفحات مصحف المدينة</span></a>
-      <a class="src" href="https://aladhan.com"><b>AlAdhan API</b><span>المواقيت والتاريخ الهجريّ</span></a>
-      <a class="src" href="https://github.com/batoulapps/adhan-java"><b>Adhan (Batoul Apps)</b><span>حساب المواقيت والقبلة محلّيّاً</span></a>
-      <a class="src" href="https://www.openstreetmap.org"><b>OpenStreetMap · Nominatim</b><span>الموقع بلا خدمات Google</span></a>
-      <a class="src" href="https://www.amirifont.org"><b>خطّ أميري</b><span>الخطّ القرآنيّ للنصوص</span></a>
+      <a class="src" target="_blank" rel="noopener noreferrer" href="https://github.com/SalehGNUTUX/GT_HISNMUSLIM"><b>GT_HISNMUSLIM</b><span>حصن المسلم المصنّف (132 باباً)</span></a>
+      <a class="src" target="_blank" rel="noopener noreferrer" href="https://github.com/SalehGNUTUX"><b>GT‑SIRM</b><span>أحاديث · أدعية · حِكَم · أسماء الله</span></a>
+      <a class="src" target="_blank" rel="noopener noreferrer" href="https://github.com/SalehGNUTUX/GT_QURANRADIO"><b>GT_QURANRADIO</b><span>قائمة إذاعات القرآن</span></a>
+      <a class="src" target="_blank" rel="noopener noreferrer" href="https://github.com/SalehGNUTUX/GT-QURANREADER"><b>GT‑QURANREADER</b><span>فهرس القرآن والروايات والقرّاء</span></a>
+      <a class="src" target="_blank" rel="noopener noreferrer" href="https://alquran.cloud"><b>alquran.cloud</b><span>النصّ العثمانيّ والتفسير الميسّر</span></a>
+      <a class="src" target="_blank" rel="noopener noreferrer" href="https://everyayah.com"><b>everyayah.com</b><span>صوت القرآن آية-بآية</span></a>
+      <a class="src" target="_blank" rel="noopener noreferrer" href="https://mp3quran.net"><b>mp3quran.net</b><span>تلاوات السور الكاملة بالقرّاء</span></a>
+      <a class="src" target="_blank" rel="noopener noreferrer" href="https://github.com/SalehGNUTUX/Quran-PNG"><b>Quran‑PNG</b><span>صور صفحات مصحف المدينة</span></a>
+      <a class="src" target="_blank" rel="noopener noreferrer" href="https://aladhan.com"><b>AlAdhan API</b><span>المواقيت والتاريخ الهجريّ</span></a>
+      <a class="src" target="_blank" rel="noopener noreferrer" href="https://github.com/batoulapps/adhan-java"><b>Adhan (Batoul Apps)</b><span>حساب المواقيت والقبلة محلّيّاً</span></a>
+      <a class="src" target="_blank" rel="noopener noreferrer" href="https://www.openstreetmap.org"><b>OpenStreetMap · Nominatim</b><span>الموقع بلا خدمات Google</span></a>
+      <a class="src" target="_blank" rel="noopener noreferrer" href="https://www.amirifont.org"><b>خطّ أميري</b><span>الخطّ القرآنيّ للنصوص</span></a>
     </div>
   </section>
 
@@ -263,8 +276,8 @@
       <h3 class="amiri">SalehGNUTUX</h3>
       <p class="muted">مطوّرُ برمجيّاتٍ حرّةٍ ومفتوحةِ المصدر، عربيّة الهويّة.</p>
       <div class="links">
-        <a class="btn ghost" href="https://github.com/SalehGNUTUX">GitHub</a>
-        <a class="btn ghost" href="https://salehgnutux.github.io/gnutux/">مشاريع GNUTUX</a>
+        <a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://github.com/SalehGNUTUX">GitHub</a>
+        <a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://salehgnutux.github.io/gnutux/">مشاريع GNUTUX</a>
       </div>
     </div>
   </section>
@@ -273,7 +286,7 @@
 <footer>
   <div class="wrap">
     <p class="amiri">﴾ وَقُلِ اعْمَلُوا فَسَيَرَى اللَّهُ عَمَلَكُمْ وَرَسُولُهُ وَالْمُؤْمِنُونَ ﴿</p>
-    <p>© GNUTUX 2026 · رخصة <a href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE/blob/main/LICENSE">GNU GPL v3</a> · <a href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE">المستودع</a></p>
+    <p>© GNUTUX 2026 · رخصة <a target="_blank" rel="noopener noreferrer" href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE/blob/main/LICENSE">GNU GPL v3</a> · <a target="_blank" rel="noopener noreferrer" href="https://github.com/SalehGNUTUX/GT-SALAT-PHONE">المستودع</a></p>
   </div>
 </footer>
 
