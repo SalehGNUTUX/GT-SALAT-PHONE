@@ -51,6 +51,7 @@ class SettingsRepository @Inject constructor(
         val EN_DAILY_AYAH = booleanPreferencesKey("en_daily_ayah")
         val EN_RECITATION = booleanPreferencesKey("en_recitation")
         val EN_WHITEDAYS = booleanPreferencesKey("en_whitedays")
+        val EN_SUNNAH = booleanPreferencesKey("en_sunnah")
         val EN_MORNING_ADHKAR = booleanPreferencesKey("en_morning_adhkar")
         val EN_EVENING_ADHKAR = booleanPreferencesKey("en_evening_adhkar")
         val MORNING_ADHKAR_HOUR = intPreferencesKey("morning_adhkar_hour")
@@ -82,6 +83,11 @@ class SettingsRepository @Inject constructor(
         val LAST_READ_AYAH = intPreferencesKey("last_read_ayah")
         val LAST_LISTEN_SURAH = intPreferencesKey("last_listen_surah")
         val LAST_LISTEN_AYAH = intPreferencesKey("last_listen_ayah")
+        val LAST_AUDIO_SURAH = intPreferencesKey("last_audio_surah")
+        val LAST_AUDIO_RECITER = stringPreferencesKey("last_audio_reciter")
+        val LAST_AUDIO_RECITER_NAME = stringPreferencesKey("last_audio_reciter_name")
+        val LAST_AUDIO_SERVER = stringPreferencesKey("last_audio_server")
+        val LAST_AUDIO_POS = androidx.datastore.preferences.core.longPreferencesKey("last_audio_pos")
         val LAST_RECITER = stringPreferencesKey("last_reciter_id")
         val LAST_MUSHAF_PAGE = intPreferencesKey("last_mushaf_page")
         val LAST_RIWAYA = stringPreferencesKey("last_riwaya")
@@ -90,6 +96,7 @@ class SettingsRepository @Inject constructor(
         val ENABLE_WIRD = booleanPreferencesKey("enable_wird")
         val ADHKAR_CARD_VIEW = booleanPreferencesKey("adhkar_card_view")
         val WIDGET_PROGRESS_STYLE = stringPreferencesKey("widget_progress_style")
+        val FAV_FEATURES = androidx.datastore.preferences.core.stringSetPreferencesKey("favorite_features")
         val WIRD_UNIT = stringPreferencesKey("wird_goal_unit")
         val WIRD_COUNT = intPreferencesKey("wird_goal_count")
         val WIRD_LAST_DATE = stringPreferencesKey("wird_last_done_date")
@@ -132,6 +139,7 @@ class SettingsRepository @Inject constructor(
             enableDailyAyah = this[Keys.EN_DAILY_AYAH] ?: true,
             enableRecitationReminder = this[Keys.EN_RECITATION] ?: true,
             enableWhiteDaysReminder = this[Keys.EN_WHITEDAYS] ?: true,
+            enableSunnahReminder = this[Keys.EN_SUNNAH] ?: true,
             enableMorningAdhkar = this[Keys.EN_MORNING_ADHKAR] ?: false,
             enableEveningAdhkar = this[Keys.EN_EVENING_ADHKAR] ?: false,
             morningAdhkarHour = (this[Keys.MORNING_ADHKAR_HOUR] ?: 6).coerceIn(0, 23),
@@ -166,6 +174,11 @@ class SettingsRepository @Inject constructor(
             lastReadAyah = this[Keys.LAST_READ_AYAH] ?: 1,
             lastListenSurah = this[Keys.LAST_LISTEN_SURAH] ?: 0,
             lastListenAyah = this[Keys.LAST_LISTEN_AYAH] ?: 1,
+            lastAudioSurah = this[Keys.LAST_AUDIO_SURAH] ?: 0,
+            lastAudioReciter = this[Keys.LAST_AUDIO_RECITER] ?: "",
+            lastAudioReciterName = this[Keys.LAST_AUDIO_RECITER_NAME] ?: "",
+            lastAudioServer = this[Keys.LAST_AUDIO_SERVER] ?: "",
+            lastAudioPosMs = this[Keys.LAST_AUDIO_POS] ?: 0L,
             lastReciterId = this[Keys.LAST_RECITER] ?: "",
             lastMushafPage = this[Keys.LAST_MUSHAF_PAGE] ?: 1,
             lastRiwaya = this[Keys.LAST_RIWAYA] ?: "hafs",
@@ -174,6 +187,7 @@ class SettingsRepository @Inject constructor(
             enableWird = this[Keys.ENABLE_WIRD] ?: false,
             adhkarCardView = this[Keys.ADHKAR_CARD_VIEW] ?: false,
             widgetProgressStyle = this[Keys.WIDGET_PROGRESS_STYLE] ?: "classic",
+            favoriteFeatures = this[Keys.FAV_FEATURES] ?: emptySet(),
             wirdGoalUnit = this[Keys.WIRD_UNIT] ?: "juz",
             wirdGoalCount = this[Keys.WIRD_COUNT] ?: 1,
             wirdLastDoneDate = this[Keys.WIRD_LAST_DATE] ?: "",
@@ -185,6 +199,11 @@ class SettingsRepository @Inject constructor(
     suspend fun setEnableWird(v: Boolean) = context.dataStore.edit { it[Keys.ENABLE_WIRD] = v }
     suspend fun setAdhkarCardView(v: Boolean) = context.dataStore.edit { it[Keys.ADHKAR_CARD_VIEW] = v }
     suspend fun setWidgetProgressStyle(v: String) = context.dataStore.edit { it[Keys.WIDGET_PROGRESS_STYLE] = v }
+    /** تبديل تفضيل بطاقةٍ في «المزيد» (بمفتاح مسارها). */
+    suspend fun toggleFavoriteFeature(route: String) = context.dataStore.edit {
+        val cur = it[Keys.FAV_FEATURES] ?: emptySet()
+        it[Keys.FAV_FEATURES] = if (route in cur) cur - route else cur + route
+    }
 
     /** يضبط هدف الوِرد اليوميّ (الوحدة والعدد). */
     suspend fun setWirdGoal(unit: String, count: Int) = context.dataStore.edit {
@@ -284,6 +303,15 @@ class SettingsRepository @Inject constructor(
         it[Keys.LAST_LISTEN_AYAH] = ayah
     }
     suspend fun setLastReciter(id: String) = context.dataStore.edit { it[Keys.LAST_RECITER] = id }
+    /** حفظ موضع متابعة القرآن المسموع (سورةٌ كاملة): سورة/قارئ/خادم/الموضع بالميلّي. */
+    suspend fun setLastAudio(surah: Int, reciterId: String, reciterName: String, server: String, posMs: Long) =
+        context.dataStore.edit {
+            it[Keys.LAST_AUDIO_SURAH] = surah
+            it[Keys.LAST_AUDIO_RECITER] = reciterId
+            it[Keys.LAST_AUDIO_RECITER_NAME] = reciterName
+            it[Keys.LAST_AUDIO_SERVER] = server
+            it[Keys.LAST_AUDIO_POS] = posMs
+        }
     suspend fun setLastRiwaya(id: String) = context.dataStore.edit { it[Keys.LAST_RIWAYA] = id }
     suspend fun setQuranScrollSpeed(pct: Int) = context.dataStore.edit { it[Keys.QURAN_SCROLL_SPEED] = pct.coerceIn(50, 300) }
 
@@ -329,6 +357,7 @@ class SettingsRepository @Inject constructor(
     suspend fun setEnableDailyAyah(v: Boolean) = context.dataStore.edit { it[Keys.EN_DAILY_AYAH] = v }
     suspend fun setEnableRecitationReminder(v: Boolean) = context.dataStore.edit { it[Keys.EN_RECITATION] = v }
     suspend fun setEnableWhiteDaysReminder(v: Boolean) = context.dataStore.edit { it[Keys.EN_WHITEDAYS] = v }
+    suspend fun setEnableSunnahReminder(v: Boolean) = context.dataStore.edit { it[Keys.EN_SUNNAH] = v }
     suspend fun setEnableMorningAdhkar(v: Boolean) = context.dataStore.edit { it[Keys.EN_MORNING_ADHKAR] = v }
     suspend fun setEnableEveningAdhkar(v: Boolean) = context.dataStore.edit { it[Keys.EN_EVENING_ADHKAR] = v }
     suspend fun setMorningAdhkarHour(h: Int) = context.dataStore.edit { it[Keys.MORNING_ADHKAR_HOUR] = h.coerceIn(0, 23) }

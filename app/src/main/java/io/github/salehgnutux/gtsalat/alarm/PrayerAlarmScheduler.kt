@@ -32,6 +32,7 @@ class PrayerAlarmScheduler @Inject constructor(
         val s = settingsRepo.current()
         refreshStatus(s)          // الإشعار الدائم مستقلٌّ عن حارسات الأذان أدناه
         refreshWidgets()          // وكذلك ودجتات سطح الهاتف
+        scheduleWidgetRefresh()   // إنذارٌ يقدّم الودجت عند كلّ صلاة/منتصف ليل (ولو كان الأذان مطفأً)
         scheduleDailyReminder()   // والتذكيرات اليوميّة (وِرد/أيّام بيض/آية)
         scheduleAdhkarReminders(s) // وأذكار الصباح/المساء (إن فُعّلت)
         if (!s.setupCompleted || !s.hasLocation || s.doNotDisturb || !s.enableSalatNotify) return
@@ -154,6 +155,29 @@ class PrayerAlarmScheduler @Inject constructor(
         runCatching { io.github.salehgnutux.gtsalat.widget.updateAllPrayerWidgets(context) }
     }
 
+    /**
+     * إنذارٌ دقيقٌ **مستقلٌّ عن إعداد الأذان** يعيد رسم الودجتات عند حلول الصلاة القادمة (أو منتصف
+     * الليل لتبديل التاريخ)، فيتقدّم الودجت تلقائيّاً — تُظهر الصلاةَ الجديدة وعدّاداً صحيحاً —
+     * حتى والتطبيق في الخلفيّة. يُعيد جدولة نفسه من المُستقبِل عبر [ACTION_REFRESH_WIDGETS].
+     * (لا يتجاوز قيود «الإيقاف القسريّ» على بعض الأجهزة؛ علاجها إعفاء البطاريّة والتشغيل التلقائيّ.)
+     */
+    suspend fun scheduleWidgetRefresh() {
+        val now = System.currentTimeMillis()
+        val nextPrayer = runCatching { repo.nextPrayer(now)?.prayer?.epochMillis }.getOrNull()
+        val midnight = java.time.LocalDate.now().plusDays(1)
+            .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val at = listOfNotNull(nextPrayer?.plus(2_000L), midnight).filter { it > now }.minOrNull()
+            ?: (now + 30 * 60_000L)
+        setExact(at, widgetRefreshIntent())
+    }
+
+    private fun widgetRefreshIntent(): PendingIntent {
+        val i = Intent(context, PrayerAlarmReceiver::class.java).apply {
+            action = PrayerAlarmReceiver.ACTION_REFRESH_WIDGETS
+        }
+        return PendingIntent.getBroadcast(context, RC_WIDGET, i, FLAGS)
+    }
+
     fun canScheduleExact(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
 
@@ -218,6 +242,7 @@ class PrayerAlarmScheduler @Inject constructor(
         private const val RC_TEST = 1007
         private const val RC_MORNING_ADHKAR = 1008
         private const val RC_EVENING_ADHKAR = 1009
+        private const val RC_WIDGET = 1010
         private const val RC_ADHAN_BASE = 1100     // 1100..1107
         private const val RC_PRENOTIFY_BASE = 1200 // 1200..1207
         private val FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE

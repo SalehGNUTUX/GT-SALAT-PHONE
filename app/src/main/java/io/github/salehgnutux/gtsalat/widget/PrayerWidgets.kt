@@ -1,6 +1,8 @@
 package io.github.salehgnutux.gtsalat.widget
 
 import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
@@ -157,7 +159,11 @@ class PrayerProgressWidget : GlanceAppWidget() {
             } else {
                 // عناصرٌ أصليّة (RemoteViews) تتحدّث ذاتيّاً: الساعة والعدّاد حيّان دون إيقاظ التطبيق.
                 // fillMaxSize ضروريّ وإلّا انكمش المحتوى (match_parent يُقاس ضدّ حاوية Glance الملتفّة).
-                AndroidRemoteViews(remoteViews = progressRemoteViews(context, snap), modifier = GlanceModifier.fillMaxSize())
+                // key(النمط) يُجبر Glance على إصدار عنصرٍ جديدٍ عند تبديل النمط، فيصل التغيير للشاشة فوراً
+                // (وإلّا أعاد استعمال RemoteViews المخزَّنة فلم يظهر تبديل التخطيط إلّا بعد إعادة التشغيل).
+                androidx.compose.runtime.key(snap.progressStyle) {
+                    AndroidRemoteViews(remoteViews = progressRemoteViews(context, snap), modifier = GlanceModifier.fillMaxSize())
+                }
             }
         }
     }
@@ -165,15 +171,24 @@ class PrayerProgressWidget : GlanceAppWidget() {
 
 /** يبني RemoteViews لودجت التقدّم: ساعة TextClock حيّة + عدّاد Chronometer تنازليّ حيّ + شريط تقدّم. */
 private fun progressRemoteViews(context: Context, snap: WidgetSnapshot): RemoteViews {
-    val layout = if (snap.progressStyle == "center") R.layout.widget_progress_center else R.layout.widget_progress_classic
+    val layout = when (snap.progressStyle) {
+        "center" -> R.layout.widget_progress_center
+        "day" -> R.layout.widget_progress_day
+        else -> R.layout.widget_progress_classic
+    }
     val rv = RemoteViews(context.packageName, layout)
     // نظام الساعة: نفرض نمط التطبيق (24/12) بضبط الصيغتين معاً بغضّ النظر عن إعداد النظام.
     val pattern = if (snap.use24) "HH:mm" else "hh:mm a"
     rv.setCharSequence(R.id.widget_clock, "setFormat24Hour", pattern)
     rv.setCharSequence(R.id.widget_clock, "setFormat12Hour", pattern)
 
-    rv.setTextViewText(R.id.widget_hijri, snap.hijri)
-    rv.setViewVisibility(R.id.widget_hijri, if (snap.hijri.isBlank()) View.GONE else View.VISIBLE)
+    // النمط اليوميّ: اسم اليوم كبيرٌ متوسّط، والهجريّ بلا اسم اليوم.
+    val isDay = snap.progressStyle == "day"
+    val hijriText = if (isDay && snap.weekday.isNotBlank() && snap.hijri.startsWith(snap.weekday))
+        snap.hijri.removePrefix(snap.weekday).trim() else snap.hijri
+    if (isDay) rv.setTextViewText(R.id.widget_weekday, snap.weekday)
+    rv.setTextViewText(R.id.widget_hijri, hijriText)
+    rv.setViewVisibility(R.id.widget_hijri, if (hijriText.isBlank()) View.GONE else View.VISIBLE)
     rv.setTextViewText(R.id.widget_gregorian, snap.gregorian)
     rv.setViewVisibility(R.id.widget_gregorian, if (snap.gregorian.isBlank()) View.GONE else View.VISIBLE)
 
@@ -209,7 +224,33 @@ private fun openAppIntent(context: Context): PendingIntent =
 
 /** يحدّث كلّ ودجتات الصلاة (يُستدعى من مسارات الخلفيّة). */
 suspend fun updateAllPrayerWidgets(context: Context) {
-    NextPrayerWidget().updateAll(context)
-    TodayTimesWidget().updateAll(context)
-    PrayerProgressWidget().updateAll(context)
+    runCatching { NextPrayerWidget().updateAll(context) }
+    runCatching { TodayTimesWidget().updateAll(context) }
+    runCatching { PrayerProgressWidget().updateAll(context) }
+    // بثٌّ صريحٌ لمُستقبِلات الودجت — نفس مسار النظام عند إعادة ربط الودجت (الذي يعمل دائماً بعد
+    // إعادة تشغيل التطبيق). يضمن وصولَ التبديل (خاصّةً تغيير النمط/التخطيط) إلى المُشغّل فوراً
+    // حين لا يكفي updateAll الداخليّ في Glance (أجهزة عنيدة/إعادة استعمال RemoteViews المخزَّنة).
+    broadcastWidgetUpdate(context)
+}
+
+/** يبثّ ACTION_APPWIDGET_UPDATE صراحةً إلى كلّ مُستقبِلات ودجت الصلاة (لكلّ نُسخها المثبَّتة). */
+private fun broadcastWidgetUpdate(context: Context) {
+    val mgr = AppWidgetManager.getInstance(context) ?: return
+    listOf(
+        NextPrayerWidgetReceiver::class.java,
+        TodayTimesWidgetReceiver::class.java,
+        PrayerProgressWidgetReceiver::class.java,
+    ).forEach { cls ->
+        runCatching {
+            val ids = mgr.getAppWidgetIds(ComponentName(context, cls))
+            if (ids != null && ids.isNotEmpty()) {
+                context.sendBroadcast(
+                    Intent(context, cls).apply {
+                        action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+                        putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
+                    },
+                )
+            }
+        }
+    }
 }

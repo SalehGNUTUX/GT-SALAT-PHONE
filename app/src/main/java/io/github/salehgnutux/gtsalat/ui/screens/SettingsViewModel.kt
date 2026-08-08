@@ -89,6 +89,7 @@ class SettingsViewModel @Inject constructor(
     fun setEnableDailyAyah(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableDailyAyah(v) }
     fun setEnableRecitationReminder(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableRecitationReminder(v); reschedule() }
     fun setEnableWhiteDaysReminder(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableWhiteDaysReminder(v); reschedule() }
+    fun setEnableSunnahReminder(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableSunnahReminder(v); reschedule() }
     fun setReminderHour(h: Int) = viewModelScope.launch { settingsRepo.setReminderHour(h); reschedule() }
     fun setEnableMorningAdhkar(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableMorningAdhkar(v); reschedule() }
     fun setEnableEveningAdhkar(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableEveningAdhkar(v); reschedule() }

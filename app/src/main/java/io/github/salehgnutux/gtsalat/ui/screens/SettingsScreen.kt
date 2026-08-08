@@ -245,6 +245,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             SwitchRow("تذكير وِرد التلاوة", settings.enableRecitationReminder) { vm.setEnableRecitationReminder(it) }
             SwitchRow("بطاقة وِرد التلاوة في القرآن (هدفٌ وسلسلة أيّام)", settings.enableWird) { vm.setEnableWird(it) }
             SwitchRow("تذكير الأيّام البيض (13/14/15 هجريّ)", settings.enableWhiteDaysReminder) { vm.setEnableWhiteDaysReminder(it) }
+            SwitchRow("تذكير السُّنن (اثنين/خميس، جمعة، عاشوراء، عرفة…)", settings.enableSunnahReminder) { vm.setEnableSunnahReminder(it) }
             MinutesSlider("ساعة التذكير:", settings.reminderHour, 0, 23, suffix = "") { vm.setReminderHour(it) }
             HorizontalDivider()
             SwitchRow("تذكير أذكار الصباح", settings.enableMorningAdhkar) { vm.setEnableMorningAdhkar(it) }
@@ -322,8 +323,9 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             }
             LabeledRow("نمط ودجت الساعة والتقدّم") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(settings.widgetProgressStyle != "center", { vm.setWidgetProgressStyle("classic") }, { Text("كلاسيكيّ") })
+                    FilterChip(settings.widgetProgressStyle == "classic", { vm.setWidgetProgressStyle("classic") }, { Text("كلاسيكيّ") })
                     FilterChip(settings.widgetProgressStyle == "center", { vm.setWidgetProgressStyle("center") }, { Text("مركزيّ") })
+                    FilterChip(settings.widgetProgressStyle == "day", { vm.setWidgetProgressStyle("day") }, { Text("يوميّ") })
                 }
             }
         }

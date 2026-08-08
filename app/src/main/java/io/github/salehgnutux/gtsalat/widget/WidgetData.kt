@@ -29,7 +29,8 @@ data class WidgetSnapshot(
     val gregorian: String = "",      // التاريخ الميلاديّ المختصر (تحت الهجريّ)
     val remainingMillis: Long = 0L,  // المدّة المتبقّية للصلاة القادمة (لعدّاد Chronometer الحيّ)
     val use24: Boolean = true,       // نظام 24/12 ساعة (لساعة TextClock الحيّة)
-    val progressStyle: String = "classic", // نمط ودجت التقدّم: classic | center
+    val progressStyle: String = "classic", // نمط ودجت التقدّم: classic | center | day
+    val weekday: String = "",        // اسم اليوم (للنمط اليوميّ: كبيرٌ في الوسط)
 )
 
 /** نقطة دخول Hilt لجلب المستودعات داخل الودجت (خارج دورة حياة Compose). */
@@ -40,7 +41,7 @@ interface WidgetEntryPoint {
     fun settingsRepository(): SettingsRepository
 }
 
-private val EMPTY = WidgetSnapshot(false, "", "", "", "", "", null, emptyList(), "", "", 0f, "", 0L, true, "classic")
+private val EMPTY = WidgetSnapshot(false, "", "", "", "", "", null, emptyList(), "", "", 0f, "", 0L, true, "classic", "")
 
 /**
  * لقطة الودجت. المواقيت تُحسَب **محليّاً فوراً** (PrayerCalculator) فلا تعتمد على الكاش أو
@@ -55,7 +56,11 @@ suspend fun loadWidgetSnapshot(context: Context): WidgetSnapshot = runCatching {
     if (!settings.hasLocation || lat == null || lon == null) return EMPTY
 
     val now = System.currentTimeMillis()
-    val today = PrayerCalculator.computeDay(LocalDate.now(), lat, lon, settings.methodId, settings.madhab)
+    // نفس مصدر التطبيق (Room→API→محلّيّ) لتطابق مواقيت الودجت مع الشاشة الرئيسيّة تماماً.
+    // Room ملفٌّ يُقرأ دون حاجةٍ لتشغيل التطبيق؛ بمهلةٍ قصيرةٍ وسقوطٍ محلّيٍّ فلا يعلق الودجت أو يفرغ.
+    val today = kotlinx.coroutines.withTimeoutOrNull(2500) {
+        runCatching { ep.prayerRepository().todayTimetable() }.getOrNull()
+    } ?: PrayerCalculator.computeDay(LocalDate.now(), lat, lon, settings.methodId, settings.madhab)
     val tomorrowFajr = PrayerCalculator
         .computeDay(LocalDate.now().plusDays(1), lat, lon, settings.methodId, settings.madhab)
         .time(PrayerId.FAJR)
@@ -74,12 +79,13 @@ suspend fun loadWidgetSnapshot(context: Context): WidgetSnapshot = runCatching {
     val prevName = todayPrayers.lastOrNull { it.epochMillis <= now }?.id?.arabic
         ?: if (prevBound == yesterdayIsha?.epochMillis) PrayerId.ISHA.arabic else ""
 
-    // التاريخ الهجريّ من الكاش إن توفّر بسرعة (لا يُوقِف العرض إن فشل)
-    val hijri = runCatching { ep.prayerRepository().todayTimetable()?.hijri }.getOrNull().orEmpty()
+    // التاريخ الهجريّ من نفس جدول اليوم المجلوب أعلاه (لا استدعاءً ثانياً)
+    val hijri = today.hijri.orEmpty()
     // التاريخ الميلاديّ المختصر (يُحسَب محليّاً وفق مخطّط الأشهر الإقليميّ)
     val scheme = io.github.salehgnutux.gtsalat.domain.GregorianMonths.effective(settings.monthScheme, settings.country)
     val td = LocalDate.now()
-    val gregorian = "${td.dayOfMonth} ${io.github.salehgnutux.gtsalat.domain.GregorianMonths.monthName(td.monthValue, scheme)} ${td.year}"
+    // «م» في آخره على غرار «هـ» في الهجريّ (تنسيقٌ متناسق).
+    val gregorian = "${td.dayOfMonth} ${io.github.salehgnutux.gtsalat.domain.GregorianMonths.monthName(td.monthValue, scheme)} ${td.year} م"
 
     val prayers = today.prayers
         .filter { it.id.isPrayer }
@@ -101,5 +107,6 @@ suspend fun loadWidgetSnapshot(context: Context): WidgetSnapshot = runCatching {
         remainingMillis = next?.remainingMillis ?: 0L,
         use24 = settings.clock24h,
         progressStyle = settings.widgetProgressStyle,
+        weekday = Format.weekdayName(LocalDate.now()),
     )
 }.getOrDefault(EMPTY)

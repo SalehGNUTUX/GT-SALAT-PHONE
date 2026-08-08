@@ -99,6 +99,7 @@ class NotificationHelper @Inject constructor(
     fun showMorningAdhkar() = nm.notify(ID_MORNING_ADHKAR, reminder("🌅 أذكار الصباح", "حان وقت أذكار الصباح — «أصبحنا وأصبح الملك لله».", "adhkar_session/morning", 91))
     fun showEveningAdhkar() = nm.notify(ID_EVENING_ADHKAR, reminder("🌇 أذكار المساء", "حان وقت أذكار المساء — «أمسينا وأمسى الملك لله».", "adhkar_session/evening", 92))
     fun showWhiteDaysReminder(text: String) = nm.notify(ID_WHITEDAYS, reminder("🌕 الأيّام البيض", text))
+    fun showSunnahReminder(title: String, text: String) = nm.notify(ID_SUNNAH, reminder("🌙 سُنّة: $title", text))
     fun showDailyAyah(surah: String, n: Int, text: String) = nm.notify(ID_AYAH, reminder("آية اليوم — سورة $surah [$n]", text))
 
     private fun contentIntent(route: String? = null, requestCode: Int = 0): PendingIntent {
@@ -200,6 +201,7 @@ class NotificationHelper @Inject constructor(
         const val ID_UPDATE = 2010
         const val ID_MORNING_ADHKAR = 2011
         const val ID_EVENING_ADHKAR = 2012
+        const val ID_SUNNAH = 2013
         val PI_FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     }
 }

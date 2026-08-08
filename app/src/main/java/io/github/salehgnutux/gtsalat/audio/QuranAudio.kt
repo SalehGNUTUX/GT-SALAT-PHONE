@@ -12,13 +12,16 @@ object QuranAudio {
     fun playAyat(ctx: Context, surah: Int, surahName: String, verses: Int, reciter: Reciter, startAyah: Int = 1) =
         start(ctx, QuranAudioService.MODE_AYAH, surah, surahName, verses, reciter.everyayah, reciter.id, reciter.ar, startAyah)
 
-    /** تلاوة سورةٍ كاملة (القرآن المسموع) — المصدر رابط خادمٍ كاملٍ من mp3quran. */
-    fun playSurah(ctx: Context, surah: Int, surahName: String, reciterId: String, reciterName: String, server: String) =
-        start(ctx, QuranAudioService.MODE_SURAH, surah, surahName, 0, server, reciterId, reciterName, 1)
+    /**
+     * تلاوة سورةٍ كاملة (القرآن المسموع) — المصدر رابط خادمٍ كاملٍ من mp3quran.
+     * [positionMs] للاستئناف من موضعٍ محفوظٍ (متابعة الاستماع)، 0 = من البداية.
+     */
+    fun playSurah(ctx: Context, surah: Int, surahName: String, reciterId: String, reciterName: String, server: String, positionMs: Long = 0L) =
+        start(ctx, QuranAudioService.MODE_SURAH, surah, surahName, 0, server, reciterId, reciterName, 1, positionMs)
 
     private fun start(
         ctx: Context, mode: String, surah: Int, surahName: String, verses: Int,
-        folder: String, reciterId: String, reciterName: String, startAyah: Int,
+        folder: String, reciterId: String, reciterName: String, startAyah: Int, positionMs: Long = 0L,
     ) {
         val i = Intent(ctx, QuranAudioService::class.java).apply {
             action = QuranAudioService.ACTION_START
@@ -30,6 +33,7 @@ object QuranAudio {
             putExtra(QuranAudioService.EXTRA_RECITER_ID, reciterId)
             putExtra(QuranAudioService.EXTRA_RECITER_NAME, reciterName)
             putExtra(QuranAudioService.EXTRA_AYAH, startAyah)
+            putExtra(QuranAudioService.EXTRA_POSITION_MS, positionMs.toInt())
         }
         ContextCompat.startForegroundService(ctx, i)
     }

@@ -55,6 +55,12 @@ class DailyReminderReceiver : BroadcastReceiver() {
                     }
                 }
 
+                if (s.enableSunnahReminder) {
+                    io.github.salehgnutux.gtsalat.domain.SunnahReminders
+                        .messageFor(hijriMonth(), hijriDayOfMonth(), LocalDate.now().dayOfWeek)
+                        ?.let { (title, text) -> notifications.showSunnahReminder(title, text) }
+                }
+
                 if (s.enableDailyAyah) {
                     content.dailyAyah(LocalDate.now().dayOfYear)?.let {
                         notifications.showDailyAyah(it.surah, it.n, it.text)
@@ -70,6 +76,11 @@ class DailyReminderReceiver : BroadcastReceiver() {
     /** يوم الشهر الهجريّ عبر تقويم ICU (أمّ القرى)؛ يعيد -1 إن تعذّر. */
     private fun hijriDayOfMonth(): Int = runCatching {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) IslamicCalendar().get(IslamicCalendar.DAY_OF_MONTH) else -1
+    }.getOrDefault(-1)
+
+    /** الشهر الهجريّ 1..12 (ICU يعيده 0..11 فنزيده 1)؛ يعيد -1 إن تعذّر. */
+    private fun hijriMonth(): Int = runCatching {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) IslamicCalendar().get(IslamicCalendar.MONTH) + 1 else -1
     }.getOrDefault(-1)
 
     companion object {

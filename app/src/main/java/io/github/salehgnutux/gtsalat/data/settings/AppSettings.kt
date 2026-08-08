@@ -37,6 +37,7 @@ data class AppSettings(
     val enableDailyAyah: Boolean = true,          // بطاقة آية اليوم في الرئيسيّة
     val enableRecitationReminder: Boolean = true, // تذكير وِرد التلاوة
     val enableWhiteDaysReminder: Boolean = true,  // تذكير الأيّام البيض (13/14/15 هجريّ)
+    val enableSunnahReminder: Boolean = true,     // تذكير السُّنن الموسميّة (اثنين/خميس، جمعة، عاشوراء، عرفة…)
     val enableMorningAdhkar: Boolean = false,     // تذكير أذكار الصباح
     val enableEveningAdhkar: Boolean = false,     // تذكير أذكار المساء
     val morningAdhkarHour: Int = 6,               // ساعة تذكير أذكار الصباح
@@ -70,6 +71,12 @@ data class AppSettings(
     val lastReadAyah: Int = 1,
     val lastListenSurah: Int = 0,
     val lastListenAyah: Int = 1,
+    // متابعة القرآن المسموع (سورةٌ كاملة): آخر سورةٍ/قارئٍ/خادمٍ وموضعٍ بالميلّي — لاستئناف الاستماع.
+    val lastAudioSurah: Int = 0,     // 0 = لا يوجد
+    val lastAudioReciter: String = "",
+    val lastAudioReciterName: String = "",
+    val lastAudioServer: String = "",
+    val lastAudioPosMs: Long = 0L,
     val lastReciterId: String = "",
     val lastMushafPage: Int = 1,
     val lastRiwaya: String = "hafs",              // آخر روايةٍ مختارة في القارئ النصّيّ (تُستعاد)
@@ -82,6 +89,8 @@ data class AppSettings(
     val adhkarCardView: Boolean = true,
     // نمط ودجت الساعة/التقدّم: classic (كلاسيكيّ، الساعة يميناً) أو center (مركزيّ).
     val widgetProgressStyle: String = "classic",
+    // بطاقات «المزيد» المفضّلة (بمفاتيح المسارات) — تصعد للأعلى بترتيبها الأصليّ.
+    val favoriteFeatures: Set<String> = emptySet(),
     // الوحدة والعدد + آخر يومٍ أُتمَّ فيه + سلسلة الأيّام المتتالية.
     val wirdGoalUnit: String = "juz",   // juz | hizb | pages | ayat
     val wirdGoalCount: Int = 1,

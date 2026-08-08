@@ -81,6 +81,11 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                             }
                         }
                     }
+                    ACTION_REFRESH_WIDGETS -> {
+                        // إنذارٌ عند حلول الصلاة/منتصف الليل: يقدّم الودجت ثمّ يعيد جدولة نفسه.
+                        scheduler.refreshWidgets()
+                        scheduler.scheduleWidgetRefresh()
+                    }
                     ACTION_TEST -> notifications.notify(
                         NotificationHelper.ID_TEST,
                         notifications.testNotification(),
@@ -135,6 +140,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
         const val ACTION_RESTORE_SOUND = "io.github.salehgnutux.gtsalat.ACTION_RESTORE_SOUND"
         const val ACTION_POST_DHIKR = "io.github.salehgnutux.gtsalat.ACTION_POST_DHIKR"
         const val ACTION_TEST = "io.github.salehgnutux.gtsalat.ACTION_TEST"
+        const val ACTION_REFRESH_WIDGETS = "io.github.salehgnutux.gtsalat.ACTION_REFRESH_WIDGETS"
         const val EXTRA_PRAYER = "prayer"
         const val EXTRA_PRAYER_AR = "prayer_ar"
         const val EXTRA_MINUTES = "minutes"

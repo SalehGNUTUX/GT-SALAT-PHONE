@@ -167,6 +167,19 @@ class QuranMetaViewModel @Inject constructor(
             if (s.lastListenSurah in 1..114) Triple(s.lastListenSurah, list.firstOrNull { it.n == s.lastListenSurah }?.ar ?: "${s.lastListenSurah}", s.lastListenAyah) else null
         }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), null)
 
+    /** متابعة القرآن المسموع (سورةٌ كاملة): آخر سورةٍ/قارئٍ وموضعٍ محفوظ — لاستئناف الاستماع. */
+    val audioResume: StateFlow<AudioResume?> =
+        kotlinx.coroutines.flow.combine(settingsRepo.settings, surahs) { s, list ->
+            if (s.lastAudioSurah in 1..114) AudioResume(
+                surah = s.lastAudioSurah,
+                surahName = list.firstOrNull { it.n == s.lastAudioSurah }?.ar ?: "سورة ${s.lastAudioSurah}",
+                reciterId = s.lastAudioReciter,
+                reciterName = s.lastAudioReciterName,
+                server = s.lastAudioServer,
+                posMs = s.lastAudioPosMs,
+            ) else null
+        }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), null)
+
     /** الإشارات المرجعيّة مرتّبةً (سورة، اسم، آية) — تفاعليّة. */
     val bookmarks: StateFlow<List<Triple<Int, String, Int>>> =
         kotlinx.coroutines.flow.combine(settingsRepo.settings, surahs) { s, list ->
@@ -238,6 +251,9 @@ private data class QSection(val label: String, val note: String, val icon: Image
 
 /** حالة الوِرد الخام كما تُخزَّن (تُشتقّ منها حالةُ اليوم في الواجهة). */
 data class WirdRaw(val enabled: Boolean = false, val unit: String = "juz", val count: Int = 1, val lastDate: String = "", val streak: Int = 0)
+
+/** حالة متابعة القرآن المسموع (سورةٌ كاملة) — لعرض بطاقة الاستئناف. */
+data class AudioResume(val surah: Int, val surahName: String, val reciterId: String, val reciterName: String, val server: String, val posMs: Long)
 
 /** وصف هدف الوِرد بالعربيّة (مفرد/جمع مبسّط). */
 fun wirdGoalLabel(unit: String, count: Int): String = when (unit) {
@@ -948,7 +964,10 @@ fun AudioRecitersScreen(
     onOpenDownloaded: () -> Unit,
     onBack: () -> Unit,
 ) {
+    val ctx = LocalContext.current
     val reciters by vm.surahReciters.collectAsStateWithLifecycle()
+    val audioResume by vm.audioResume.collectAsStateWithLifecycle()
+    var askResume by remember { mutableStateOf(false) }   // حوار: إتمام الاستماع أم البدء من جديد
     LaunchedEffect(Unit) { vm.ensureOnlineReciters() }   // جلبُ كامل القائمة عند فتح القسم فقط
     var riwayaFilter by remember { mutableStateOf("all") }
     var showSearch by remember { mutableStateOf(false) }
@@ -978,6 +997,28 @@ fun AudioRecitersScreen(
             }
         }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            audioResume?.let { ar ->
+                item("audio_resume") {
+                    val m = ar.posMs / 60_000L; val sec = (ar.posMs / 1000L) % 60L
+                    val at = String.format(java.util.Locale.US, "%d:%02d", m, sec)
+                    Card(
+                        Modifier.fillMaxWidth().clickable { askResume = true },
+                        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    ) {
+                        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            Icon(Icons.Filled.PlayArrow, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Column(Modifier.weight(1f)) {
+                                Text("متابعة الاستماع", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                Text(
+                                    "${ar.surahName}${if (ar.reciterName.isNotBlank()) " · ${ar.reciterName}" else ""} — $at",
+                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                            }
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
+                    }
+                }
+            }
             if (hasDownloads) item("downloaded") {
                 Card(
                     Modifier.fillMaxWidth().clickable { onOpenDownloaded() },
@@ -1003,6 +1044,31 @@ fun AudioRecitersScreen(
                 }
             }
         }
+    }
+
+    // حوار المتابعة: عند النقر على بطاقة «متابعة الاستماع» يختار المستخدم الإتمام أو البدء من جديد.
+    if (askResume) audioResume?.let { ar ->
+        val m = ar.posMs / 60_000L; val sec = (ar.posMs / 1000L) % 60L
+        val at = String.format(java.util.Locale.US, "%d:%02d", m, sec)
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { askResume = false },
+            title = { Text("متابعة الاستماع") },
+            text = {
+                Text("${ar.surahName}${if (ar.reciterName.isNotBlank()) " · ${ar.reciterName}" else ""}\nهل تتابع من $at أم تبدأ من جديد؟")
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    askResume = false
+                    QuranAudio.playSurah(ctx, ar.surah, ar.surahName, ar.reciterId, ar.reciterName, ar.server, ar.posMs)
+                }) { Text("إتمام الاستماع") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    askResume = false
+                    QuranAudio.playSurah(ctx, ar.surah, ar.surahName, ar.reciterId, ar.reciterName, ar.server, 0L)
+                }) { Text("من البداية") }
+            },
+        )
     }
 }
 

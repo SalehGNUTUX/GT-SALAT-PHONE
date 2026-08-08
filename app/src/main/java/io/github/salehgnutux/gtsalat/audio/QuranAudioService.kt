@@ -13,6 +13,9 @@ import android.os.PowerManager
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.salehgnutux.gtsalat.domain.Quran
 import io.github.salehgnutux.gtsalat.notification.NotificationHelper
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -25,10 +28,16 @@ class QuranAudioService : Service() {
 
     @Inject lateinit var notifications: NotificationHelper
     @Inject lateinit var downloader: io.github.salehgnutux.gtsalat.data.QuranDownloader
+    @Inject lateinit var settingsRepo: io.github.salehgnutux.gtsalat.data.settings.SettingsRepository
 
     private var player: MediaPlayer? = null
     private var audioManager: AudioManager? = null
     private var focusRequest: AudioFocusRequest? = null
+
+    // نطاقٌ لحفظ موضع متابعة الاستماع (السورة الكاملة) دوريّاً وعند الأحداث المفصليّة.
+    private val io = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
+    private var saveJob: kotlinx.coroutines.Job? = null
+    private var pendingSeekMs = 0   // موضع الاستئناف عند بدء المتابعة (يُطبَّق مرّةً)
 
     // حالة التشغيل الداخليّة
     private var mode = QuranMode.AYAH
@@ -78,6 +87,7 @@ class QuranAudioService : Service() {
         folder = intent?.getStringExtra(EXTRA_FOLDER) ?: ""
         verses = intent?.getIntExtra(EXTRA_VERSES, 0) ?: 0
         curAyah = (intent?.getIntExtra(EXTRA_AYAH, 1) ?: 1).coerceAtLeast(1)
+        pendingSeekMs = if (mode == QuranMode.SURAH) (intent?.getIntExtra(EXTRA_POSITION_MS, 0) ?: 0).coerceAtLeast(0) else 0
 
         startForeground(NotificationHelper.ID_RECITATION, buildNotification())
         requestFocus()
@@ -113,9 +123,12 @@ class QuranAudioService : Service() {
             val ok = runCatching { setDataSource(url) }.isSuccess
             if (!ok) { onTrackEnd(); return }
             setOnPreparedListener {
+                if (pendingSeekMs > 0) { runCatching { seekTo(pendingSeekMs) }; pendingSeekMs = 0 }
                 start()
                 publish(loading = false, playing = true)
                 updateNotification()
+                saveResume()          // نثبّت السورة/القارئ فوراً (ولو قُتلت العمليّة لاحقاً)
+                startPositionSaver()  // ثمّ نحفظ الموضع دوريّاً
             }
             setOnCompletionListener { onTrackEnd() }
             setOnErrorListener { _, _, _ -> onTrackEnd(); true }
@@ -152,6 +165,27 @@ class QuranAudioService : Service() {
         runCatching { player?.pause() }
         publish(playing = false)
         updateNotification()
+        saveResume(); saveJob?.cancel()
+    }
+
+    /** يحفظ موضع متابعة الاستماع (وضع السورة الكاملة فقط) بسورةٍ/قارئٍ/خادمٍ والموضع الحاليّ. */
+    private fun saveResume() {
+        if (mode != QuranMode.SURAH || surah !in 1..Quran.TOTAL_SURAHS) return
+        val pos = runCatching { player?.currentPosition ?: 0 }.getOrDefault(0)
+        val sn = surah; val rid = reciterId; val rn = reciterName; val srv = folder
+        io.launch { runCatching { settingsRepo.setLastAudio(sn, rid, rn, srv, pos.toLong()) } }
+    }
+
+    /** يحفظ الموضع دوريّاً أثناء التشغيل ليُستأنَف من نفس الثانية حتى لو أُغلق التطبيق فجأةً. */
+    private fun startPositionSaver() {
+        saveJob?.cancel()
+        if (mode != QuranMode.SURAH) return
+        saveJob = io.launch {
+            while (true) {
+                kotlinx.coroutines.delay(8_000L)
+                if (isPlaying()) saveResume()
+            }
+        }
     }
 
     private fun resume() {
@@ -208,6 +242,7 @@ class QuranAudioService : Service() {
     }
 
     private fun stopEverything() {
+        saveResume(); saveJob?.cancel()   // نثبّت آخر موضعٍ قبل تحرير المشغّل (كي تعمل المتابعة لاحقاً)
         releasePlayer()
         abandonFocus()
         QuranPlayback.reset()
@@ -216,6 +251,8 @@ class QuranAudioService : Service() {
     }
 
     override fun onDestroy() {
+        // الحفظ يتمّ في pause/stop ودوريّاً كلّ 8ث؛ هنا نكتفي بالتنظيف (لا نحفظ عبر نطاقٍ نُلغيه).
+        saveJob?.cancel(); io.cancel()
         releasePlayer()
         abandonFocus()
         super.onDestroy()
@@ -241,6 +278,7 @@ class QuranAudioService : Service() {
         const val EXTRA_FOLDER = "folder"
         const val EXTRA_VERSES = "verses"
         const val EXTRA_AYAH = "ayah"
+        const val EXTRA_POSITION_MS = "position_ms"
         const val MODE_AYAH = "ayah"
         const val MODE_SURAH = "surah"
     }
