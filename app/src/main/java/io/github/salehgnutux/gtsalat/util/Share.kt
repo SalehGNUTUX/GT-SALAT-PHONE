@@ -7,10 +7,15 @@ import io.github.salehgnutux.gtsalat.domain.Credits
 /** توحيدُ نصّ النسخ/المشاركة لأيّ ذكرٍ/حكمةٍ/آية: المتن + المصدر + رابطا نسختَي الهاتف وسطح المكتب. */
 object Share {
 
+    /** وسومٌ للنشر (اسم البرنامج + وسومٌ عربيّة). الوسم ينتهي بالمسافة، فالمركّبة بشرطةٍ سفليّة. */
+    private const val HASHTAGS =
+        "#GT_SALAT #تطبيق #الصلاة #الأذكار #القرآن #دعاء #القبلة #مواقيت_الصلاة #حصن_المسلم #رقية_شرعية"
+
     private val FOOTER = buildString {
         append("\n\n— عبر تطبيق GT-SALAT")
         append("\nنسخة الهاتف: ").append(Credits.WEBSITE)
         append("\nنسخة سطح المكتب: ").append(Credits.DESKTOP_WEBSITE)
+        append("\n\n").append(HASHTAGS)
     }
 
     /** يزيّن النصّ بالمصدر (اختياريّ) وتذييل الروابط — يُستعمَل للنسخ والمشاركة معاً. */

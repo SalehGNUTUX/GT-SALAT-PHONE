@@ -181,12 +181,15 @@ fun AppRoot(
                 modifier = Modifier.padding(padding),
             ) {
                 composable(Dest.DASHBOARD.route) {
-                    DashboardScreen(onOpenSettings = {
-                        nav.navigate(Dest.SETTINGS.route) {
-                            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true; restoreState = true
-                        }
-                    })
+                    DashboardScreen(
+                        onOpenSettings = {
+                            nav.navigate(Dest.SETTINGS.route) {
+                                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true; restoreState = true
+                            }
+                        },
+                        onOpenRadio = { nav.navigate("radios") { launchSingleTop = true } },
+                    )
                 }
                 composable(Dest.TIMETABLE.route) { TimetableScreen() }
                 composable(Dest.QIBLA.route) { QiblaScreen() }
@@ -259,6 +262,19 @@ fun AppRoot(
                     composable("quran_mushaf") { MushafScreen(onBack = { nav.popBackStack() }) }
                     composable("radios") { RadiosScreen(onBack = { nav.popBackStack() }) }
                     composable("imsakiah") { ImsakiahScreen(onBack = { nav.popBackStack() }) }
+                    // تعلّم الطهارة والصلاة + الرقية الشرعية
+                    composable("learn_hub") { io.github.salehgnutux.gtsalat.ui.screens.LearnHubScreen(onOpen = { nav.navigate(it) }, onBack = { nav.popBackStack() }) }
+                    composable(
+                        "learn_section/{id}",
+                        arguments = listOf(androidx.navigation.navArgument("id") { type = androidx.navigation.NavType.StringType }),
+                    ) { io.github.salehgnutux.gtsalat.ui.screens.LearnSectionScreen(it.arguments?.getString("id") ?: "", onOpen = { nav.navigate(it) }, onBack = { nav.popBackStack() }) }
+                    composable("qasr_tool") { io.github.salehgnutux.gtsalat.ui.screens.QasrToolScreen(onBack = { nav.popBackStack() }) }
+                    composable("tahara_tool") { io.github.salehgnutux.gtsalat.ui.screens.TaharaToolScreen(onBack = { nav.popBackStack() }) }
+                    composable("ruqyah_hub") { io.github.salehgnutux.gtsalat.ui.screens.RuqyahHubScreen(onOpen = { nav.navigate(it) }, onBack = { nav.popBackStack() }) }
+                    composable(
+                        "ruqyah_section/{id}",
+                        arguments = listOf(androidx.navigation.navArgument("id") { type = androidx.navigation.NavType.StringType }),
+                    ) { io.github.salehgnutux.gtsalat.ui.screens.RuqyahSectionScreen(it.arguments?.getString("id") ?: "", onOpen = { nav.navigate(it) }, onBack = { nav.popBackStack() }) }
                 }
             }
         }

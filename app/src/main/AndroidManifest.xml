@@ -92,6 +92,12 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
+        <!-- خدمة الرقية المسموعة (مقدّمة، وسائط) — تعمل في الخلفيّة والشاشة مقفلة -->
+        <service
+            android:name=".audio.RuqyahAudioService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
         <!-- مُستقبِل إطلاق الإنذار عند دخول وقت الصلاة -->
         <receiver
             android:name=".alarm.PrayerAlarmReceiver"

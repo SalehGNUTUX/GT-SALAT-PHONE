@@ -18,10 +18,13 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,6 +34,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -122,12 +128,14 @@ fun AdhkarSessionScreen(onBack: () -> Unit, vm: AdhkarSessionViewModel = hiltVie
                                 lineHeight = 40.sp,
                                 color = if (done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                             )
-                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     if (dhikr.count > 1) "العدد المأثور: ${dhikr.count}" else "مرّة واحدة",
+                                    modifier = Modifier.weight(1f),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.outline,
                                 )
+                                ShareCopyRow(dhikr.text)
                                 CounterBadge(left = left, total = dhikr.count, done = done)
                             }
                         }
@@ -142,36 +150,51 @@ fun AdhkarSessionScreen(onBack: () -> Unit, vm: AdhkarSessionViewModel = hiltVie
 @Composable
 internal fun AdhkarCard(text: String, count: Int, left: Int, done: Boolean, onTap: () -> Unit) {
     Card(
-        Modifier.fillMaxSize().padding(vertical = 16.dp).clickable(enabled = !done, onClick = onTap),
+        Modifier.fillMaxSize().padding(vertical = 6.dp).clickable(enabled = !done, onClick = onTap),
         colors = CardDefaults.cardColors(
             containerColor = if (done) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
         ),
     ) {
         Column(
-            Modifier.fillMaxSize().padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             val scroll = rememberScrollState()
             Text(
                 text,
                 fontFamily = AmiriQuran,
-                fontSize = if (text.length > 220) 22.sp else 26.sp,
-                lineHeight = if (text.length > 220) 42.sp else 48.sp,
+                fontSize = if (text.length > 240) 23.sp else 27.sp,
+                lineHeight = if (text.length > 240) 42.sp else 48.sp,
                 fontWeight = FontWeight.Bold,
                 color = if (done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(scroll),
             )
-            Text(
-                if (count > 1) "العدد المأثور: $count" else "مرّة واحدة",
-                style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.outline,
-            )
-            CounterBadge(left = left, total = count, done = done)
-            Text(
-                if (done) "اكتمل ✓" else "انقر البطاقة للعدّ",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline,
-            )
+            // صفٌّ سفليٌّ مضغوط: النسخ/المشاركة · العدّ · العدّاد — فيبقى معظمُ البطاقة للنصّ.
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                ShareCopyRow(text)
+                Text(
+                    if (done) "اكتمل ✓" else if (count > 1) "العدد: $count" else "مرّة واحدة",
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline,
+                )
+                CounterBadge(left = left, total = count, done = done)
+            }
+        }
+    }
+}
+
+/** زرّا المشاركة والنسخ لأيّ ذكرٍ (يُستعملان في العرضين البطاقيّ والطوليّ). */
+@Composable
+internal fun ShareCopyRow(text: String) {
+    val ctx = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        IconButton(onClick = { io.github.salehgnutux.gtsalat.util.Share.send(ctx, text) }) {
+            Icon(Icons.Filled.Share, contentDescription = "مشاركة", tint = MaterialTheme.colorScheme.primary)
+        }
+        IconButton(onClick = { clipboard.setText(AnnotatedString(io.github.salehgnutux.gtsalat.util.Share.decorate(text))) }) {
+            Icon(Icons.Filled.ContentCopy, contentDescription = "نسخ", tint = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -179,7 +202,7 @@ internal fun AdhkarCard(text: String, count: Int, left: Int, done: Boolean, onTa
 @Composable
 internal fun CounterBadge(left: Int, total: Int, done: Boolean) {
     Box(
-        Modifier.size(56.dp).clip(CircleShape)
+        Modifier.size(44.dp).clip(CircleShape)
             .background(if (done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer),
         contentAlignment = Alignment.Center,
     ) {
@@ -188,7 +211,7 @@ internal fun CounterBadge(left: Int, total: Int, done: Boolean) {
         } else {
             Text(
                 "$left",
-                fontSize = 24.sp,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )

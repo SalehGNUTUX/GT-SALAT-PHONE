@@ -1,0 +1,101 @@
+{
+  "disclaimer": "الرقية عبادةٌ ودعاءٌ وسببٌ مشروع، والشفاء بيد الله وحده. وجود أعراضٍ صحّيّةٍ أو نفسيّةٍ لا يُثبت وحده سحرًا أو مسًّا أو عينًا. ولا تمنع الرقيةُ الاستعانةَ بالعلاج الطبّيّ. النصوص القرآنيّة من مصحف التطبيق، والأدعية والأذكار من السنّة بمصادرها.",
+  "sections": [
+    {
+      "id": "comprehensive", "title": "الرقية الشاملة", "icon": "book",
+      "note": "جامعةٌ لآيات الرقية والتحصين وأدعيتها الثابتة.",
+      "segments": [
+        {"label": "سورة الفاتحة", "kind": "quran", "surah": 1, "ayahFrom": 1, "ayahTo": 7},
+        {"label": "أوّل سورة البقرة", "kind": "quran", "surah": 2, "ayahFrom": 1, "ayahTo": 5},
+        {"label": "آية الكرسيّ", "kind": "quran", "surah": 2, "ayahFrom": 255, "ayahTo": 255},
+        {"label": "لا إكراه في الدين", "kind": "quran", "surah": 2, "ayahFrom": 256, "ayahTo": 257},
+        {"label": "خواتيم سورة البقرة", "kind": "quran", "surah": 2, "ayahFrom": 285, "ayahTo": 286},
+        {"label": "من سورة الأعراف (إنّ ربّكم الله)", "kind": "quran", "surah": 7, "ayahFrom": 54, "ayahTo": 56},
+        {"label": "من سورة الأعراف (السحر)", "kind": "quran", "surah": 7, "ayahFrom": 117, "ayahTo": 122},
+        {"label": "من سورة يونس", "kind": "quran", "surah": 10, "ayahFrom": 81, "ayahTo": 82},
+        {"label": "من سورة طه", "kind": "quran", "surah": 20, "ayahFrom": 65, "ayahTo": 70},
+        {"label": "من سورة المؤمنون", "kind": "quran", "surah": 23, "ayahFrom": 115, "ayahTo": 118},
+        {"label": "أوّل سورة الصافّات", "kind": "quran", "surah": 37, "ayahFrom": 1, "ayahTo": 10},
+        {"label": "خواتيم سورة الحشر", "kind": "quran", "surah": 59, "ayahFrom": 21, "ayahTo": 24},
+        {"label": "سورة الإخلاص", "kind": "quran", "surah": 112, "ayahFrom": 1, "ayahTo": 4},
+        {"label": "سورة الفلق", "kind": "quran", "surah": 113, "ayahFrom": 1, "ayahTo": 5},
+        {"label": "سورة الناس", "kind": "quran", "surah": 114, "ayahFrom": 1, "ayahTo": 6},
+        {"label": "الرقية النبويّة", "kind": "dua", "text": "أذهِبِ البأسَ ربَّ الناسِ، اشفِ أنت الشافي، لا شفاءَ إلّا شفاؤك، شفاءً لا يغادر سقمًا.", "source": {"title": "متّفق عليه", "ref": "من حديث عائشة"}},
+        {"label": "رقيةٌ نبويّة", "kind": "dua", "text": "بسم الله أرقيك، من كلّ شيءٍ يؤذيك، من شرّ كلّ نفسٍ أو عينٍ حاسدٍ، اللهُ يشفيك، بسم الله أرقيك.", "source": {"title": "صحيح مسلم", "ref": "من حديث أبي سعيد"}},
+        {"label": "تعويذٌ نبويّ", "kind": "dua", "text": "أعوذ بكلمات الله التامّات من شرّ ما خلق.", "source": {"title": "صحيح مسلم", "ref": "من حديث خولة"}}
+      ]
+    },
+    {
+      "id": "tahsin_daily", "title": "التحصين اليوميّ", "icon": "sun",
+      "note": "الحصنُ اليوميّ بأذكار الصباح والمساء. اضغط هنا للانتقال إلى قسم الأذكار.",
+      "link": "adhkar_session/morning",
+      "segments": [
+        {"label": "آية الكرسيّ (بعد كلّ صلاةٍ وعند النوم)", "kind": "quran", "surah": 2, "ayahFrom": 255, "ayahTo": 255},
+        {"label": "خواتيم سورة البقرة (عند النوم)", "kind": "quran", "surah": 2, "ayahFrom": 285, "ayahTo": 286},
+        {"label": "سورة الإخلاص (ثلاثًا صباحًا ومساءً)", "kind": "quran", "surah": 112, "ayahFrom": 1, "ayahTo": 4, "repeat": 3},
+        {"label": "سورة الفلق (ثلاثًا)", "kind": "quran", "surah": 113, "ayahFrom": 1, "ayahTo": 5, "repeat": 3},
+        {"label": "سورة الناس (ثلاثًا)", "kind": "quran", "surah": 114, "ayahFrom": 1, "ayahTo": 6, "repeat": 3},
+        {"label": "سيّد الاستغفار", "kind": "dua", "text": "اللّهمّ أنت ربّي لا إله إلّا أنت، خلقتني وأنا عبدك، وأنا على عهدك ووعدك ما استطعت، أعوذ بك من شرّ ما صنعت، أبوء لك بنعمتك عليّ، وأبوء بذنبي فاغفر لي، فإنّه لا يغفر الذنوب إلّا أنت.", "source": {"title": "صحيح البخاري", "ref": "من حديث شدّاد بن أوس"}},
+        {"label": "دعاءُ الصباح", "kind": "dua", "text": "أصبحنا وأصبح الملك لله، والحمد لله، لا إله إلّا الله وحده لا شريك له، له الملك وله الحمد وهو على كلّ شيءٍ قدير. (وفي المساء: أمسينا وأمسى الملك لله)", "source": {"title": "صحيح مسلم", "ref": "من حديث ابن مسعود"}},
+        {"label": "تحصينٌ من كلّ سوء (ثلاثًا)", "kind": "dua", "text": "بسم الله الذي لا يضرّ مع اسمه شيءٌ في الأرض ولا في السماء، وهو السميع العليم.", "repeat": 3, "source": {"title": "سنن أبي داود والترمذيّ", "ref": "من حديث عثمان بن عفّان — صحيح"}},
+        {"label": "تعويذٌ (ثلاثًا مساءً)", "kind": "dua", "text": "أعوذ بكلمات الله التامّات من شرّ ما خلق.", "repeat": 3, "source": {"title": "صحيح مسلم", "ref": "من حديث خولة"}},
+        {"label": "الرضا بالله (ثلاثًا)", "kind": "dua", "text": "رضيتُ بالله ربًّا، وبالإسلام دينًا، وبمحمّدٍ ﷺ نبيًّا.", "repeat": 3, "source": {"title": "سنن أبي داود والترمذيّ", "ref": "من حديث أبي سلّام"}},
+        {"label": "التوكّل (سبعًا)", "kind": "dua", "text": "حسبيَ الله لا إله إلّا هو، عليه توكّلت، وهو ربّ العرش العظيم.", "repeat": 7, "source": {"title": "سنن أبي داود", "ref": "من حديث أبي الدرداء"}},
+        {"label": "دعاء العافية", "kind": "dua", "text": "اللّهمّ عافني في بدني، اللّهمّ عافني في سمعي، اللّهمّ عافني في بصري، لا إله إلّا أنت.", "source": {"title": "سنن أبي داود", "ref": "من حديث أبي بكرة"}}
+      ]
+    },
+    {
+      "id": "ayn_hasad", "title": "الرقية من العين والحسد", "icon": "eye",
+      "segments": [
+        {"label": "سورة الفاتحة", "kind": "quran", "surah": 1, "ayahFrom": 1, "ayahTo": 7},
+        {"label": "سورة الفلق", "kind": "quran", "surah": 113, "ayahFrom": 1, "ayahTo": 5},
+        {"label": "سورة الناس", "kind": "quran", "surah": 114, "ayahFrom": 1, "ayahTo": 6},
+        {"label": "تعويذٌ نبويّ", "kind": "dua", "text": "أعوذ بكلمات الله التامّات من شرّ ما خلق.", "source": {"title": "صحيح مسلم", "ref": "حديث خولة بنت حكيم"}}
+      ]
+    },
+    {
+      "id": "sihr", "title": "الرقية المتعلّقة بالسحر", "icon": "shield",
+      "note": "من الآيات الواردة في هذا الباب.",
+      "segments": [
+        {"label": "سورة الفاتحة", "kind": "quran", "surah": 1, "ayahFrom": 1, "ayahTo": 7},
+        {"label": "آية الكرسيّ", "kind": "quran", "surah": 2, "ayahFrom": 255, "ayahTo": 255},
+        {"label": "من سورة الأعراف", "kind": "quran", "surah": 7, "ayahFrom": 117, "ayahTo": 122},
+        {"label": "من سورة يونس", "kind": "quran", "surah": 10, "ayahFrom": 81, "ayahTo": 82},
+        {"label": "من سورة طه", "kind": "quran", "surah": 20, "ayahFrom": 69, "ayahTo": 69},
+        {"label": "سورة الإخلاص", "kind": "quran", "surah": 112, "ayahFrom": 1, "ayahTo": 4},
+        {"label": "سورة الفلق", "kind": "quran", "surah": 113, "ayahFrom": 1, "ayahTo": 5},
+        {"label": "سورة الناس", "kind": "quran", "surah": 114, "ayahFrom": 1, "ayahTo": 6}
+      ]
+    },
+    {
+      "id": "mass", "title": "الرقية المتعلّقة بالمسّ", "icon": "shield",
+      "segments": [
+        {"label": "سورة الفاتحة", "kind": "quran", "surah": 1, "ayahFrom": 1, "ayahTo": 7},
+        {"label": "آية الكرسيّ", "kind": "quran", "surah": 2, "ayahFrom": 255, "ayahTo": 255},
+        {"label": "أوّل سورة الصافّات", "kind": "quran", "surah": 37, "ayahFrom": 1, "ayahTo": 10},
+        {"label": "خواتيم سورة البقرة", "kind": "quran", "surah": 2, "ayahFrom": 285, "ayahTo": 286},
+        {"label": "المعوّذتان", "kind": "quran", "surah": 113, "ayahFrom": 1, "ayahTo": 5},
+        {"label": "سورة الناس", "kind": "quran", "surah": 114, "ayahFrom": 1, "ayahTo": 6}
+      ]
+    },
+    {
+      "id": "marad", "title": "رقية المرض والألم", "icon": "healing",
+      "segments": [
+        {"label": "سورة الفاتحة", "kind": "quran", "surah": 1, "ayahFrom": 1, "ayahTo": 7},
+        {"label": "دعاءٌ نبويّ", "kind": "dua", "text": "أذهِبِ البأسَ ربَّ الناسِ، اشفِ أنت الشافي، لا شفاءَ إلّا شفاؤك، شفاءً لا يغادر سقمًا.", "source": {"title": "متّفق عليه", "ref": "من حديث عائشة"}},
+        {"label": "رقيةٌ للألم (ضَعْ يدك على موضع الألم)", "kind": "dua", "text": "أعوذ بالله وقدرته من شرّ ما أجد وأحاذر. (سبعًا)", "repeat": 7, "source": {"title": "صحيح مسلم", "ref": "من حديث عثمان بن أبي العاص"}},
+        {"label": "رقيةٌ نبويّة", "kind": "dua", "text": "بسم الله أرقيك، من كلّ شيءٍ يؤذيك، من شرّ كلّ نفسٍ أو عينٍ حاسدٍ، اللهُ يشفيك، بسم الله أرقيك.", "source": {"title": "صحيح مسلم", "ref": "من حديث أبي سعيد"}}
+      ]
+    },
+    {
+      "id": "tahsin_bayt", "title": "تحصين البيت والأسرة", "icon": "home",
+      "segments": [
+        {"label": "أوّل سورة البقرة", "kind": "quran", "surah": 2, "ayahFrom": 1, "ayahTo": 5},
+        {"label": "آية الكرسيّ", "kind": "quran", "surah": 2, "ayahFrom": 255, "ayahTo": 255},
+        {"label": "خواتيم سورة البقرة", "kind": "quran", "surah": 2, "ayahFrom": 285, "ayahTo": 286},
+        {"label": "المعوّذات", "kind": "quran", "surah": 112, "ayahFrom": 1, "ayahTo": 4},
+        {"label": "تعويذٌ للأبناء", "kind": "dua", "text": "أعيذكما بكلمات الله التامّة، من كلّ شيطانٍ وهامّة، ومن كلّ عينٍ لامّة.", "source": {"title": "صحيح البخاري", "ref": "تعويذ الحسن والحسين"}}
+      ]
+    }
+  ]
+}

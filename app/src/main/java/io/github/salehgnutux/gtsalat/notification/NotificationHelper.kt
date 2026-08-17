@@ -117,6 +117,7 @@ class NotificationHelper @Inject constructor(
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
+            .setTimeoutAfter(25 * 60_000L)   // يُمسَح تلقائيّاً بعد ربع ساعةٍ فلا يعلق (حتى لو جُمّد التطبيق)
             .setContentIntent(contentIntent())
             .apply { if (fullScreen != null) setFullScreenIntent(fullScreen, true) }
             .build()
@@ -147,6 +148,8 @@ class NotificationHelper @Inject constructor(
             .setContentText("استعدّ للصلاة")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
+            // يُمسَح تلقائيّاً عند دخول وقت الصلاة (بعد المدّة + دقيقة) فلا يبقى معلّقاً لساعات.
+            .setTimeoutAfter((minutes + 1) * 60_000L)
             .setContentIntent(contentIntent())
             .build()
 
@@ -181,6 +184,12 @@ class NotificationHelper @Inject constructor(
 
     fun cancelStatus() = nm.cancel(ID_STATUS)
 
+    /** يمسح تنبيهات الأذان/التنبيه المسبق العالقة (تُعاد عند إطلاق أذان الصلاة الحاليّ). */
+    fun cancelPrayerAlerts() { nm.cancel(ID_PRAYER); nm.cancel(ID_PRENOTIFY) }
+
+    /** يمسح إشعار خدمة الأذان العالق (يُستدعى فقط حين لا يكون ثمّة صوتٌ يُشغَّل الآن). */
+    fun cancelAdhanService() = nm.cancel(ID_SERVICE)
+
     fun notify(id: Int, n: Notification) = nm.notify(id, n)
 
     companion object {
@@ -202,6 +211,7 @@ class NotificationHelper @Inject constructor(
         const val ID_MORNING_ADHKAR = 2011
         const val ID_EVENING_ADHKAR = 2012
         const val ID_SUNNAH = 2013
+        const val ID_RUQYAH = 2014
         val PI_FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     }
 }

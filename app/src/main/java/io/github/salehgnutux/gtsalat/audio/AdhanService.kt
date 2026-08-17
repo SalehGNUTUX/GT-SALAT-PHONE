@@ -45,6 +45,7 @@ class AdhanService : Service() {
     @Inject lateinit var settingsRepo: SettingsRepository
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var watchdog: kotlinx.coroutines.Job? = null
     private var player: MediaPlayer? = null
     private var audioManager: AudioManager? = null
     private var focusRequest: AudioFocusRequest? = null
@@ -74,6 +75,10 @@ class AdhanService : Service() {
         startForeground(NotificationHelper.ID_SERVICE, notifications.serviceNotification(title, stopPendingIntent()))
         // إعلام نافذة ملء الشاشة أنّ التشغيل بدأ (للأذان/الأذكار)، فتبقى ما دام الصوت جارياً.
         if (sound == SOUND_ADHAN || sound == SOUND_POST_DHIKR) AdhanPlayback.set(true)
+        // حارسٌ زمنيّ: يوقف الخدمة قسراً بعد حدٍّ أقصى فلا يبقى إشعارها معلّقاً إن لم يكتمل الصوت
+        // (مثلاً إن جمّد النظامُ العمليّةَ في أثناء التشغيل، ثمّ استُؤنفت).
+        watchdog?.cancel()
+        watchdog = scope.launch { kotlinx.coroutines.delay(MAX_SERVICE_MS); stopEverything() }
 
         scope.launch {
             val s = settingsRepo.current()
@@ -175,5 +180,6 @@ class AdhanService : Service() {
         const val SOUND_PRENOTIFY = "prenotify"
         const val SOUND_POST_DHIKR = "post_dhikr"
         const val ACTION_STOP = "io.github.salehgnutux.gtsalat.ADHAN_STOP"
+        private const val MAX_SERVICE_MS = 7 * 60_000L   // حدٌّ أقصى لعمر الخدمة (أطول من الأذان + الدعاء)
     }
 }

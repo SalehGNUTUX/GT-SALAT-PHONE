@@ -2,7 +2,9 @@ package io.github.salehgnutux.gtsalat.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.horizontalScroll
+import kotlinx.coroutines.isActive
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +35,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.KeyboardDoubleArrowDown
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.outlined.AutoStories
@@ -732,6 +735,8 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
     val listState = rememberLazyListState()
     // وضع القراءة التلقائيّة (بلا صوت): تنتقل الآية المظلَّلة تلقائيّاً بوتيرةٍ تناسب طولها.
     var readingMode by remember { mutableStateOf(false) }
+    // وضع التمرير الانسيابيّ: تنزلق الصفحة مرورًا بالآيات بوتيرةٍ يضبطها المستخدم (كالتلقين).
+    var smoothScroll by remember { mutableStateOf(false) }
     // تنزيل صوت آيات السورة الحاليّة للقارئ (للاستماع دون إنترنت).
     var ayatProgress by remember { mutableStateOf<Int?>(null) }
     var ayatDownloaded by remember(reciter?.id, ayat) { mutableStateOf(reciter?.let { vm.ayatDownloaded(it.id) } ?: false) }
@@ -762,6 +767,22 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
                 cur++
             }
             readingMode = false
+        }
+    }
+    // حلقة التمرير الانسيابيّ: تُزلق الصفحة بمقدارٍ صغيرٍ كلّ إطار، بسرعةٍ من مهلة القراءة نفسها.
+    LaunchedEffect(smoothScroll, ayat) {
+        if (smoothScroll && ayat.isNotEmpty()) {
+            val density = android.content.res.Resources.getSystem().displayMetrics.density
+            while (isActive) {
+                kotlinx.coroutines.delay(16L)
+                val speed = vm.scrollSpeed.value.coerceIn(40, 400)
+                val px = 45f * (100f / speed) * (16f / 1000f) * density
+                // لا نُوقِف الحلقة عند سحب المستخدم اليسير (الذي يُلغي هذه الدفعة فقط)؛
+                // نتوقّف فقط عند بلوغ نهاية السورة.
+                runCatching { listState.scrollBy(px) }
+                if (!listState.canScrollForward) break
+            }
+            smoothScroll = false
         }
     }
 
@@ -808,21 +829,30 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
                         }) { Icon(Icons.Filled.Download, "تنزيل صوت السورة", tint = MaterialTheme.colorScheme.outline) }
                     }
                 }
-                // وضع القراءة التلقائيّة (بلا صوت) — يتعطّل أثناء الاستماع.
+                // وضعا التقدّم التلقائيّ (بلا صوت) — يتعطّلان أثناء الاستماع.
                 if (!here) {
                     if (readingMode) {
                         FilledIconButton(onClick = { readingMode = false }) {
                             Icon(Icons.Filled.Stop, contentDescription = "إيقاف القراءة التلقائيّة")
                         }
                     } else {
-                        IconButton(onClick = { readingMode = true }) {
-                            Icon(Icons.Outlined.AutoStories, contentDescription = "قراءةٌ تلقائيّة", tint = MaterialTheme.colorScheme.primary)
+                        IconButton(onClick = { readingMode = true; smoothScroll = false }) {
+                            Icon(Icons.Outlined.AutoStories, contentDescription = "قراءةٌ تلقائيّة (آية-آية)", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    if (smoothScroll) {
+                        FilledIconButton(onClick = { smoothScroll = false }) {
+                            Icon(Icons.Filled.Stop, contentDescription = "إيقاف التمرير الانسيابيّ")
+                        }
+                    } else {
+                        IconButton(onClick = { smoothScroll = true; readingMode = false }) {
+                            Icon(Icons.Filled.KeyboardDoubleArrowDown, contentDescription = "تمريرٌ انسيابيّ", tint = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
                 FilledIconButton(onClick = {
                     val r = reciter ?: return@FilledIconButton
-                    readingMode = false
+                    readingMode = false; smoothScroll = false
                     if (here) QuranAudio.toggle(ctx)
                     else QuranAudio.playAyat(ctx, vm.n, surah?.ar ?: "سورة ${vm.n}", ayat.size, r, highlight.coerceAtLeast(1))
                 }) {
@@ -836,8 +866,8 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
             }
         }
 
-        // مهلة القراءة التلقائيّة (تظهر في وضع القراءة): حسب طول الآية × النسبة المختارة.
-        if (readingMode && !here) {
+        // ضبط السرعة (يظهر في وضعَي القراءة والتمرير الانسيابيّ): يُقرأ حيّاً فيسري فورًا.
+        if ((readingMode || smoothScroll) && !here) {
             Surface(color = MaterialTheme.colorScheme.surface) {
                 Row(
                     Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp),

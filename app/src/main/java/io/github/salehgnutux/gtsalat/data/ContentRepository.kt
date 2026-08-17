@@ -78,6 +78,19 @@ class ContentRepository @Inject constructor(
 
     suspend fun tafsirSurah(n: Int): TafsirSurah? = tafsirSurahs().firstOrNull { it.n == n }
 
+    // ---- قسم «تعلّم الطهارة والصلاة» + «الرقية الشرعية» ----
+    private var purityCache: io.github.salehgnutux.gtsalat.domain.LearnFile? = null
+    suspend fun puritySalah(): io.github.salehgnutux.gtsalat.domain.LearnFile =
+        purityCache ?: load<io.github.salehgnutux.gtsalat.domain.LearnFile>("purity_salah.json").also { purityCache = it }
+
+    private var ruqyahCache: io.github.salehgnutux.gtsalat.domain.RuqyahFile? = null
+    suspend fun ruqyah(): io.github.salehgnutux.gtsalat.domain.RuqyahFile =
+        ruqyahCache ?: load<io.github.salehgnutux.gtsalat.domain.RuqyahFile>("ruqyah.json").also { ruqyahCache = it }
+
+    /** نصّ آياتٍ (رقم الآية، النصّ) من مصحف التطبيق الموثّق — لعرض مقاطع الرقية. */
+    suspend fun ayatText(surah: Int, from: Int, to: Int): List<Pair<Int, String>> =
+        tafsirSurah(surah)?.ayahs?.filter { it.n in from..to }?.map { it.n to it.text } ?: emptyList()
+
     private var ayatCache: List<DailyAyah>? = null
 
     suspend fun dailyAyat(): List<DailyAyah> = ayatCache ?: load<DailyAyatFile>("daily_ayat.json").items.also { ayatCache = it }

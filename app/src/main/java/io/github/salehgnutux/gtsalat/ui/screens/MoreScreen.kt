@@ -18,6 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.AutoStories
+import androidx.compose.material.icons.outlined.CleanHands
+import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.FormatQuote
 import androidx.compose.material.icons.outlined.HistoryEdu
@@ -82,6 +84,8 @@ fun MoreScreen(onOpen: (String) -> Unit, vm: MoreViewModel = hiltViewModel()) {
     val features = remember {
         listOf(
             Feature("القرآن الكريم", Icons.Outlined.AutoStories, "quran"),
+            Feature("تعلّم الطهارة والصلاة", Icons.Outlined.CleanHands, "learn_hub"),
+            Feature("الرقية الشرعية", Icons.Outlined.Spa, "ruqyah_hub"),
             Feature("حصن المسلم", Icons.Outlined.Shield, "hisn"),
             Feature("أذكار الصباح", Icons.Outlined.WbSunny, "adhkar_session/morning"),
             Feature("أذكار المساء", Icons.Outlined.NightsStay, "adhkar_session/evening"),

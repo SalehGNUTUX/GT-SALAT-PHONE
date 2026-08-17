@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.material.icons.outlined.Radio
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -63,7 +64,7 @@ private const val I_HIKMAH = 4
 private const val I_AYAH = 5
 
 @Composable
-fun DashboardScreen(onOpenSettings: () -> Unit = {}, vm: DashboardViewModel = hiltViewModel()) {
+fun DashboardScreen(onOpenSettings: () -> Unit = {}, onOpenRadio: () -> Unit = {}, vm: DashboardViewModel = hiltViewModel()) {
     val ui by vm.ui.collectAsStateWithLifecycle()
     val tick by vm.tick.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
@@ -88,8 +89,13 @@ fun DashboardScreen(onOpenSettings: () -> Unit = {}, vm: DashboardViewModel = hi
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Outlined.Settings, contentDescription = "الإعدادات", tint = MaterialTheme.colorScheme.primary)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(Icons.Outlined.Settings, contentDescription = "الإعدادات", tint = MaterialTheme.colorScheme.primary)
+                        }
+                        IconButton(onClick = onOpenRadio) {
+                            Icon(Icons.Outlined.Radio, contentDescription = "الإذاعات", tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
                     Text("GT-SALAT", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
                     Row(verticalAlignment = Alignment.CenterVertically) {

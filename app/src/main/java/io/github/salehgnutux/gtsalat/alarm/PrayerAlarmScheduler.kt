@@ -33,6 +33,10 @@ class PrayerAlarmScheduler @Inject constructor(
         refreshStatus(s)          // الإشعار الدائم مستقلٌّ عن حارسات الأذان أدناه
         refreshWidgets()          // وكذلك ودجتات سطح الهاتف
         scheduleWidgetRefresh()   // إنذارٌ يقدّم الودجت عند كلّ صلاة/منتصف ليل (ولو كان الأذان مطفأً)
+        // امسح تنبيهات الأذان/التنبيه المسبق القديمة العالقة (تُعاد لحظةَ إطلاق أذان الصلاة الحاليّ)،
+        // وخدمة الأذان إن لم يكن ثمّة صوتٌ يُشغَّل الآن — تفاديّاً لإشعارٍ «زومبي» يبقى بعد تجميد النظام.
+        notifications.cancelPrayerAlerts()
+        if (!io.github.salehgnutux.gtsalat.audio.AdhanPlayback.active.value) notifications.cancelAdhanService()
         scheduleDailyReminder()   // والتذكيرات اليوميّة (وِرد/أيّام بيض/آية)
         scheduleAdhkarReminders(s) // وأذكار الصباح/المساء (إن فُعّلت)
         if (!s.setupCompleted || !s.hasLocation || s.doNotDisturb || !s.enableSalatNotify) return

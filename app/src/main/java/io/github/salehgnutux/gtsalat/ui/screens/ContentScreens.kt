@@ -70,8 +70,8 @@ fun ContentPager(items: List<ContentItem>) {
         val clipboard = LocalClipboardManager.current
         val ctx = LocalContext.current
         val caption = listOfNotNull(it.subtitle.ifBlank { null }, it.shareCaption?.ifBlank { null }).joinToString(" — ").ifBlank { null }
-        Card(Modifier.fillMaxSize().padding(vertical = 12.dp)) {
-            Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Card(Modifier.fillMaxSize().padding(vertical = 6.dp)) {
+            Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.Top) {
                     Column(Modifier.weight(1f)) {
                         if (it.title.isNotBlank()) Text("${it.number}. ${it.title}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)

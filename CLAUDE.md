@@ -49,6 +49,7 @@ Room 2.6.1 · DataStore 1.1.1 · WorkManager 2.9.1 · OkHttp 4.12 · kotlinx.ser
 - الوسم البعيد قد يتقدّم برفعٍ من واجهة GitHub → عند رفض الدفع: `git pull --rebase origin main` ثمّ أعد الدفع. لنقل وسمٍ موجود: `git tag -f` + `git push -f origin <tag>` ثمّ `gh release upload <tag> … --clobber`.
 **محتوى `assets/content/*.json`** مُولَّد مرّةً بسكربت Node: أحاديث/أدعية/حِكَم/أسماء من `../GT-SQRM/GT-SIRM/GT-SIRM-WEB/*-data.js`،
 حصن المسلم من `../GT_HISNMUSLIM-main/assets/data/`، والتفسير الميسّر `tafsir.json` (~4MB، 6236 آية) نُزّل ودُمج من `api.alquran.cloud` (ar.muyassar + quran-uthmani).
+**محتوى الفقه (`purity_salah.json`) والرقية (`ruqyah.json`)** مكتوبٌ يدويّاً من مصادرَ مالكيّةٍ معتمدة (الموطّأ، الرسالة، ابن عاشر، مختصر خليل، وكتاب نايف آل مبارك)، ومذيَّلٌ بتنبيه المراجعة. **قاعدةٌ حاكمة: لا تأليفَ فقهيّ من عند النموذج ولا توثيق تصحيح الأحاديث؛ كلّ حكمٍ بمصدره، وآيات الرقية تُجلَب من مصحف التطبيق (`ContentRepository.ayatText`) لا تُكتَب يدويّاً.** الأداتان التفاعليّتان (طهرت الآن/القصر) تُبنيان فقط بعد تثبيت جداول قواعدهما فقهيّاً.
 
 ---
 
@@ -66,7 +67,9 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 │   ├── IslamicContent.kt   نماذج @Serializable للمحتوى (أحاديث/أدعية/حِكَم/أسماء/حصن/تفسير)
 │   ├── Quran.kt            نماذج القرآن + بُناة روابط (everyayah/mp3quran/صور) + `normalize` (تطبيع عربيّ للبحث) + AyahHit
 │   ├── Credits.kt          ★ قائمة المصادر الحرّة — تُحدَّث كلّما اعتمدنا مصدراً (تظهر في الإعدادات + الموقع)
-│   └── GregorianMonths.kt  أسماء الأشهر الإقليميّة (MAGHREB/LEVANT/STANDARD) + MonthScheme + CalendarKind
+│   ├── GregorianMonths.kt  أسماء الأشهر الإقليميّة (MAGHREB/LEVANT/STANDARD) + MonthScheme + CalendarKind
+│   ├── SunnahReminders.kt  تذكيرات السُّنن الموسميّة حسب الشهر/اليوم الهجريّ ويوم الأسبوع (رسالةٌ واحدةٌ باليوم بأولويّة)
+│   └── LearnModels.kt      نماذج «تعلّم الطهارة والصلاة» (LearnSection/Step/RulingGroup/Source) و«الرقية» (RuqyahSection/Segment)
 ├── data/
 │   ├── PrayerRepository.kt   ★ سلسلة السقوط: Room → API → حساب محلّيّ + prefetchMonths + detectAndSaveLocation
 │   ├── ContentRepository.kt  يقرأ assets/content/*.json (أحاديث/أدعية/حِكَم/أسماء/حصن/تفسير) + حكمة يوميّة
@@ -82,7 +85,7 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 │   ├── PrayerAlarmReceiver.kt   ACTION_ADHAN/PRENOTIFY/RESTORE_SOUND/POST_DHIKR/TEST (كتم تلقائيّ + full-screen intent للأذان/الأذكار)
 │   ├── AdhanAlarmActivity.kt    ★ نافذة أذانٍ ملء الشاشة فوق القفل (setShowWhenLocked/TurnScreenOn + وميض + زرّ إيقاف)
 │   ├── BootReceiver.kt (BOOT/MY_PACKAGE_REPLACED/TIME_SET/TIMEZONE_CHANGED) · RescheduleWorker (6س) · WorkScheduler
-├── audio/       AdhanService.kt (mediaPlayback أذان) · QuranAudioService.kt (تلاوة القرآن، آية-بآية/سورة كاملة) + QuranPlayback (حالة StateFlow) + QuranAudio (أوامر) · AdhanPreviewer · RingerController (كتم)
+├── audio/       AdhanService.kt (mediaPlayback أذان، حارسٌ زمنيّ MAX_SERVICE_MS) · QuranAudioService.kt (تلاوة القرآن، آية-بآية/سورة كاملة) + QuranPlayback + QuranAudio · RadioService · **RuqyahAudioService** (قائمة تشغيلٍ من الآيات everyayah للرقية المسموعة) + RuqyahPlayback + RuqyahAudio · AdhanPreviewer · RingerController (كتم)
 ├── sensor/Compass.kt       بوصلة (TYPE_ROTATION_VECTOR) كـFlow — للقبلة
 ├── notification/NotificationHelper.kt  ★ 5 قنوات (adhan/prenotify/service/status/reminders). صوت الأذان عبر الخدمة لا القناة.
 ├── widget/      NextPrayerWidget + TodayTimesWidget + PrayerProgressWidget (ساعة + شريط تقدّم بين صلاتين، نمطان classic/center) — Glance خلفيّة شفّافة + WidgetData (Hilt EntryPoint، حساب محلّيّ) + عناصرٌ أصليّة حيّة (TextClock/Chronometer عبر AndroidRemoteViews+fillMaxSize)
@@ -92,7 +95,8 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 │   ├── theme/    Color (أخضر/ذهبيّ) + Type (Ubuntu Arabic + Amiri) + Theme (Material You + RTL)
 │   └── screens/  Dashboard(+حلقة تقدّم +RamadanCard) · Timetable · Settings(أكورديون محفوظ +نسخ احتياطيّ) · Setup(offline: GPS حيّ+قاعدة مواقع+يدويّ+استيراد+تخطّي) · Qibla · Tasbih(+مختلط) · More · Events(بحث) · ThemeToggle · DownloadsSettings ·
 │                 Asma (Pager) · Hisn(بحث) · AdhkarSession · Content(حديث/أدعية/حِكَم) · Tafsir · UpdateBanner(شريط التحديث) · ImsakiahScreen ·
-│                 QuranScreens (Hub + SurahIndex + TextReader(+إشارات) + QuranBookmarks + Wird + AudioRecitation + QuranMiniPlayer) · MushafScreen (+ViewModels)
+│                 QuranScreens (Hub + SurahIndex + TextReader(+إشارات) + QuranBookmarks + Wird + AudioRecitation + QuranMiniPlayer) · MushafScreen (+ViewModels) ·
+│                 **LearnScreens** (تعلّم الطهارة والصلاة: Hub + SectionScreen بمستويين + LearnViewModel) · **RuqyahScreens** (الرقية: Hub + SectionScreen بوضعَي أقرأ/أستمع + مشغّل)
 ├── util/   Format.kt (clock/countdown/gregorianArabic + hijriAdjusted/hijriForDate — أرقام مغربيّة 0-9) · Share.kt (تذييل نسخ/مشاركة برابطي الهاتف وسطح المكتب)
 └── GtSalatApp.kt    @HiltAndroidApp + Configuration.Provider + ensureChannels/ensurePeriodic + scheduleNext عند الإقلاع
 ```
@@ -118,6 +122,7 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 - **الأصول الكبيرة:** فكّ ترميز JSON الكبير (tafsir ~4MB) على `Dispatchers.Default` لا الخيط الرئيسيّ.
 - **تنقّل «المزيد»:** رسمٌ متداخل (`navigation(route=more_graph)`) بـ`saveState`/`restoreState` ليحفظ/يستعيد القسم؛ إعادة النقر على «المزيد» داخل قسمٍ فرعيّ تُظهر رسالةً (العودة/البقاء).
 - **الإشعار الدائم:** على أندرويد 14+ يُزال بالسحب (قرار النظام)؛ يُعاد بثّه من `scheduleNext` وعند إقلاع التطبيق.
+- **دورة حياة تنبيهات الأذان (تفادي الإشعارات العالقة/المتضاربة):** إشعارا الأذان (`ID_PRAYER`) والتنبيه المسبق (`ID_PRENOTIFY`) لهما **`setTimeoutAfter`** (يمسحهما النظام تلقائيّاً ولو جُمّد التطبيق فلم تُطلَق صلواتُ اليوم التالية). و`scheduleNext` يمسح العالقَ منهما في كلّ إعادة جدولة (تُعاد لحظةَ إطلاق الأذان الحاليّ)، ويمسح إشعار خدمة الأذان (`ID_SERVICE`) **فقط إن كان `AdhanPlayback.active == false`**. وخدمة الأذان لها **حارسٌ زمنيّ** (`MAX_SERVICE_MS`) يوقفها قسراً فلا يبقى إشعارها «زومبي» إن جُمّدت العمليّة أثناء التشغيل.
 - **الأصوات/الخطوط:** `res/raw` lowercase (adhan_full…) · `res/font` (amiri_quran, ubuntu_arabic).
 - **الأيقونات:** minSdk 26 → أيقونة تكيّفيّة `mipmap-anydpi-v26`. لا تكتب محلّل SVG يدويّاً (Vector/Material Icons).
 - **الكاش:** مفتاح Room المركّب (dateIso+methodId+locKey) يُبطِل الكاش تلقائيّاً عند تغيّر الطريقة أو الموقع.
@@ -138,6 +143,8 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 - **حالة قابلة للتخزين في DataStore:** ما يجب تذكّره عبر الجلسات (آخر قسم إعداداتٍ مفتوح `settingsOpenSection`، الإشارات، الوِرد، إزاحة الهجريّ) حقولٌ في `AppSettings` تُقاد الواجهة منها مباشرةً (لا `remember` محلّيّ). الوِرد **مطفأٌ افتراضيّاً** (`enableWird=false`) وتذكيره في الإشعارات مستقلّ.
 - **الموقع والعمل دون إنترنت:** **المواقيت تُحسَب محليّاً دائماً** (`PrayerCalculator`/adhan؛ سلسلة السقوط Room→API→محلّيّ)، فلا حاجة لقاعدة بيانات مواقيت — **العائق الوحيد offline هو تحديد الموقع**. حلوله (كلّها في `SetupScreen`): تثبيتٌ حيٌّ من GPS (`freshFix` في foss، إحداثيّات الأقمار دون إنترنت؛ اسم المدينة فقط يحتاج Nominatim) · قاعدة `places.json` المُضمَّنة · إدخال يدويّ · استيراد نسخة. `detectAndSaveLocation` يحفظ الإحداثيّات حتى لو فشل الترميز العكسيّ (city="").
 - **deep-link الإشعارات:** الإشعار يمرّر `MainActivity.EXTRA_ROUTE` (مثل `adhkar_session/morning`) بـ `PendingIntent` ذي **requestCode مميّز** (وإلّا أعاد النظام استعمال نيّةٍ قديمة)، و`AppRoot(deepLink)` ينتقل مرّةً عبر `LaunchedEffect` ثمّ يُمسَح.
+- **صوت الرقية ≠ صوت القرآن:** `RuqyahAudioService` مشغّلُ **قائمةٍ** عابرةٍ للسور (يستقبل `IntArray` للسور والآيات + عناوين موازية) بخلاف `QuranAudioService` (سورةٌ واحدةٌ آية-بآية أو كاملة). لا تُعِد استعماله للقرآن ولا العكس. القارئ الافتراضيّ `Alafasy_128kbps` (everyayah)، والتظليل عبر `RuqyahPlayback.index` مقابل فهارس بداية المقاطع.
+- **العرض البطاقيّ/الطوليّ عامّ:** يُقاد بمفتاحٍ واحدٍ عالميّ `adhkarCardView` عبر `AdhkarViewToggleButton` (لا تُضِف مفتاحاً محلّيّاً)، ويشمل الأذكار/حصن/المحتوى/التفسير/الرقية/دروس الطهارة والصلاة. النسخ/المشاركة عبر `ShareCopyRow` المشترك في العرضين. حالةٌ تخصّ الدرس كلَّه (مثل «شرح أكثر») تُرفَع **خارج** حلقة `HorizontalPager` وإلّا أُعيدت لكلّ بطاقة.
 
 ---
 
@@ -178,7 +185,11 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 - **v1.6:** **عرضٌ بطاقيٌّ عامّ** لأقسام الأذكار/المحتوى (بأسلوب أسماء الله الحسنى، `HorizontalPager`) — مفتاحٌ واحدٌ عامّ `adhkarCardView` (افتراضيّ true) يتبدّل بزرّ `AdhkarViewToggleButton` بجانب زرّ السِمة المدمج في `SubScreenHeader` (لا تُضِف `ThemeToggleButton` ثانيةً)، يشمل: الأذكار/حصن/الأدعية/الأحاديث/الحِكَم/التفسير. الأذكار: انتقالٌ تلقائيٌّ عند إكمال العدّ + «تصفير» يعود للبطاقة 0 (حالة الـpager مرفوعة). · **بحثٌ داخل السورة** + **بحثٌ في الأحاديث**. · **مهلة قراءةٍ حسب طول الآية بسرعات** (`quranScrollSpeed`) + حفظ آخر رواية (`lastRiwaya`). · **ودجت الساعة وتقدّم الصلاة** (`PrayerProgressWidget`). · **`Quran.normalize` يحذف الألف** (وكلّ التشكيل وعلامات التلاوة والهمزة) فيطابق «جنات» «جَنّٰتٍ».
 - **v1.7:** **ودجتات حيّة** — استبدال العناصر الزمنيّة بعناصر أندرويد أصليّة تنبض ذاتيّاً (`TextClock` + `Chronometer` تنازليّ) عبر `AndroidRemoteViews` **مع `GlanceModifier.fillMaxSize()`** (وإلّا انكمش المحتوى إذ يلتفّ حوله Glance). ودجت التقدّم بنمطين `classic`/`center` (`widgetProgressStyle`، الإعدادات←المظهر) بمُعرّفاتٍ مشتركة في `widget_progress_classic.xml`/`_center.xml`، والربط في `progressRemoteViews`. تاريخٌ ميلاديٌّ تحت الهجريّ. **اسم القارئ** يُحفَظ بجانب تنزيلاته (`QuranDownloader.saveReciterMeta/reciterMeta` → `audio/{id}/reciter.json`) فيظهر دون إنترنت (سلسلة: شبكة←مُضمَّن←قرص). `previewLayout` مضافٌ للثلاثة لكنّه لا يظهر على MIUI → **معاينة المُنتقي مؤجّلة لـv1.8** (الحلّ: `previewImage` PNG).
 - **v1.8:** **مزامنة الودجت** — يقرأ المواقيت من `PrayerRepository.todayTimetable()` (نفس مصدر التطبيق: Room→API→محلّيّ) بمهلة `withTimeoutOrNull` وسقوطٍ محلّيّ، فتطابق الشاشة الرئيسيّة. **تقدُّمٌ تلقائيّ:** إنذارٌ مستقلٌّ عن الأذان (`PrayerAlarmReceiver.ACTION_REFRESH_WIDGETS` + `scheduler.scheduleWidgetRefresh`) يعيد رسم الودجت عند كلّ صلاة/منتصف ليل. **تحديثٌ فوريٌّ عند تبديل النمط:** `updateAllPrayerWidgets` يبثّ `ACTION_APPWIDGET_UPDATE` صراحةً للمُستقبِلات (لا يكفي `updateAll` الداخليّ على الأجهزة العنيدة) + `key(style)` حول `AndroidRemoteViews`. **نمطٌ ثالث `day`** (اسم اليوم كبيرٌ متوسّط + هجريٌّ بلا اسم اليوم، `widget_progress_day.xml`). تاريخٌ ميلاديٌّ بحرف «م». · **متابعة القرآن المسموع:** `QuranAudioService` يحفظ (سورة/قارئ/خادم/موضع بالميلّي) دوريّاً كلّ 8ث وعند pause/stop (`setLastAudio`)؛ بطاقة «متابعة الاستماع» في `AudioRecitersScreen` بحوارٍ (إتمام/من البداية)، والاستئناف عبر `QuranAudio.playSurah(..., positionMs)` → `EXTRA_POSITION_MS` → seek. · **تذكيرات السُّنن الهجريّة:** `domain/SunnahReminders` (اثنين/خميس، جمعة، عاشوراء، عرفة، عشر ذي الحجّة، ستّ شوّال…) عبر `DailyReminderReceiver` (يحسب الشهر/اليوم الهجريّ بـICU) + `enableSunnahReminder`. · **نجمة تفضيل «المزيد»:** `favoriteFeatures` (Set) ترفع البطاقات للأعلى بترتيبٍ أصليٍّ ثابت (`MoreViewModel`).
-- **الإصدار المستقرّ الحاليّ: v1.8** (versionCode 27). أوّل مستقرّ: v1.0 (versionCode 19).
+- **v1.9 (versionCode 28، صدر 2026-08-17):** إصلاحاتٌ + قسمان تعليميّان كبيران + أداتان تفاعليّتان + دليلٌ مصوَّر (صور WebP في `assets/learn/` معروضةٌ كمعرضٍ قابلٍ للتمرير عبر Coil) + تمريرٌ انسيابيٌّ في القرآن النصّيّ (`listState.scrollBy` في حلقةٍ بسرعة `quranScrollSpeed`) + زرّ إذاعةٍ في الرئيسيّة + وسومٌ في النسخ/المشاركة (`Share.HASHTAGS`) + إصلاح «إبقاء نافذة الأذان» (تبقى النافذة لكن تُترَك الشاشة تنطفئ — `AdhanAlarmActivity.allowScreenOff`).
+  - **إصلاح الإشعارات العالقة/المتضاربة:** مهلة انتهاءٍ تلقائيّة (`setTimeoutAfter`) لإشعار الأذان والتنبيه المسبق · مسحُ العالق منها في `scheduleNext` (وخدمة الأذان إن `!AdhanPlayback.active`) · حارسٌ زمنيّ `MAX_SERVICE_MS` في `AdhanService`.
+  - **قسم «تعلّم الطهارة والصلاة»** (مالكيّ، `LearnScreens` + `purity_salah.json`، 12 قسماً) و**«الرقية الشرعية»** (`RuqyahScreens` + `ruqyah.json` + `RuqyahAudioService`): بطاقتان في «المزيد» (`learn_hub`/`ruqyah_hub`). الرقية بوضعَي «أقرأ» (بطاقات/قائمة) و«أستمع» (قائمة تشغيلٍ آية-بآية everyayah=Alafasy). إذاعة الرقية (`roqiah`) في قسمَي الإذاعات والرقية.
+  - **نظام العرض الموحّد:** أقسام الطهارة/الصلاة والرقية تستعمل توليفة **البطاقات/القائمة** عبر `adhkarCardView` (نفس `AdhkarViewToggleButton` العالميّ) + `ShareCopyRow` المشترك (من `AdhkarSessionScreen`) للنسخ/المشاركة في العرضين. حالة «شرح أكثر» **مشتركةٌ** بين خطوات الدرس (مرفوعةٌ خارج حلقة الـpager). أُضيف النسخ/المشاركة لبطاقات الأذكار/حصن أيضاً.
+- **الإصدار المستقرّ الحاليّ: v1.9** (versionCode 28). أوّل مستقرّ: v1.0 (versionCode 19).
 
 ## المصادر الحرّة المدروسة (للإلهام لا النسخ)
 Five-Prayers (النموذج الهجين للجدولة، سلسلة السقوط، الكاتم، USAGE_ALARM، Nominatim بلا Google) ·

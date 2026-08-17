@@ -79,16 +79,27 @@ class AdhanAlarmActivity : ComponentActivity() {
             }
         }
 
-        // إغلاقٌ تلقائيٌّ عند انتهاء الصوت — ما لم يطلب المستخدم إبقاء النافذة حتى يغلقها يدويّاً.
+        // عند انتهاء الصوت: إن لم يطلب المستخدم الإبقاء نُغلق النافذة؛ وإن طلب الإبقاء نُبقيها ظاهرةً
+        // لكن **ندع الشاشة تنطفئ طبيعيّاً** (نحرّر قفل الاستيقاظ ونزيل علم إبقاء الشاشة) فلا تُستنزَف الطاقة.
         lifecycleScope.launch {
             val keep = runCatching { settingsRepo.settings.first().keepAdhanScreen }.getOrDefault(false)
-            if (keep) return@launch
             var wasActive = false
             AdhanPlayback.active.collect { active ->
                 if (active) wasActive = true
-                else if (wasActive) { finish() }
+                else if (wasActive) { if (keep) allowScreenOff() else finish() }
             }
         }
+        // شبكة أمان: بعد خمس دقائق دع الشاشة تنطفئ حتى لو لم يُشِر الصوت لنهايته (نمط الرنّة/الصامت).
+        lifecycleScope.launch {
+            kotlinx.coroutines.delay(5 * 60_000L)
+            allowScreenOff()
+        }
+    }
+
+    /** يُبقي النافذة ظاهرةً لكن يسمح للشاشة بالانطفاء (تحرير القفل + إزالة علم إبقاء الشاشة). */
+    private fun allowScreenOff() {
+        runCatching { if (wakeLock?.isHeld == true) wakeLock?.release() }
+        runCatching { window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     }
 
     private fun closeWindow() {
