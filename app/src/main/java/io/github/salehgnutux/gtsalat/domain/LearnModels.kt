@@ -11,6 +11,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class LearnSource(val title: String = "", val ref: String = "")
 
+/** معرضٌ مصوَّرٌ معنوَن (لعرض عدّة سلاسلَ في القسم الواحد، مثل الجنازة/العيدين/الغائب). */
+@Serializable
+data class LearnGalleryRef(val title: String = "", val dir: String = "", val count: Int = 0)
+
 /** خطوةٌ مصوّرةٌ في درسٍ (مستويان: مبسّط [short] + «شرح أكثر» [full]). */
 @Serializable
 data class LearnStep(
@@ -45,6 +49,7 @@ data class LearnSection(
     val intro: String = "",
     val imageDir: String = "",     // مجلّد صور الدليل المصوَّر في الأصول (مثل "learn/wudu")
     val imageCount: Int = 0,       // عدد صور المعرض (01.webp .. NN.webp)
+    val galleries: List<LearnGalleryRef> = emptyList(), // معارضُ معنونةٌ متعدّدة (الصلوات الخاصّة)
     val draft: Boolean = false,    // مسودّة تحتاج مراجعةً فقهيّة
     val steps: List<LearnStep> = emptyList(),
     val rulings: List<LearnRulingGroup> = emptyList(),

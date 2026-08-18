@@ -145,6 +145,7 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 - **deep-link الإشعارات:** الإشعار يمرّر `MainActivity.EXTRA_ROUTE` (مثل `adhkar_session/morning`) بـ `PendingIntent` ذي **requestCode مميّز** (وإلّا أعاد النظام استعمال نيّةٍ قديمة)، و`AppRoot(deepLink)` ينتقل مرّةً عبر `LaunchedEffect` ثمّ يُمسَح.
 - **صوت الرقية ≠ صوت القرآن:** `RuqyahAudioService` مشغّلُ **قائمةٍ** عابرةٍ للسور (يستقبل `IntArray` للسور والآيات + عناوين موازية) بخلاف `QuranAudioService` (سورةٌ واحدةٌ آية-بآية أو كاملة). لا تُعِد استعماله للقرآن ولا العكس. القارئ الافتراضيّ `Alafasy_128kbps` (everyayah)، والتظليل عبر `RuqyahPlayback.index` مقابل فهارس بداية المقاطع.
 - **العرض البطاقيّ/الطوليّ عامّ:** يُقاد بمفتاحٍ واحدٍ عالميّ `adhkarCardView` عبر `AdhkarViewToggleButton` (لا تُضِف مفتاحاً محلّيّاً)، ويشمل الأذكار/حصن/المحتوى/التفسير/الرقية/دروس الطهارة والصلاة. النسخ/المشاركة عبر `ShareCopyRow` المشترك في العرضين. حالةٌ تخصّ الدرس كلَّه (مثل «شرح أكثر») تُرفَع **خارج** حلقة `HorizontalPager` وإلّا أُعيدت لكلّ بطاقة.
+- **صور الدروس التعليميّة:** الصور المصدريّة AVIF **لا تُدعَم على minSdk 26** → حُوِّلت إلى **WebP** (`convert … -resize 600x600 -quality 78`) في `assets/learn/{section}/NN.webp`، وتُعرَض معرضاً عبر Coil بمسار `file:///android_asset/…`. عند إضافة أقسامٍ مصوَّرةٍ جديدة (الجنازة/العيدان… من زِب المستخدم) اتّبع النمط نفسه واضبط `imageDir`/`imageCount` في `purity_salah.json`. الصور مكتملةٌ بذاتها (فيها الخطوة والشرح) فلا تُضاف تسميةٌ فوقها.
 
 ---
 
@@ -189,7 +190,8 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
   - **إصلاح الإشعارات العالقة/المتضاربة:** مهلة انتهاءٍ تلقائيّة (`setTimeoutAfter`) لإشعار الأذان والتنبيه المسبق · مسحُ العالق منها في `scheduleNext` (وخدمة الأذان إن `!AdhanPlayback.active`) · حارسٌ زمنيّ `MAX_SERVICE_MS` في `AdhanService`.
   - **قسم «تعلّم الطهارة والصلاة»** (مالكيّ، `LearnScreens` + `purity_salah.json`، 12 قسماً) و**«الرقية الشرعية»** (`RuqyahScreens` + `ruqyah.json` + `RuqyahAudioService`): بطاقتان في «المزيد» (`learn_hub`/`ruqyah_hub`). الرقية بوضعَي «أقرأ» (بطاقات/قائمة) و«أستمع» (قائمة تشغيلٍ آية-بآية everyayah=Alafasy). إذاعة الرقية (`roqiah`) في قسمَي الإذاعات والرقية.
   - **نظام العرض الموحّد:** أقسام الطهارة/الصلاة والرقية تستعمل توليفة **البطاقات/القائمة** عبر `adhkarCardView` (نفس `AdhkarViewToggleButton` العالميّ) + `ShareCopyRow` المشترك (من `AdhkarSessionScreen`) للنسخ/المشاركة في العرضين. حالة «شرح أكثر» **مشتركةٌ** بين خطوات الدرس (مرفوعةٌ خارج حلقة الـpager). أُضيف النسخ/المشاركة لبطاقات الأذكار/حصن أيضاً.
-- **الإصدار المستقرّ الحاليّ: v1.9** (versionCode 28). أوّل مستقرّ: v1.0 (versionCode 19).
+- **v1.10 (versionCode 29، صدر 2026-08-17):** دليلٌ مصوَّرٌ لبقيّة الصلوات — سجود السهو (23) والجنازة (14) والعيدين (25+25) والغائب (12) بصور WebP في `assets/learn/`. دعمُ **عدّة معارضَ معنونةٍ في القسم الواحد** عبر `LearnSection.galleries` (`LearnGalleryRef{title,dir,count}`) — الصلوات الخاصّة تعرض معارضَ الجنازة/العيدين/الغائب.
+- **الإصدار المستقرّ الحاليّ: v1.10** (versionCode 29). أوّل مستقرّ: v1.0 (versionCode 19).
 
 ## المصادر الحرّة المدروسة (للإلهام لا النسخ)
 Five-Prayers (النموذج الهجين للجدولة، سلسلة السقوط، الكاتم، USAGE_ALARM، Nominatim بلا Google) ·

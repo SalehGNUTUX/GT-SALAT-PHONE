@@ -149,6 +149,14 @@ fun LearnSectionScreen(id: String, onOpen: (String) -> Unit, onBack: () -> Unit,
         if (section == null) return@Column
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (section.imageCount > 0) item("gallery") { LearnGallery(section.imageDir, section.imageCount) }
+            section.galleries.forEach { g ->
+                item("gal_${g.dir}") {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(g.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        LearnGallery(g.dir, g.count)
+                    }
+                }
+            }
             if (section.draft) item("draft") { InfoBanner("محتوى فقهيّ (مالكيّ) — مسودّةٌ تحتاج مراجعةً علميّةً قبل الاعتماد.") }
             if (section.intro.isNotBlank()) item("intro") { Text(section.intro, color = MaterialTheme.colorScheme.outline) }
             if (section.note.isNotBlank() && section.steps.isEmpty()) item("note") {

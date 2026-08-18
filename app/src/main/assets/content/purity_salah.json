@@ -974,7 +974,9 @@
             }
           ]
         }
-      ]
+      ],
+      "imageDir": "learn/sujud_sahw",
+      "imageCount": 23
     },
     {
       "id": "nawafil",
@@ -1211,6 +1213,28 @@
               "text": "المشهور عند المالكيّة عدم مشروعيّة الصلاة على الغائب، خلافًا لغيرهم، وهي مسألةُ خلاف."
             }
           ]
+        }
+      ],
+      "galleries": [
+        {
+          "title": "صلاة الجنازة",
+          "dir": "learn/janazah",
+          "count": 14
+        },
+        {
+          "title": "صلاة عيد الفطر",
+          "dir": "learn/eid_fitr",
+          "count": 25
+        },
+        {
+          "title": "صلاة عيد الأضحى",
+          "dir": "learn/eid_adha",
+          "count": 25
+        },
+        {
+          "title": "صلاة الغائب",
+          "dir": "learn/ghaib",
+          "count": 12
         }
       ]
     }
