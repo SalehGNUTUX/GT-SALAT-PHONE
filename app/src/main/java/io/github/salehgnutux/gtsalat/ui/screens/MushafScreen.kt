@@ -26,6 +26,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -156,11 +160,21 @@ private fun MushafPage(page: Int, invert: Boolean, riwaya: String = "hafs", loca
             0f, 0f, 0f, 1f, 0f,
         ))) else null
     }
+    // تكبيرٌ بإصبعين (pinch) وبالنقر المزدوج — وسحب الإصبع الواحد يبقى ينقل بين الصفحات حتى مع التكبير.
+    val scale = remember(page, riwaya) { mutableStateOf(1f) }
+    val offset = remember(page, riwaya) { mutableStateOf(Offset.Zero) }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Image(
             painter = painter,
             contentDescription = "صفحة $page",
-            modifier = Modifier.fillMaxSize().padding(8.dp),
+            modifier = Modifier.fillMaxSize().padding(8.dp)
+                .graphicsLayer(scaleX = scale.value, scaleY = scale.value, translationX = offset.value.x, translationY = offset.value.y)
+                .pinchZoom(scale, offset)
+                .pointerInput(page, riwaya) {
+                    detectTapGestures(onDoubleTap = {
+                        if (scale.value > 1f) { scale.value = 1f; offset.value = Offset.Zero } else scale.value = 2.5f
+                    })
+                },
             contentScale = ContentScale.Fit,
             colorFilter = filter,
         )

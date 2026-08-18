@@ -14,7 +14,7 @@ data class RuqyahState(
     val label: String = "",
     val isPlaying: Boolean = false,
     val loading: Boolean = false,
-    val repeatOne: Boolean = false,
+    val repeatMode: Int = 0,   // 0 = بلا تكرار · 1 = تكرار المقطع · 2 = تكرار الكلّ
     val posMs: Int = 0,
     val durMs: Int = 0,
 )

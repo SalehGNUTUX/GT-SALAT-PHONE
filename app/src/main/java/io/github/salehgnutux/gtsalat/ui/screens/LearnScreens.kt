@@ -60,6 +60,21 @@ import io.github.salehgnutux.gtsalat.domain.LearnStep
 import io.github.salehgnutux.gtsalat.domain.RuqyahFile
 import io.github.salehgnutux.gtsalat.domain.RuqyahSection
 import io.github.salehgnutux.gtsalat.ui.theme.AmiriQuran
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.runtime.MutableState
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -277,7 +292,7 @@ private fun RulingCard(group: LearnRulingGroup, onSource: (LearnSource) -> Unit)
 @Composable
 private fun LearnGallery(dir: String, count: Int) {
     val pager = rememberPagerState(pageCount = { count })
-    val scope = rememberCoroutineScope()
+    var viewerOpen by remember { mutableStateOf(false) }
     Column {
         HorizontalPager(state = pager, modifier = Modifier.fillMaxWidth().aspectRatio(1f)) { page ->
             coil.compose.AsyncImage(
@@ -286,15 +301,75 @@ private fun LearnGallery(dir: String, count: Int) {
                 contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                 modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp)
                     .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
-                    .clickable(enabled = page < count - 1) { scope.launch { pager.animateScrollToPage(page + 1) } },
+                    .clickable { viewerOpen = true },
             )
         }
         Text(
-            "الدليل المصوَّر — ${pager.currentPage + 1} / $count",
+            "اضغط الصورة للتكبير · مرّر للتالي — ${pager.currentPage + 1} / $count",
             Modifier.fillMaxWidth().padding(top = 4.dp),
             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
+    }
+    if (viewerOpen) ZoomableImageViewer(dir, count, pager.currentPage) { viewerOpen = false }
+}
+
+/**
+ * تكبيرٌ/تحريكٌ **بإصبعين فقط**؛ سحب الإصبع الواحد لا يُستهلَك فيمرّ للمُمرِّر — فيعمل التمرير بين الصور
+ * حتى في وضع التكبير. (بديلٌ لـ`transformable` الذي يبتلع سحب الإصبع الواحد.)
+ */
+internal fun Modifier.pinchZoom(scale: MutableState<Float>, offset: MutableState<Offset>): Modifier =
+    this.pointerInput(Unit) {
+        awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false)
+            do {
+                val event = awaitPointerEvent()
+                if (event.changes.count { it.pressed } >= 2) {
+                    val s = (scale.value * event.calculateZoom()).coerceIn(1f, 5f)
+                    scale.value = s
+                    offset.value = if (s > 1f) offset.value + event.calculatePan() else Offset.Zero
+                    event.changes.forEach { it.consume() }
+                }
+            } while (event.changes.any { it.pressed })
+        }
+    }
+
+/**
+ * عارضٌ بملء الشاشة: تكبيرٌ بإصبعين (وبالنقر المزدوج)، **والسحب بإصبعٍ واحدٍ ينقل بين الصور حتى مع التكبير**
+ * (يُصفَّر التكبير عند تغيير الصورة)، وزرُّ إغلاقٍ للعودة للتطبيق.
+ */
+@Composable
+private fun ZoomableImageViewer(dir: String, count: Int, startIndex: Int, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        val pager = rememberPagerState(initialPage = startIndex, pageCount = { count })
+        val scale = remember { mutableStateOf(1f) }
+        val offset = remember { mutableStateOf(Offset.Zero) }
+        LaunchedEffect(pager.currentPage) { scale.value = 1f; offset.value = Offset.Zero }
+        Box(Modifier.fillMaxSize().background(Color.Black)) {
+            HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
+                coil.compose.AsyncImage(
+                    model = "file:///android_asset/$dir/${"%02d".format(page + 1)}.webp",
+                    contentDescription = "صورةٌ توضيحيّة ${page + 1}",
+                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                        .graphicsLayer(scaleX = scale.value, scaleY = scale.value, translationX = offset.value.x, translationY = offset.value.y)
+                        .pinchZoom(scale, offset)
+                        .pointerInput(page) {
+                            detectTapGestures(onDoubleTap = {
+                                if (scale.value > 1f) { scale.value = 1f; offset.value = Offset.Zero } else scale.value = 2.5f
+                            })
+                        },
+                )
+            }
+            IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+                Icon(Icons.Filled.Close, contentDescription = "إغلاق", tint = Color.White)
+            }
+            Text(
+                "${pager.currentPage + 1} / $count",
+                Modifier.align(Alignment.BottomCenter).padding(16.dp),
+                color = Color.White, fontWeight = FontWeight.Bold,
+            )
+        }
     }
 }
 

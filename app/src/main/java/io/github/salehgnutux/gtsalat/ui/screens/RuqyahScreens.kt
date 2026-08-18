@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Stop
@@ -270,7 +271,11 @@ private fun RuqyahPlayerBar(ctx: android.content.Context, play: io.github.salehg
                 }
                 IconButton(onClick = { RuqyahAudio.prev(ctx) }) { Icon(Icons.Filled.SkipNext, "السابق") }
                 IconButton(onClick = { RuqyahAudio.toggleRepeat(ctx) }) {
-                    Icon(Icons.Filled.Repeat, "تكرار المقطع", tint = if (play.repeatOne) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
+                    Icon(
+                        if (play.repeatMode == 1) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+                        contentDescription = when (play.repeatMode) { 1 -> "تكرار المقطع"; 2 -> "تكرار الكلّ"; else -> "بلا تكرار" },
+                        tint = if (play.repeatMode != 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                    )
                 }
             }
         }

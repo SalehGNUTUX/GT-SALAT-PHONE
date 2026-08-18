@@ -41,7 +41,7 @@ class RuqyahAudioService : Service() {
     private var ayahs = IntArray(0)
     private var labels = arrayOf<String>()
     private var index = 0
-    private var repeatOne = false
+    private var repeatMode = 0   // 0 بلا · 1 المقطع · 2 الكلّ
 
     private val attrs = AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -64,7 +64,7 @@ class RuqyahAudioService : Service() {
             ACTION_TOGGLE -> { toggle(); return START_STICKY }
             ACTION_NEXT -> { skip(+1); return START_STICKY }
             ACTION_PREV -> { skip(-1); return START_STICKY }
-            ACTION_REPEAT -> { repeatOne = !repeatOne; publish(); return START_STICKY }
+            ACTION_REPEAT -> { repeatMode = (repeatMode + 1) % 3; publish(); return START_STICKY }
         }
         // ACTION_START
         surahs = intent?.getIntArrayExtra(EXTRA_SURAHS) ?: IntArray(0)
@@ -97,8 +97,10 @@ class RuqyahAudioService : Service() {
     }
 
     private fun onTrackEnd() {
-        if (repeatOne) { playCurrent(); return }
-        if (index < surahs.size - 1) { index++; playCurrent() } else stopEverything()
+        if (repeatMode == 1) { playCurrent(); return }              // تكرار المقطع
+        if (index < surahs.size - 1) { index++; playCurrent() }
+        else if (repeatMode == 2) { index = 0; playCurrent() }      // تكرار الكلّ من البداية
+        else stopEverything()
     }
 
     private fun skip(delta: Int) {
@@ -137,7 +139,7 @@ class RuqyahAudioService : Service() {
                 label = labels.getOrElse(index) { "" },
                 isPlaying = playing ?: it.isPlaying,
                 loading = loading ?: it.loading,
-                repeatOne = repeatOne,
+                repeatMode = repeatMode,
             )
         }
     }
