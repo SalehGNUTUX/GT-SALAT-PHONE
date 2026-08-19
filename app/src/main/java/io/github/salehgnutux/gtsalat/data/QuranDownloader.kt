@@ -119,6 +119,10 @@ class QuranDownloader @Inject constructor(
     fun mushafDownloadedCount(riwaya: String = "hafs"): Int =
         mushafDir(riwaya).listFiles()?.count { it.length() > 0 } ?: 0
 
+    /** الحجم الكلّيّ (بايت) لصفحات مصحف روايةٍ المُنزَّلة. */
+    fun mushafSizeBytes(riwaya: String = "hafs"): Long =
+        mushafDir(riwaya).listFiles()?.sumOf { it.length() } ?: 0L
+
     /** حذف كلّ صفحات مصحف روايةٍ، وتصفير الحالة. */
     fun deleteMushaf(riwaya: String = "hafs") {
         mushafDir(riwaya).listFiles()?.forEach { it.delete() }

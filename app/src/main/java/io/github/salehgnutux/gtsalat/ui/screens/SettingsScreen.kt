@@ -56,7 +56,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -82,6 +84,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     val previewKey by vm.previewKey.collectAsStateWithLifecycle()
     val settings = s ?: return
     val context = LocalContext.current
+    val shareScope = rememberCoroutineScope()
 
     // منتقي ملفّ صوتيّ لاستيراد أذانٍ مخصّص، مع تثبيت إذن القراءة الدائم.
     val importLauncher = rememberLauncherForActivityResult(
@@ -356,6 +359,22 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 FilledTonalButton(onClick = { vm.loadBackupSizes { backupSizes = it; exportMode = "share" } }, modifier = Modifier.weight(1f)) { Text("مشاركة") }
                 FilledTonalButton(onClick = { importZipLauncher.launch(arrayOf("application/zip", "application/octet-stream")) }, modifier = Modifier.weight(1f)) { Text("استيراد") }
             }
+        }
+
+        SectionCard("مشاركة التطبيق", openSection == "مشاركة التطبيق", { toggle("مشاركة التطبيق") }) {
+            Text(
+                "الرابط يُرسل نصًّا، وملفّ التثبيت يُرسل نسخةَ التطبيق نفسها — تنفع لمن لا إنترنت عنده.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.outline,
+            )
+            FilledTonalButton(
+                onClick = { io.github.salehgnutux.gtsalat.util.Share.shareLink(context) },
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            ) { Text("🔗 مشاركة الرابط") }
+            FilledTonalButton(
+                onClick = { shareScope.launch { io.github.salehgnutux.gtsalat.util.Share.shareApk(context) } },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("📦 مشاركة ملفّ التثبيت") }
         }
 
         SectionCard("حول", openSection == "حول", { toggle("حول") }) {

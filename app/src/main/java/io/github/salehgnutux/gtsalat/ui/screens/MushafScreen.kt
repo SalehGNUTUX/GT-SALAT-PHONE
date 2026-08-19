@@ -15,7 +15,11 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -67,6 +71,8 @@ fun MushafScreen(onBack: () -> Unit, vm: QuranMetaViewModel = hiltViewModel()) {
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     var jumpOpen by remember { mutableStateOf(false) }
     var riwaya by remember { mutableStateOf("hafs") }   // حفص (Quran-PNG) · ورش (مجمّع الملك فهد)
+    var fullscreen by remember { mutableStateOf(false) }
+    var infoOpen by remember { mutableStateOf(false) }
 
     // استئنافٌ من آخر صفحةٍ محفوظة (مرّةً واحدةً عند التحميل).
     var restored by remember { mutableStateOf(false) }
@@ -112,9 +118,10 @@ fun MushafScreen(onBack: () -> Unit, vm: QuranMetaViewModel = hiltViewModel()) {
                 val count = remember(riwaya, dl) { vm.mushafCount(riwaya) }
                 when {
                     downloadingThis -> Text("${dl.done * 100 / dl.total}٪", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                    count >= Quran.TOTAL_PAGES -> IconButton(onClick = { vm.deleteMushaf(riwaya) }) { Icon(Icons.Filled.DownloadDone, "المصحف مُنزَّل (اضغط للحذف)", tint = MaterialTheme.colorScheme.primary) }
+                    count >= Quran.TOTAL_PAGES -> IconButton(onClick = { infoOpen = true }) { Icon(Icons.Filled.DownloadDone, "المصحف مُنزَّل (معلومات)", tint = MaterialTheme.colorScheme.primary) }
                     else -> IconButton(onClick = { vm.downloadMushaf(riwaya) }, enabled = !dl.running) { Icon(Icons.Filled.Download, "تنزيل صور الرواية للعمل دون إنترنت", tint = MaterialTheme.colorScheme.outline) }
                 }
+                IconButton(onClick = { fullscreen = true }) { Icon(Icons.Filled.Fullscreen, "ملء الشاشة", tint = MaterialTheme.colorScheme.primary) }
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                     currentSurah?.let {
                         Text("سورة ${it.ar}", fontFamily = AmiriQuran, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, maxLines = 1)
@@ -127,6 +134,80 @@ fun MushafScreen(onBack: () -> Unit, vm: QuranMetaViewModel = hiltViewModel()) {
         HorizontalPager(state = pager, modifier = Modifier.fillMaxSize().background(if (dark) androidx.compose.ui.graphics.Color(0xFF1E1E1E) else androidx.compose.ui.graphics.Color.White)) { index ->
             // يُفضّل الملفّ المحلّيّ إن نُزِّل لهذه الرواية، وإلّا يُبثّ (Coil يخزّنه).
             MushafPage(page = index + 1, invert = dark, riwaya = riwaya, local = vm.localPage(index + 1, riwaya))
+        }
+    }
+
+    // رسالةٌ عن المصحف المُنزَّل (الرواية + الحجم) — لا حذفَ هنا؛ الحذف حصراً من الإعدادات ← تنزيل المحتوى.
+    if (infoOpen) {
+        val sizeMb = vm.mushafSize(riwaya) / (1024.0 * 1024.0)
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { infoOpen = false },
+            icon = { Icon(Icons.Filled.DownloadDone, null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text("المصحف مُنزَّل") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("الرواية: ${if (riwaya == "warsh") "ورش عن نافع" else "حفص عن عاصم"}")
+                    Text("الصفحات: ${Quran.TOTAL_PAGES} / ${Quran.TOTAL_PAGES}")
+                    Text("حجم الملفّات: ${String.format(java.util.Locale.US, "%.1f", sizeMb)} م.ب")
+                    Text(
+                        "لحذف المصحف: الإعدادات ← تنزيل المحتوى (بتأكيدٍ ومهلة تراجع).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
+            },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = { infoOpen = false }) { Text("حسناً") } },
+        )
+    }
+
+    // عارضٌ بملء الشاشة: تصفّحٌ بين الصفحات + تكبيرٌ بإصبعين ونقرٌ مزدوج. عند الإغلاق يعود القارئ لآخر صفحةٍ عُرضت.
+    if (fullscreen) {
+        MushafFullscreenViewer(
+            startPage = pager.currentPage + 1,
+            invert = dark,
+            riwaya = riwaya,
+            localFor = { pg -> vm.localPage(pg, riwaya) },
+            onClose = { page ->
+                fullscreen = false
+                pager.requestScrollToPage((page - 1).coerceIn(0, Quran.TOTAL_PAGES - 1))
+            },
+        )
+    }
+}
+
+@Composable
+private fun MushafFullscreenViewer(
+    startPage: Int,
+    invert: Boolean,
+    riwaya: String,
+    localFor: (Int) -> java.io.File?,
+    onClose: (Int) -> Unit,
+) {
+    val pager = rememberPagerState(initialPage = (startPage - 1).coerceIn(0, Quran.TOTAL_PAGES - 1), pageCount = { Quran.TOTAL_PAGES })
+    Dialog(onDismissRequest = { onClose(pager.currentPage + 1) }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(
+            Modifier.fillMaxSize()
+                .background(if (invert) androidx.compose.ui.graphics.Color(0xFF1E1E1E) else androidx.compose.ui.graphics.Color.White),
+        ) {
+            HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { index ->
+                MushafPage(page = index + 1, invert = invert, riwaya = riwaya, local = localFor(index + 1))
+            }
+            IconButton(onClick = { onClose(pager.currentPage + 1) }, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+                Icon(Icons.Filled.FullscreenExit, contentDescription = "خروج من ملء الشاشة", tint = MaterialTheme.colorScheme.primary)
+            }
+            Surface(
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(999.dp),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+            ) {
+                Text(
+                    "${pager.currentPage + 1} / ${Quran.TOTAL_PAGES}",
+                    Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
         }
     }
 }

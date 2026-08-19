@@ -1222,6 +1222,26 @@
           "count": 14
         },
         {
+          "title": "تغسيل الميّت (رجل)",
+          "dir": "learn/ghusl_mayyit_male",
+          "count": 17
+        },
+        {
+          "title": "تكفين الميّت (رجل)",
+          "dir": "learn/kafn_mayyit_male",
+          "count": 12
+        },
+        {
+          "title": "تغسيل الميّتة (امرأة)",
+          "dir": "learn/ghusl_mayyit_female",
+          "count": 18
+        },
+        {
+          "title": "تكفين الميّتة (امرأة)",
+          "dir": "learn/kafn_mayyit_female",
+          "count": 14
+        },
+        {
           "title": "صلاة عيد الفطر",
           "dir": "learn/eid_fitr",
           "count": 25

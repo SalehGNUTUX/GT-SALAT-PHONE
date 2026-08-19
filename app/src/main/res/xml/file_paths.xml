@@ -4,4 +4,6 @@
     <files-path name="updates" path="updates/" />
     <!-- حزمة النسخ الاحتياطيّ للمشاركة في cacheDir/backups -->
     <cache-path name="backups" path="backups/" />
+    <!-- نسخة APK للمشاركة في cacheDir/shared_apk -->
+    <cache-path name="shared_apk" path="shared_apk/" />
 </paths>
