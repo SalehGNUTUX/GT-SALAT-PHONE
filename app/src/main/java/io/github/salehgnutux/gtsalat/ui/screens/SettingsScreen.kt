@@ -85,6 +85,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     val settings = s ?: return
     val context = LocalContext.current
     val shareScope = rememberCoroutineScope()
+    var showWhatsNew by remember { mutableStateOf(false) }
 
     // منتقي ملفّ صوتيّ لاستيراد أذانٍ مخصّص، مع تثبيت إذن القراءة الدائم.
     val importLauncher = rememberLauncherForActivityResult(
@@ -250,6 +251,11 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
             )
+            // زرّا اختبار الصوت بجانب المنزلق مباشرةً — يشغّلان بالمستوى المضبوط للتحقّق منه.
+            Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalButton(onClick = { vm.testFullScreen(isDhikr = false) }, modifier = Modifier.weight(1f)) { Text("اختبار الأذان") }
+                FilledTonalButton(onClick = { vm.testFullScreen(isDhikr = true) }, modifier = Modifier.weight(1f)) { Text("اختبار الأذكار") }
+            }
             SwitchRow("تنبيهٌ مخصّصٌ لكلّ صلاة", settings.perPrayerAlerts) { vm.setPerPrayerAlerts(it) }
             if (settings.perPrayerAlerts) {
                 io.github.salehgnutux.gtsalat.data.settings.AppSettings.ALERT_PRAYERS.forEachIndexed { i, pid ->
@@ -279,10 +285,6 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             SwitchRow("نافذة أذانٍ ملء الشاشة فوق القفل", settings.fullScreenAdhan) { vm.setFullScreenAdhan(it) }
             if (settings.fullScreenAdhan) {
                 SwitchRow("إبقاء النافذة حتى أغلقها يدويّاً (بعد انتهاء الصوت)", settings.keepAdhanScreen) { vm.setKeepAdhanScreen(it) }
-                Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilledTonalButton(onClick = { vm.testFullScreen(isDhikr = false) }, modifier = Modifier.weight(1f)) { Text("اختبار الأذان") }
-                    FilledTonalButton(onClick = { vm.testFullScreen(isDhikr = true) }, modifier = Modifier.weight(1f)) { Text("اختبار الأذكار") }
-                }
             }
         }
 
@@ -423,6 +425,9 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         SectionCard("حول", openSection == "حول", { toggle("حول") }) {
             InfoRow("النسخة", "GT-SALAT ${BuildConfig.VERSION_NAME}")
             InfoRow("الإصدار", if (BuildConfig.USES_GMS) "كاملة (خدمات Google)" else "حرّة (بلا Google)")
+            FilledTonalButton(onClick = { showWhatsNew = true }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                Text("🎉 ما الجديد في هذا الإصدار")
+            }
             SwitchRow("إشعارٌ عند توفّر نسخةٍ جديدة", settings.checkUpdates) { vm.setCheckUpdates(it) }
             HorizontalDivider()
             LinkRow("المطوّر", io.github.salehgnutux.gtsalat.domain.Credits.DEVELOPER) { openUrl(context, io.github.salehgnutux.gtsalat.domain.Credits.GITHUB) }
@@ -431,6 +436,8 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             LinkRow("مشاريع GNUTUX", "بقيّة مشاريع المطوّر") { openUrl(context, io.github.salehgnutux.gtsalat.domain.Credits.PROJECTS) }
         }
     }
+
+    if (showWhatsNew) WhatsNewDialog(onDismiss = { showWhatsNew = false })
 
     // حوار اختيار محتوى التصدير/المشاركة.
     val sizes = backupSizes

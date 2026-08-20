@@ -53,11 +53,11 @@ fun DownloadsSectionContent(vm: DownloadsViewModel = hiltViewModel()) {
     var confirmDelete by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<String?>(null) }   // الرواية في مهلة التراجع
 
-    // بعد انقضاء مهلة التراجع يُحذف مصحف الرواية فعليّاً.
+    // بعد انقضاء مهلة التراجع (10 ثوانٍ) يُحذف مصحف الرواية فعليّاً.
     LaunchedEffect(pendingDelete) {
         val r = pendingDelete
         if (r != null) {
-            kotlinx.coroutines.delay(6000)
+            kotlinx.coroutines.delay(10_000)
             if (pendingDelete == r) { vm.deleteMushaf(r); pendingDelete = null }
         }
     }
@@ -119,7 +119,7 @@ fun DownloadsSectionContent(vm: DownloadsViewModel = hiltViewModel()) {
         }
         if (pendingDelete == riwaya) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("سيُحذف مصحف ${riwayaName(riwaya)}…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                Text("سيُحذف مصحف ${riwayaName(riwaya)} خلال ١٠ ثوانٍ…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 FilledTonalButton(onClick = { pendingDelete = null }) { Text("تراجع") }
             }
         }

@@ -156,18 +156,22 @@ class SettingsViewModel @Inject constructor(
      * اختبارٌ فوريٌّ لنافذة ملء الشاشة (أذانٌ أو أذكار): يفتح النافذة ويشغّل الصوت،
      * وزرّ الإيقاف فيها يوقفه. لمعاينة السلوك دون انتظار وقت الصلاة.
      */
-    fun testFullScreen(isDhikr: Boolean) {
+    fun testFullScreen(isDhikr: Boolean) = viewModelScope.launch {
+        val s = settingsRepo.current()
         val prayer = if (isDhikr) "أذكارٌ (اختبار)" else "أذانٌ (اختبار)"
-        runCatching {
-            context.startActivity(
-                AdhanAlarmActivity.intent(context, prayer, Format.clock(System.currentTimeMillis()), isDhikr),
-            )
+        // نافذة ملء الشاشة تُعرَض فقط إن كانت الميزة مفعّلة؛ وإلّا فالاختبار لسماع الصوت بالمستوى المضبوط.
+        if (s.fullScreenAdhan) {
+            runCatching {
+                context.startActivity(
+                    AdhanAlarmActivity.intent(context, prayer, Format.clock(System.currentTimeMillis()), isDhikr),
+                )
+            }
         }
         val svc = Intent(context, AdhanService::class.java).apply {
             putExtra(AdhanService.EXTRA_PRAYER_AR, prayer)
             putExtra(AdhanService.EXTRA_SOUND, if (isDhikr) AdhanService.SOUND_POST_DHIKR else AdhanService.SOUND_ADHAN)
             putExtra(AdhanService.EXTRA_ALERT_MODE, "FULL")
-            putExtra(AdhanService.EXTRA_VOLUME, 100)
+            putExtra(AdhanService.EXTRA_VOLUME, s.adhanVolume)   // احترام مستوى صوت الأذان المضبوط
         }
         runCatching { ContextCompat.startForegroundService(context, svc) }
     }

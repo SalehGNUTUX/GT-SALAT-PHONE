@@ -74,6 +74,7 @@ class SettingsRepository @Inject constructor(
         val CAL_KIND = stringPreferencesKey("timetable_calendar")
         val CLOCK_24 = booleanPreferencesKey("clock_24h")
         val HIJRI_OFFSET = intPreferencesKey("hijri_offset")
+        val LAST_WHATSNEW_CODE = intPreferencesKey("last_whatsnew_code")
         val SETTINGS_OPEN_SECTION = stringPreferencesKey("settings_open_section")
         val CHECK_UPDATES = booleanPreferencesKey("check_updates")
         val FULLSCREEN_ADHAN = booleanPreferencesKey("fullscreen_adhan")
@@ -165,6 +166,7 @@ class SettingsRepository @Inject constructor(
             timetableCalendar = if (this[Keys.CAL_KIND] == "GREGORIAN") CalendarKind.GREGORIAN else CalendarKind.HIJRI,
             clock24h = this[Keys.CLOCK_24] ?: true,
             hijriOffset = this[Keys.HIJRI_OFFSET] ?: 0,
+            lastWhatsNewCode = this[Keys.LAST_WHATSNEW_CODE] ?: -1,
             settingsOpenSection = this[Keys.SETTINGS_OPEN_SECTION] ?: "الموقع وطريقة الحساب",
             checkUpdates = this[Keys.CHECK_UPDATES] ?: true,
             fullScreenAdhan = this[Keys.FULLSCREEN_ADHAN] ?: true,
@@ -372,6 +374,7 @@ class SettingsRepository @Inject constructor(
     suspend fun savedRingerMode(): Int? = context.dataStore.data.first()[Keys.SAVED_RINGER]
     suspend fun setClock24h(v: Boolean) = context.dataStore.edit { it[Keys.CLOCK_24] = v }
     suspend fun setHijriOffset(days: Int) = context.dataStore.edit { it[Keys.HIJRI_OFFSET] = days.coerceIn(-3, 3) }
+    suspend fun setLastWhatsNewCode(code: Int) = context.dataStore.edit { it[Keys.LAST_WHATSNEW_CODE] = code }
     suspend fun setSettingsOpenSection(title: String) = context.dataStore.edit { it[Keys.SETTINGS_OPEN_SECTION] = title }
     suspend fun setCheckUpdates(v: Boolean) = context.dataStore.edit { it[Keys.CHECK_UPDATES] = v }
     suspend fun setFullScreenAdhan(v: Boolean) = context.dataStore.edit { it[Keys.FULLSCREEN_ADHAN] = v }

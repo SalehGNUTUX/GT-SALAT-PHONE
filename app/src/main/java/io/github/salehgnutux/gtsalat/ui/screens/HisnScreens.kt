@@ -156,6 +156,10 @@ fun HisnCategoryScreen(onBack: () -> Unit, vm: HisnCategoryViewModel = hiltViewM
 
     Column(Modifier.fillMaxSize()) {
         SubScreenHeader(name.ifBlank { "حصن المسلم" }, onBack, actions = {
+            // أذكار النوم (الباب 2) لها تسجيلٌ صوتيّ.
+            if (vm.categoryId == 2) {
+                AdhkarListenAction(sectionKey = "sleep", title = "أذكار النوم", route = "hisn/2", rawResId = io.github.salehgnutux.gtsalat.R.raw.adhkar_sleep)
+            }
             TextButton(onClick = { vm.reset(); scope.launch { if (items.isNotEmpty()) pager.scrollToPage(0) } }) {
                 Icon(Icons.Filled.Refresh, contentDescription = null)
                 Text("تصفير")
@@ -170,10 +174,6 @@ fun HisnCategoryScreen(onBack: () -> Unit, vm: HisnCategoryViewModel = hiltViewM
                     modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
                 )
             }
-        }
-        // شريط الاستماع لأذكار النوم المضمَّنة (باب حصن المسلم رقم 2).
-        if (vm.categoryId == 2) {
-            AdhkarPlayerBar(sectionKey = "sleep", title = "أذكار النوم", rawResId = io.github.salehgnutux.gtsalat.R.raw.adhkar_sleep)
         }
         if (cards && items.isNotEmpty()) {
             // عرضٌ بطاقيّ (سلايد) بأسلوب أسماء الله الحسنى.

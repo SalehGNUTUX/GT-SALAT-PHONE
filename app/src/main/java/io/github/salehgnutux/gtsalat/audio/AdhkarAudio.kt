@@ -7,12 +7,13 @@ import androidx.core.content.ContextCompat
 /** أوامرُ تشغيل صوت الأذكار (يُرسل نيّاتٍ إلى [AdhkarAudioService]). */
 object AdhkarAudio {
 
-    /** يبدأ تشغيل تسجيلٍ مضمَّن للأذكار. [key]: morning/evening/sleep (لإظهار الشريط في قسمه). */
-    fun play(context: Context, key: String, title: String, rawResId: Int) {
+    /** يبدأ تشغيل تسجيلٍ مضمَّن للأذكار. [key]: morning/evening/sleep · [route]: وجهة القسم للعودة إليه. */
+    fun play(context: Context, key: String, title: String, route: String, rawResId: Int) {
         val i = Intent(context, AdhkarAudioService::class.java).apply {
             action = AdhkarAudioService.ACTION_START
             putExtra(AdhkarAudioService.EXTRA_KEY, key)
             putExtra(AdhkarAudioService.EXTRA_TITLE, title)
+            putExtra(AdhkarAudioService.EXTRA_ROUTE, route)
             putExtra(AdhkarAudioService.EXTRA_RAW, rawResId)
         }
         runCatching { ContextCompat.startForegroundService(context, i) }
@@ -20,6 +21,7 @@ object AdhkarAudio {
 
     fun toggle(context: Context) = send(context, AdhkarAudioService.ACTION_TOGGLE)
     fun stop(context: Context) = send(context, AdhkarAudioService.ACTION_STOP)
+    fun toggleRepeat(context: Context) = send(context, AdhkarAudioService.ACTION_REPEAT)
 
     fun seek(context: Context, positionMs: Int) {
         val i = Intent(context, AdhkarAudioService::class.java).apply {

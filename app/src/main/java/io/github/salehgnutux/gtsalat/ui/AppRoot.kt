@@ -27,6 +27,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -109,6 +110,12 @@ fun AppRoot(
         runCatching { nav.navigate(route) { launchSingleTop = true } }
         onDeepLinkHandled()
     }
+    // «ما الجديد» — يُعرَض مرّةً بعد تحديث الإصدار.
+    val whatsNewVm: io.github.salehgnutux.gtsalat.ui.screens.WhatsNewViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val showWhatsNew by whatsNewVm.shouldShow.collectAsStateWithLifecycle()
+    if (showWhatsNew) {
+        io.github.salehgnutux.gtsalat.ui.screens.WhatsNewDialog(onDismiss = { whatsNewVm.markShown() })
+    }
     val backStack by nav.currentBackStackEntryAsState()
     val currentDest = backStack?.destination
     // رسالةٌ عند إعادة النقر على «المزيد» ونحن داخل أحد أقسامه.
@@ -159,6 +166,10 @@ fun AppRoot(
                     })
                     // مشغّل الإذاعة العالميّ — يبقى ظاهراً عبر الأقسام أثناء البثّ.
                     RadioMiniPlayer(onOpen = { nav.navigate("radios") { launchSingleTop = true } })
+                    // مشغّل صوت الأذكار العائم — يبقى عبر الأقسام، والنقر يعيد لقسمه الأصليّ.
+                    io.github.salehgnutux.gtsalat.ui.screens.AdhkarMiniPlayer(onOpen = { route ->
+                        nav.navigate(route) { launchSingleTop = true }
+                    })
                     NavigationBar {
                         Dest.entries.forEach { d ->
                             val selected = currentDest?.hierarchy?.any { it.route == d.route } == true
@@ -207,6 +218,7 @@ fun AppRoot(
                         "adhkar_session/{type}",
                         arguments = listOf(navArgument("type") { type = NavType.StringType }),
                     ) { AdhkarSessionScreen(onBack = { nav.popBackStack() }) }
+                    composable("adhkar_audio") { io.github.salehgnutux.gtsalat.ui.screens.AdhkarAudioScreen(onBack = { nav.popBackStack() }) }
                     composable("tasbih") { TasbihScreen(onBack = { nav.popBackStack() }) }
                     composable("asma") { AsmaScreen(onBack = { nav.popBackStack() }) }
                     composable("hadith") { HadithScreen(onBack = { nav.popBackStack() }) }

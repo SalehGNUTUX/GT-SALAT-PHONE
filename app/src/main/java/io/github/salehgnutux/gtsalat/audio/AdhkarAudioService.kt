@@ -39,7 +39,9 @@ class AdhkarAudioService : Service() {
 
     private var key = ""
     private var title = ""
+    private var route = ""
     private var rawResId = 0
+    private var repeat = false
 
     private val attrs = AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -60,11 +62,13 @@ class AdhkarAudioService : Service() {
         when (intent?.action) {
             ACTION_STOP -> { stopEverything(); return START_NOT_STICKY }
             ACTION_TOGGLE -> { toggle(); return START_STICKY }
+            ACTION_REPEAT -> { repeat = !repeat; publish(); return START_STICKY }
             ACTION_SEEK -> { runCatching { player?.seekTo(intent.getIntExtra(EXTRA_POSITION_MS, 0)) }; publish(); return START_STICKY }
         }
         // ACTION_START
         key = intent?.getStringExtra(EXTRA_KEY) ?: ""
         title = intent?.getStringExtra(EXTRA_TITLE) ?: "الأذكار"
+        route = intent?.getStringExtra(EXTRA_ROUTE) ?: ""
         rawResId = intent?.getIntExtra(EXTRA_RAW, 0) ?: 0
         if (rawResId == 0) { stopSelf(); return START_NOT_STICKY }
 
@@ -84,7 +88,7 @@ class AdhkarAudioService : Service() {
             val ok = runCatching { setDataSource(this@AdhkarAudioService, uri) }.isSuccess
             if (!ok) { stopEverything(); return }
             setOnPreparedListener { start(); publish(loading = false, playing = true); updateNotification(); startTicker() }
-            setOnCompletionListener { stopEverything() }
+            setOnCompletionListener { if (repeat) { runCatching { seekTo(0); start() }; publish(playing = true) } else stopEverything() }
             setOnErrorListener { _, _, _ -> stopEverything(); true }
             prepareAsync()
         }
@@ -110,7 +114,7 @@ class AdhkarAudioService : Service() {
     private fun publish(loading: Boolean? = null, playing: Boolean? = null) {
         AdhkarPlayback.update {
             it.copy(
-                active = true, key = key, title = title,
+                active = true, key = key, title = title, route = route, repeat = repeat,
                 isPlaying = playing ?: it.isPlaying,
                 loading = loading ?: it.loading,
             )
@@ -159,9 +163,11 @@ class AdhkarAudioService : Service() {
         const val ACTION_START = "io.github.salehgnutux.gtsalat.ADHKAR_AUDIO_START"
         const val ACTION_STOP = "io.github.salehgnutux.gtsalat.ADHKAR_AUDIO_STOP"
         const val ACTION_TOGGLE = "io.github.salehgnutux.gtsalat.ADHKAR_AUDIO_TOGGLE"
+        const val ACTION_REPEAT = "io.github.salehgnutux.gtsalat.ADHKAR_AUDIO_REPEAT"
         const val ACTION_SEEK = "io.github.salehgnutux.gtsalat.ADHKAR_AUDIO_SEEK"
         const val EXTRA_KEY = "key"
         const val EXTRA_TITLE = "title"
+        const val EXTRA_ROUTE = "route"
         const val EXTRA_RAW = "raw"
         const val EXTRA_POSITION_MS = "position_ms"
     }

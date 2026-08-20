@@ -61,6 +61,7 @@ data class AppSettings(
     val timetableCalendar: CalendarKind = CalendarKind.HIJRI,
     val clock24h: Boolean = true,                 // عرض الوقت: 24 ساعة أو 12 (ص/م)
     val hijriOffset: Int = 0,                     // إزاحة التاريخ الهجريّ بالأيّام (تصحيح فرق المنطقة)
+    val lastWhatsNewCode: Int = -1,               // آخر versionCode عُرضت مستجدّاته (لعرض «ما الجديد» بعد التحديث)
     val settingsOpenSection: String = "الموقع وطريقة الحساب",  // آخر قسم إعداداتٍ مفتوح ("" = الكلّ مطويّ)
     val checkUpdates: Boolean = true,             // إشعارٌ عند توفّر نسخةٍ جديدة
     val fullScreenAdhan: Boolean = true,          // نافذة أذانٍ ملء الشاشة فوق القفل

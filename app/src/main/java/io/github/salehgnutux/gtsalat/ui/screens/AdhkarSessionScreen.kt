@@ -59,6 +59,13 @@ fun AdhkarSessionScreen(onBack: () -> Unit, vm: AdhkarSessionViewModel = hiltVie
     Column(Modifier.fillMaxSize()) {
         // زرّ البطاقات في actions فيصير بجانب زرّ السِمة المدمج في الترويسة (لا تكرار).
         SubScreenHeader(title, onBack, actions = {
+            AdhkarListenAction(
+                sectionKey = vm.type,
+                title = title,
+                route = "adhkar_session/${vm.type}",
+                rawResId = if (vm.isEvening) io.github.salehgnutux.gtsalat.R.raw.adhkar_evening
+                else io.github.salehgnutux.gtsalat.R.raw.adhkar_morning,
+            )
             TextButton(onClick = { vm.reset(); scope.launch { pager.scrollToPage(0) } }) {
                 Icon(Icons.Filled.Refresh, contentDescription = null)
                 Text("تصفير")
@@ -78,14 +85,6 @@ fun AdhkarSessionScreen(onBack: () -> Unit, vm: AdhkarSessionViewModel = hiltVie
                 modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
             )
         }
-
-        // شريط الاستماع لتسجيل الأذكار المضمَّن (صباح/مساء).
-        AdhkarPlayerBar(
-            sectionKey = vm.type,
-            title = title,
-            rawResId = if (vm.isEvening) io.github.salehgnutux.gtsalat.R.raw.adhkar_evening
-            else io.github.salehgnutux.gtsalat.R.raw.adhkar_morning,
-        )
 
         if (cards) {
             // عرضٌ بطاقيّ (سلايد) بأسلوب أسماء الله الحسنى — بطاقةٌ لكلّ ذكرٍ تُمرَّر يميناً/يساراً.
