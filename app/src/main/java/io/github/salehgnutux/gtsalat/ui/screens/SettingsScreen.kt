@@ -158,6 +158,44 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                     Text(st, style = MaterialTheme.typography.bodySmall, color = if (st.startsWith("✓")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                 }
             }
+            // تحديدٌ يدويٌّ للموقع — خيارٌ إضافيٌّ عند تعذّر الكشف التلقائيّ أو لتغيير الموقع دون إنترنت.
+            val places by vm.places.collectAsStateWithLifecycle()
+            var showPlaces by remember { mutableStateOf(false) }
+            var showManual by remember { mutableStateOf(false) }
+            var latText by remember { mutableStateOf("") }
+            var lonText by remember { mutableStateOf("") }
+            FilledTonalButton(onClick = { showPlaces = true }, enabled = places.isNotEmpty(), modifier = Modifier.fillMaxWidth()) {
+                Text("🌍 اختر البلد والمدينة يدويّاً (دون إنترنت)")
+            }
+            androidx.compose.material3.TextButton(onClick = { showManual = !showManual }) {
+                Text(if (showManual) "إخفاء الإدخال اليدويّ للإحداثيّات" else "أو أدخِل الإحداثيّات يدويّاً")
+            }
+            if (showManual) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = latText, onValueChange = { latText = it.filter { c -> c.isDigit() || c == '.' || c == '-' } },
+                        label = { Text("خط العرض") }, singleLine = true, modifier = Modifier.weight(1f),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                    )
+                    androidx.compose.material3.OutlinedTextField(
+                        value = lonText, onValueChange = { lonText = it.filter { c -> c.isDigit() || c == '.' || c == '-' } },
+                        label = { Text("خط الطول") }, singleLine = true, modifier = Modifier.weight(1f),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                    )
+                }
+                androidx.compose.material3.OutlinedButton(
+                    onClick = {
+                        val la = latText.toDoubleOrNull(); val lo = lonText.toDoubleOrNull()
+                        if (la != null && lo != null && la in -90.0..90.0 && lo in -180.0..180.0) { vm.setManualLocation(la, lo); showManual = false }
+                        else android.widget.Toast.makeText(context, "أدخِل إحداثيّاتٍ صحيحة (العرض −90..90، الطول −180..180)", android.widget.Toast.LENGTH_SHORT).show()
+                    },
+                    enabled = latText.isNotBlank() && lonText.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("حفظ الإحداثيّات") }
+            }
+            if (showPlaces) {
+                PlacePickerDialog(places = places, onDismiss = { showPlaces = false }) { p -> vm.pickPlace(p); showPlaces = false }
+            }
             HorizontalDivider()
             MethodDropdown(settings.methodId) { vm.setMethod(it) }
             LabeledRow("مذهب حساب العصر") {
@@ -207,6 +245,11 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 }
             }
             MinutesSlider("مستوى صوت الأذان:", settings.adhanVolume, 0, 100, suffix = "٪") { vm.setAdhanVolume(it) }
+            Text(
+                "يتحكّم هذا المستوى بصوت الأذان ودعاء ما بعده، وتنبيه الاقتراب، وأذكار ما بعد الصلاة.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+            )
             SwitchRow("تنبيهٌ مخصّصٌ لكلّ صلاة", settings.perPrayerAlerts) { vm.setPerPrayerAlerts(it) }
             if (settings.perPrayerAlerts) {
                 io.github.salehgnutux.gtsalat.data.settings.AppSettings.ALERT_PRAYERS.forEachIndexed { i, pid ->
@@ -600,7 +643,8 @@ private fun ReliabilityCard(expanded: Boolean, onToggle: () -> Unit, onTest: () 
 
     val exactOk = remember(refreshKey) { canScheduleExact(context) }
     val batteryOk = remember(refreshKey) { isBatteryUnrestricted(context) }
-    val allOk = exactOk && batteryOk
+    val fullScreenOk = remember(refreshKey) { canUseFullScreenIntent(context) }
+    val allOk = exactOk && batteryOk && fullScreenOk
 
     SectionCard(if (allOk) "موثوقيّة التنبيهات ✓" else "موثوقيّة التنبيهات", expanded, onToggle) {
         Text(
@@ -623,11 +667,18 @@ private fun ReliabilityCard(expanded: Boolean, onToggle: () -> Unit, onTest: () 
                 onFix = { openBatteryExemption(context) },
             )
         }
-        // التشغيل التلقائيّ (autostart) — إعدادٌ خاصٌّ ببعض الأنظمة لا يُقرأ برمجيّاً؛ نوجّه له.
+        if (!fullScreenOk) {
+            ReliabilityRow(
+                title = "إظهار نافذة الأذان فوق القفل",
+                desc = "يسمح بإيقاظ الشاشة وإظهار نافذة الأذان فورَ دخول الوقت (أندرويد 14 فأحدث).",
+                onFix = { openFullScreenIntentSettings(context) },
+            )
+        }
+        // التشغيل التلقائيّ (autostart) — إعدادٌ خاصٌّ ببعض الأنظمة لا يُقرأ برمجيّاً؛ نوجّه له بخطوةٍ حسب المُصنّع.
         ReliabilityRow(
             title = "التشغيل التلقائيّ وتقييد الخلفيّة",
-            desc = "بعض الأنظمة (Xiaomi/MIUI، Oppo، Vivo، Samsung…) توقف التطبيق رغم إعفاء البطاريّة. فعّل «التشغيل التلقائيّ» واجعل البطاريّة «بلا قيود» لهذا التطبيق.",
-            onFix = { openAppDetails(context) },
+            desc = oemAutostartDesc(),
+            onFix = { openAutoStartSettings(context) },
         )
         HorizontalDivider()
         // زرّ اختبارٍ عمليّ: يجدول تنبيهاً بعد دقيقة ليتحقّق المستخدم والشاشة مغلقة.
@@ -664,6 +715,25 @@ private fun canScheduleExact(context: Context): Boolean {
 private fun isBatteryUnrestricted(context: Context): Boolean {
     val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
     return pm.isIgnoringBatteryOptimizations(context.packageName)
+}
+
+/** أندرويد 14+ قد يمنع نافذة ملء الشاشة (full-screen intent) افتراضيّاً؛ نتحقّق ونوجّه لتفعيلها. */
+private fun canUseFullScreenIntent(context: Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return true
+    val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+    return runCatching { nm.canUseFullScreenIntent() }.getOrDefault(true)
+}
+
+private fun openFullScreenIntentSettings(context: Context) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { openAppDetails(context); return }
+    runCatching {
+        context.startActivity(
+            Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+                data = Uri.parse("package:${context.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            },
+        )
+    }.onFailure { openAppDetails(context) }
 }
 
 private fun openExactAlarmSettings(context: Context) {
@@ -706,6 +776,49 @@ private fun openAppDetails(context: Context) {
             },
         )
     }
+}
+
+/** إرشادُ التشغيل التلقائيّ حسب المُصنّع (يظهر نصّاً في البطاقة). */
+private fun oemAutostartDesc(): String {
+    val m = Build.MANUFACTURER.lowercase(java.util.Locale.US)
+    return when {
+        m.contains("xiaomi") || m.contains("redmi") || m.contains("poco") ->
+            "على أجهزة Xiaomi/‏MIUI: «الأمان» ← «الأذونات» ← «التشغيل التلقائيّ» وفعّله لـGT-SALAT، واجعل توفير البطاريّة «بلا قيود»."
+        m.contains("oppo") || m.contains("realme") ->
+            "على أجهزة Oppo/‏Realme: الإعدادات ← «إدارة التطبيقات» ← فعّل «التشغيل التلقائيّ» و«العمل في الخلفيّة» لـGT-SALAT."
+        m.contains("vivo") || m.contains("iqoo") ->
+            "على أجهزة Vivo/‏iQOO: الإعدادات ← «البطاريّة» ← «الاستهلاك العالي في الخلفيّة»، وفعّل «التشغيل التلقائيّ» لـGT-SALAT."
+        m.contains("huawei") || m.contains("honor") ->
+            "على أجهزة Huawei/‏Honor: «مدير الهاتف» ← «التشغيل» ← اجعله يدويّاً وفعّل (التشغيل التلقائيّ + الثانويّ + العمل في الخلفيّة)."
+        m.contains("samsung") ->
+            "على أجهزة Samsung: الإعدادات ← «البطاريّة» ← «حدود الاستخدام في الخلفيّة» ← أضِف GT-SALAT إلى «التطبيقات التي لن تنام أبداً»."
+        else ->
+            "بعض الأنظمة توقف التطبيق رغم إعفاء البطاريّة. فعّل «التشغيل التلقائيّ» واجعل البطاريّة «بلا قيود» لهذا التطبيق."
+    }
+}
+
+/** فتحُ شاشة «التشغيل التلقائيّ» الخاصّة بالمُصنّع مباشرةً إن أمكن، وإلّا تفاصيل التطبيق. */
+private fun openAutoStartSettings(context: Context) {
+    val candidates = listOf(
+        "com.miui.securitycenter" to "com.miui.permcenter.autostart.AutoStartManagementActivity",
+        "com.coloros.safecenter" to "com.coloros.safecenter.permission.startup.StartupAppListActivity",
+        "com.coloros.safecenter" to "com.coloros.safecenter.startupapp.StartupAppListActivity",
+        "com.oppo.safe" to "com.oppo.safe.permission.startup.StartupAppListActivity",
+        "com.iqoo.secure" to "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity",
+        "com.vivo.permissionmanager" to "com.vivo.permissionmanager.activity.BgStartUpManagerActivity",
+        "com.huawei.systemmanager" to "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity",
+        "com.huawei.systemmanager" to "com.huawei.systemmanager.optimize.process.ProtectActivity",
+    )
+    for ((pkg, cls) in candidates) {
+        val intent = Intent().apply {
+            component = android.content.ComponentName(pkg, cls)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (context.packageManager.resolveActivity(intent, 0) != null) {
+            if (runCatching { context.startActivity(intent) }.isSuccess) return
+        }
+    }
+    openAppDetails(context)   // لا شاشة معروفة لهذا المُصنّع → تفاصيل التطبيق.
 }
 
 /** أداة الألوان الكاملة: لون السِمة (HSV) + سواتر + تخصيص تدرّج الخلفيّة للوضع الحاليّ. */

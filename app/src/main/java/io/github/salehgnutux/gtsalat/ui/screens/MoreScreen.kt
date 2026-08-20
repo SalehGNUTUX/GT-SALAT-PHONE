@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.FormatQuote
 import androidx.compose.material.icons.outlined.HistoryEdu
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.NightsStay
+import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Notes
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Radio
@@ -89,6 +90,7 @@ fun MoreScreen(onOpen: (String) -> Unit, vm: MoreViewModel = hiltViewModel()) {
             Feature("حصن المسلم", Icons.Outlined.Shield, "hisn"),
             Feature("أذكار الصباح", Icons.Outlined.WbSunny, "adhkar_session/morning"),
             Feature("أذكار المساء", Icons.Outlined.NightsStay, "adhkar_session/evening"),
+            Feature("أذكار النوم", Icons.Outlined.Bedtime, "hisn/2"),
             Feature("التسبيح", Icons.Outlined.Fingerprint, "tasbih"),
             Feature("الأدعية المأثورة", Icons.Outlined.VolunteerActivism, "duas"),
             Feature("التفسير الميسّر", Icons.Outlined.Notes, "tafsir"),

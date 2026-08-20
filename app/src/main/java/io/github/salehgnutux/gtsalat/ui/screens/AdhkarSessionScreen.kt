@@ -79,6 +79,14 @@ fun AdhkarSessionScreen(onBack: () -> Unit, vm: AdhkarSessionViewModel = hiltVie
             )
         }
 
+        // شريط الاستماع لتسجيل الأذكار المضمَّن (صباح/مساء).
+        AdhkarPlayerBar(
+            sectionKey = vm.type,
+            title = title,
+            rawResId = if (vm.isEvening) io.github.salehgnutux.gtsalat.R.raw.adhkar_evening
+            else io.github.salehgnutux.gtsalat.R.raw.adhkar_morning,
+        )
+
         if (cards) {
             // عرضٌ بطاقيّ (سلايد) بأسلوب أسماء الله الحسنى — بطاقةٌ لكلّ ذكرٍ تُمرَّر يميناً/يساراً.
             androidx.compose.foundation.pager.HorizontalPager(

@@ -171,6 +171,10 @@ fun HisnCategoryScreen(onBack: () -> Unit, vm: HisnCategoryViewModel = hiltViewM
                 )
             }
         }
+        // شريط الاستماع لأذكار النوم المضمَّنة (باب حصن المسلم رقم 2).
+        if (vm.categoryId == 2) {
+            AdhkarPlayerBar(sectionKey = "sleep", title = "أذكار النوم", rawResId = io.github.salehgnutux.gtsalat.R.raw.adhkar_sleep)
+        }
         if (cards && items.isNotEmpty()) {
             // عرضٌ بطاقيّ (سلايد) بأسلوب أسماء الله الحسنى.
             androidx.compose.foundation.pager.HorizontalPager(

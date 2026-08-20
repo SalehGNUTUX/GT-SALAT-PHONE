@@ -44,7 +44,8 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                                 notifications.preNotifyNotification(prayerAr, minutes),
                             )
                             if (s.enablePreNotifySound) {
-                                startAdhanService(context, prayerAr, AdhanService.SOUND_PRENOTIFY)
+                                // مستوى صوت الأذان يحكم كلّ التذكيرات كذلك.
+                                startAdhanService(context, prayerAr, AdhanService.SOUND_PRENOTIFY, volume = s.adhanVolume)
                             }
                         }
                     }
@@ -101,7 +102,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                                 NotificationHelper.ID_PRAYER,
                                 notifications.dhikrNotification(prayerAr, fs),
                             )
-                            startAdhanService(context, prayerAr, AdhanService.SOUND_POST_DHIKR)
+                            startAdhanService(context, prayerAr, AdhanService.SOUND_POST_DHIKR, volume = s.adhanVolume)
                         }
                     }
                 }

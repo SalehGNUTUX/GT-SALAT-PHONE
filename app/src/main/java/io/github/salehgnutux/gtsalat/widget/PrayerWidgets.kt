@@ -169,6 +169,14 @@ class PrayerProgressWidget : GlanceAppWidget() {
     }
 }
 
+/** يُزيل اسمَ اليوم من صدر التاريخ الهجريّ إن وُجد (يومُ الشهر رقمٌ، فأيّ كلمةٍ قبله = اسم اليوم). */
+private fun stripLeadingWeekday(hijri: String): String {
+    val t = hijri.trim()
+    val first = t.firstOrNull() ?: return t
+    if (first.isDigit() || first in '٠'..'٩') return t   // بدأ بيوم الشهر → لا اسمَ يومٍ يُزال
+    return t.substringAfter(' ', t).trim()               // أزِل أوّل كلمة (اسم اليوم)
+}
+
 /** يبني RemoteViews لودجت التقدّم: ساعة TextClock حيّة + عدّاد Chronometer تنازليّ حيّ + شريط تقدّم. */
 private fun progressRemoteViews(context: Context, snap: WidgetSnapshot): RemoteViews {
     val layout = when (snap.progressStyle) {
@@ -183,9 +191,10 @@ private fun progressRemoteViews(context: Context, snap: WidgetSnapshot): RemoteV
     rv.setCharSequence(R.id.widget_clock, "setFormat12Hour", pattern)
 
     // النمط اليوميّ: اسم اليوم كبيرٌ متوسّط، والهجريّ بلا اسم اليوم.
+    // نُزيل اسمَ اليوم من صدر الهجريّ **مهما كان تهجّيه** (قد يأتي من API بألفٍ بلا همزة «الاربعاء»
+    // بخلاف Format.weekdayName «الأربعاء»، فلا يكفي startsWith): يومُ الشهر رقمٌ، فما قبله كلمةٌ = اسم اليوم.
     val isDay = snap.progressStyle == "day"
-    val hijriText = if (isDay && snap.weekday.isNotBlank() && snap.hijri.startsWith(snap.weekday))
-        snap.hijri.removePrefix(snap.weekday).trim() else snap.hijri
+    val hijriText = if (isDay) stripLeadingWeekday(snap.hijri) else snap.hijri
     if (isDay) rv.setTextViewText(R.id.widget_weekday, snap.weekday)
     rv.setTextViewText(R.id.widget_hijri, hijriText)
     rv.setViewVisibility(R.id.widget_hijri, if (hijriText.isBlank()) View.GONE else View.VISIBLE)

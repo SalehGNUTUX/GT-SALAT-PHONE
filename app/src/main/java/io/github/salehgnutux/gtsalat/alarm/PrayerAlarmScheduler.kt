@@ -238,7 +238,7 @@ class PrayerAlarmScheduler @Inject constructor(
     }
 
     companion object {
-        private const val AHEAD = 8            // عدد الصلوات المُسلَّحة مقدّماً (شبكة أمان ~يومين)
+        private const val AHEAD = 12           // عدد الصلوات المُسلَّحة مقدّماً (شبكة أمان ~يومان ونصف)
         private const val RC_RESTORE = 1003
         private const val RC_POSTDHIKR = 1004
         private const val RC_SHOW = 1005

@@ -28,7 +28,8 @@ class HisnCategoryViewModel @Inject constructor(
     private val repo: ContentRepository,
 ) : ViewModel() {
 
-    private val id: Int = (savedState.get<String>("id") ?: "1").toIntOrNull() ?: 1
+    val categoryId: Int = (savedState.get<String>("id") ?: "1").toIntOrNull() ?: 1
+    private val id: Int get() = categoryId
 
     private val _name = MutableStateFlow("")
     val name: StateFlow<String> = _name.asStateFlow()

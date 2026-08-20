@@ -231,9 +231,9 @@ private fun FeatureBadge(emoji: String, label: String) {
     }
 }
 
-/** حوارُ اختيار موقعٍ من القائمة المُضمَّنة، ببحثٍ بالبلد أو المدينة. */
+/** حوارُ اختيار موقعٍ من القائمة المُضمَّنة، ببحثٍ بالبلد أو المدينة. (مشتركٌ مع الإعدادات.) */
 @Composable
-private fun PlacePickerDialog(
+internal fun PlacePickerDialog(
     places: List<io.github.salehgnutux.gtsalat.domain.Place>,
     onDismiss: () -> Unit,
     onPick: (io.github.salehgnutux.gtsalat.domain.Place) -> Unit,

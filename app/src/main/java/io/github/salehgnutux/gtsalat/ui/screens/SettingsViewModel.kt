@@ -33,7 +33,13 @@ class SettingsViewModel @Inject constructor(
     private val scheduler: PrayerAlarmScheduler,
     private val previewer: AdhanPreviewer,
     private val backup: io.github.salehgnutux.gtsalat.data.BackupManager,
+    private val content: io.github.salehgnutux.gtsalat.data.ContentRepository,
 ) : ViewModel() {
+
+    /** المواقع المُضمَّنة (بلد/مدينة) لاختيارٍ يدويٍّ يعمل دون GPS ولا إنترنت. */
+    val places: StateFlow<List<io.github.salehgnutux.gtsalat.domain.Place>> =
+        kotlinx.coroutines.flow.flow { emit(runCatching { content.places() }.getOrDefault(emptyList())) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val settings: StateFlow<AppSettings?> = settingsRepo.settings
         .map { it }
@@ -191,6 +197,23 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun clearLocationStatus() { _locationStatus.value = null }
+
+    /** اختيارٌ يدويٌّ لموقعٍ من القائمة المُضمَّنة (دون GPS ولا إنترنت): يحفظ الإحداثيّات ويقترح طريقة الحساب. */
+    fun pickPlace(place: io.github.salehgnutux.gtsalat.domain.Place) = viewModelScope.launch {
+        settingsRepo.setLocation(place.lat, place.lon, place.city, place.country)
+        val method = io.github.salehgnutux.gtsalat.domain.CalculationMethods.suggestByCountry(place.country)
+        settingsRepo.setMethod(method)
+        repo.prefetchMonths(3); reschedule()
+        val name = listOf(place.city, place.country).filter { it.isNotBlank() }.joinToString("، ")
+        _locationStatus.value = "✓ حُدّد الموقع يدويّاً: $name"
+    }
+
+    /** إدخال الموقع يدويّاً بخطّي العرض/الطول (دون إنترنت). */
+    fun setManualLocation(lat: Double, lon: Double) = viewModelScope.launch {
+        settingsRepo.setLocation(lat, lon, "", "")
+        repo.prefetchMonths(3); reschedule()
+        _locationStatus.value = "✓ حُدّد الموقع بالإحداثيّات: ${String.format(java.util.Locale.US, "%.4f، %.4f", lat, lon)}"
+    }
 
     override fun onCleared() {
         previewer.stop()

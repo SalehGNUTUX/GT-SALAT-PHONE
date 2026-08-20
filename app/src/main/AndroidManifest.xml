@@ -98,6 +98,12 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
+        <!-- خدمة صوت الأذكار المضمَّن (صباح/مساء/نوم، مقدّمة، وسائط) -->
+        <service
+            android:name=".audio.AdhkarAudioService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
         <!-- مُستقبِل إطلاق الإنذار عند دخول وقت الصلاة -->
         <receiver
             android:name=".alarm.PrayerAlarmReceiver"
