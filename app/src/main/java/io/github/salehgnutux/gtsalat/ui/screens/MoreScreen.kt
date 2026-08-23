@@ -86,7 +86,7 @@ fun MoreScreen(onOpen: (String) -> Unit, vm: MoreViewModel = hiltViewModel()) {
     val features = remember {
         listOf(
             Feature("القرآن الكريم", Icons.Outlined.AutoStories, "quran"),
-            Feature("تعلّم الطهارة والصلاة", Icons.Outlined.CleanHands, "learn_hub"),
+            Feature("الطهارة والصلاة", Icons.Outlined.CleanHands, "learn_hub"),
             Feature("الرقية الشرعية", Icons.Outlined.Spa, "ruqyah_hub"),
             Feature("حصن المسلم", Icons.Outlined.Shield, "hisn"),
             Feature("أذكار الصباح", Icons.Outlined.WbSunny, "adhkar_session/morning"),

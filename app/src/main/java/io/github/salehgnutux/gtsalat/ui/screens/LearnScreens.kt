@@ -129,7 +129,7 @@ class LearnViewModel @Inject constructor(
 fun LearnHubScreen(onOpen: (String) -> Unit, onBack: () -> Unit, vm: LearnViewModel = hiltViewModel()) {
     val file by vm.purity.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxSize()) {
-        SubScreenHeader("تعلّم الطهارة والصلاة", onBack)
+        SubScreenHeader("الطهارة والصلاة", onBack)
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (file.disclaimer.isNotBlank()) item("d") { InfoBanner(file.disclaimer) }
             items(file.sections, key = { it.id }) { s ->
