@@ -1222,6 +1222,29 @@
           "count": 14
         },
         {
+          "title": "صلاة عيد الفطر",
+          "dir": "learn/eid_fitr",
+          "count": 25
+        },
+        {
+          "title": "صلاة عيد الأضحى",
+          "dir": "learn/eid_adha",
+          "count": 25
+        },
+        {
+          "title": "صلاة الغائب",
+          "dir": "learn/ghaib",
+          "count": 12
+        }
+      ]
+    },
+    {
+      "id": "deceased_prep",
+      "title": "تجهيز الميّت (تغسيل وتكفين)",
+      "icon": "healing",
+      "intro": "دليلٌ مصوَّرٌ لتغسيل الميّت وتكفينه (رجلاً وامرأة) وفق المذهب المالكيّ. المصدر: وزارة الأوقاف والشؤون الإسلاميّة المغربيّة.",
+      "galleries": [
+        {
           "title": "تغسيل الميّت (رجل)",
           "dir": "learn/ghusl_mayyit_male",
           "count": 17
@@ -1240,21 +1263,6 @@
           "title": "تكفين الميّتة (امرأة)",
           "dir": "learn/kafn_mayyit_female",
           "count": 14
-        },
-        {
-          "title": "صلاة عيد الفطر",
-          "dir": "learn/eid_fitr",
-          "count": 25
-        },
-        {
-          "title": "صلاة عيد الأضحى",
-          "dir": "learn/eid_adha",
-          "count": 25
-        },
-        {
-          "title": "صلاة الغائب",
-          "dir": "learn/ghaib",
-          "count": 12
         }
       ]
     }

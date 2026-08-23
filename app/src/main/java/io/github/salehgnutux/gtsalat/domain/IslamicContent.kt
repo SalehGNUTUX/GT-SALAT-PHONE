@@ -111,3 +111,25 @@ data class Place(val country: String, val city: String, val lat: Double, val lon
 
 @Serializable
 data class PlacesFile(val places: List<Place>)
+
+/** أدوات المواقع المُضمَّنة — استدلالٌ على المدينة من الإحداثيّات دون إنترنت. */
+object Places {
+    /**
+     * أقربُ مدينةٍ من القائمة المُضمَّنة لإحداثيّاتٍ معطاة، بشرط أن تكون ضمن النطاق [maxKm]
+     * (وإلّا فلا نُلصق اسمًا بعيدًا) — يُستعمَل للترميز العكسيّ دون إنترنت.
+     */
+    fun nearest(lat: Double, lon: Double, list: List<Place>, maxKm: Double = 150.0): Place? =
+        list.minByOrNull { haversineKm(lat, lon, it.lat, it.lon) }
+            ?.takeIf { haversineKm(lat, lon, it.lat, it.lon) <= maxKm }
+
+    /** المسافة بين نقطتين على سطح الأرض بالكيلومترات (صيغة هافرسين). */
+    fun haversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val r = 6371.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    }
+}

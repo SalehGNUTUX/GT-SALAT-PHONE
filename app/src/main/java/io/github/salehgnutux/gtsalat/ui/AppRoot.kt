@@ -123,12 +123,27 @@ fun AppRoot(
     // رسالة تأكيد الخروج عند الرجوع من الرئيسيّة.
     var askExit by remember { mutableStateOf(false) }
     val activity = LocalContext.current as? android.app.Activity
+    val ctx = LocalContext.current
 
-    // زرّ رجوع النظام: من أيّ قسمٍ يعود للرئيسيّة؛ ومن الرئيسيّة يسأل قبل الخروج.
+    // طريقة الخروج: نافذة تأكيد أو نقرتان للرجوع (اختياريّة، تُختار عند أوّل استخدام).
+    val exitVm: io.github.salehgnutux.gtsalat.ui.screens.ExitPrefViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val exitMode by exitVm.exitMode.collectAsStateWithLifecycle()
+    var askExitMethod by remember { mutableStateOf(false) }   // نافذة اختيار الطريقة (أوّل مرّة)
+    var lastBackMs by remember { mutableStateOf(0L) }
+
+    // زرّ رجوع النظام: من أيّ قسمٍ يعود للرئيسيّة؛ ومن الرئيسيّة حسب طريقة الخروج المختارة.
     val onDashboard = currentDest?.route == Dest.DASHBOARD.route
     BackHandler {
         if (onDashboard) {
-            askExit = true
+            when (exitMode) {
+                "double" -> {
+                    val now = System.currentTimeMillis()
+                    if (now - lastBackMs < 2000) activity?.finish()
+                    else { lastBackMs = now; android.widget.Toast.makeText(ctx, "اضغط «رجوع» مرّةً أخرى للخروج", android.widget.Toast.LENGTH_SHORT).show() }
+                }
+                "dialog" -> askExit = true
+                else -> askExitMethod = true   // لم تُختَر الطريقة بعد → نعرض خيار الاختيار المبدئيّ
+            }
         } else {
             nav.navigate(Dest.DASHBOARD.route) {
                 popUpTo(nav.graph.findStartDestination().id) { inclusive = false }
@@ -325,6 +340,21 @@ fun AppRoot(
             },
             dismissButton = {
                 FilledTonalButton(onClick = { askExit = false }) { Text("البقاء") }
+            },
+        )
+    }
+
+    // اختيارٌ مبدئيٌّ لطريقة الخروج (أوّل مرّةٍ يُضغَط فيها «رجوع» من الرئيسيّة).
+    if (askExitMethod) {
+        AlertDialog(
+            onDismissRequest = { askExitMethod = false },
+            title = { Text("طريقة الخروج من التطبيق") },
+            text = { Text("اختر كيف تُغادر التطبيق عند ضغط «رجوع» من الرئيسيّة (يمكنك تغييرها لاحقاً من الإعدادات):") },
+            confirmButton = {
+                Button(onClick = { exitVm.setExitMode("double"); askExitMethod = false }) { Text("نقرتان على «رجوع»") }
+            },
+            dismissButton = {
+                FilledTonalButton(onClick = { exitVm.setExitMode("dialog"); askExitMethod = false }) { Text("نافذة تأكيد") }
             },
         )
     }

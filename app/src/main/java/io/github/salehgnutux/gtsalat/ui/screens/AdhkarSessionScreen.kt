@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +56,12 @@ fun AdhkarSessionScreen(onBack: () -> Unit, vm: AdhkarSessionViewModel = hiltVie
     // حالة الـpager مرفوعةٌ للأعلى ليعيدها زرّ «تصفير» إلى البطاقة الأولى.
     val pager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { vm.items.size })
     val scope = androidx.compose.runtime.rememberCoroutineScope()
+
+    // رسالةُ تهنئةٍ تفاعليّةٌ (بعبارةٍ متغيّرة) عند إكمال كلّ الأذكار.
+    var doneMsg by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    androidx.compose.runtime.LaunchedEffect(doneCount, total) {
+        if (total > 0 && doneCount == total) doneMsg = io.github.salehgnutux.gtsalat.domain.AdhkarCompletion.random()
+    }
 
     Column(Modifier.fillMaxSize()) {
         // زرّ البطاقات في actions فيصير بجانب زرّ السِمة المدمج في الترويسة (لا تكرار).
@@ -150,6 +157,20 @@ fun AdhkarSessionScreen(onBack: () -> Unit, vm: AdhkarSessionViewModel = hiltVie
                 }
             }
         }
+    }
+
+    // رسالةٌ تفاعليّةٌ عند إكمال كلّ الأذكار (بعبارةٍ متغيّرة).
+    doneMsg?.let { msg ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { doneMsg = null },
+            icon = { Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text("تمّت الأذكار 🎉") },
+            text = { Text(msg, fontFamily = AmiriQuran, fontSize = 20.sp, lineHeight = 34.sp) },
+            confirmButton = { TextButton(onClick = { doneMsg = null }) { Text("تمّ") } },
+            dismissButton = {
+                TextButton(onClick = { doneMsg = null; vm.reset(); scope.launch { pager.scrollToPage(0) } }) { Text("إعادة") }
+            },
+        )
     }
 }
 

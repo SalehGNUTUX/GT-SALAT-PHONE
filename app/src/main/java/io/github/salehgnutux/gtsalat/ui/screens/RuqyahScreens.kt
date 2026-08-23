@@ -65,7 +65,15 @@ fun RuqyahHubScreen(onOpen: (String) -> Unit, onBack: () -> Unit, vm: LearnViewM
     val ctx = LocalContext.current
     val file by vm.ruqyah.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxSize()) {
-        SubScreenHeader("الرقية الشرعية", onBack)
+        SubScreenHeader("الرقية الشرعية", onBack, actions = {
+            // أيقونة سمّاعةٍ في الأعلى لتشغيل التسجيل الكامل (سعد الغامدي) — كأذكار الصباح/المساء.
+            AdhkarListenAction(
+                sectionKey = "ruqyah_ghamdi",
+                title = "الرقية الشرعية — سعد الغامدي",
+                route = "ruqyah_hub",
+                rawResId = io.github.salehgnutux.gtsalat.R.raw.ruqyah_ghamdi,
+            )
+        })
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (file.disclaimer.isNotBlank()) item("d") { InfoBanner(file.disclaimer) }
             item("radio") {

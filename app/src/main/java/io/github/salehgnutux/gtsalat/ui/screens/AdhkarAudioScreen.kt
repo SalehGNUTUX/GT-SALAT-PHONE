@@ -41,9 +41,9 @@ data class AdhkarAudioTrack(
 )
 
 val ADHKAR_AUDIO_TRACKS = listOf(
-    AdhkarAudioTrack("morning", "أذكار الصباح", "التسجيل الكامل · نحو ٢١ دقيقة", "adhkar_session/morning", R.raw.adhkar_morning),
-    AdhkarAudioTrack("evening", "أذكار المساء", "التسجيل الكامل · نحو ٢١ دقيقة", "adhkar_session/evening", R.raw.adhkar_evening),
-    AdhkarAudioTrack("sleep", "أذكار النوم", "التسجيل الكامل · نحو ١١ دقيقة", "hisn/2", R.raw.adhkar_sleep),
+    AdhkarAudioTrack("morning", "أذكار الصباح", "التسجيل الكامل · نحو 21 دقيقة", "adhkar_session/morning", R.raw.adhkar_morning),
+    AdhkarAudioTrack("evening", "أذكار المساء", "التسجيل الكامل · نحو 21 دقيقة", "adhkar_session/evening", R.raw.adhkar_evening),
+    AdhkarAudioTrack("sleep", "أذكار النوم", "التسجيل الكامل · نحو 11 دقيقة", "hisn/2", R.raw.adhkar_sleep),
 )
 
 /** قسمٌ يجمع كلّ الأذكار الصوتيّة في مكانٍ واحد — التحكّم الكامل عبر المشغّل العائم. */

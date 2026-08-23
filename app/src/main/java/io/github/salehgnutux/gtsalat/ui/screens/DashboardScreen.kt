@@ -20,6 +20,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Settings
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Radio
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -103,6 +106,7 @@ fun DashboardScreen(onOpenSettings: () -> Unit = {}, onOpenRadio: () -> Unit = {
                         ThemeToggleButton()
                     }
                 }
+                AdhanStopBanner()
                 NotificationPermissionBanner()
                 UpdateBanner()
                 HeroCard(ui, tick)
@@ -498,6 +502,36 @@ private fun DailyCard(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                 )
+            }
+        }
+    }
+}
+
+/** بطاقةٌ في الرئيسيّة تظهر أثناء تشغيل صوت الأذان/التنبيه/ذكر ما بعد الصلاة، بزرّ إيقافٍ فوريّ. */
+@Composable
+private fun AdhanStopBanner() {
+    val active by io.github.salehgnutux.gtsalat.audio.AdhanPlayback.active.collectAsStateWithLifecycle()
+    if (!active) return
+    val ctx = LocalContext.current
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(Icons.Outlined.Radio, null, tint = MaterialTheme.colorScheme.onErrorContainer)
+            Text(
+                "يُشغَّل الصوت الآن",
+                Modifier.weight(1f),
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            FilledTonalButton(onClick = { io.github.salehgnutux.gtsalat.audio.AdhanService.stop(ctx) }) {
+                Icon(Icons.Filled.Stop, null, Modifier.size(18.dp))
+                Text("  إيقاف")
             }
         }
     }

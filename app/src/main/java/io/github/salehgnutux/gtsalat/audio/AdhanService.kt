@@ -73,8 +73,9 @@ class AdhanService : Service() {
             else -> "🔊 يُشغَّل الآن أذان $prayerAr"
         }
         startForeground(NotificationHelper.ID_SERVICE, notifications.serviceNotification(title, stopPendingIntent()))
-        // إعلام نافذة ملء الشاشة أنّ التشغيل بدأ (للأذان/الأذكار)، فتبقى ما دام الصوت جارياً.
-        if (sound == SOUND_ADHAN || sound == SOUND_POST_DHIKR) AdhanPlayback.set(true)
+        // إعلام الواجهة أنّ صوتاً يُشغَّل الآن (أذان/تنبيه اقتراب/ذكر بعد الصلاة) — لإظهار زرّ الإيقاف في الرئيسيّة،
+        // وإبقاء نافذة ملء الشاشة (للأذان/الأذكار) ما دام الصوت جارياً.
+        AdhanPlayback.set(true)
         // حارسٌ زمنيّ: يوقف الخدمة قسراً بعد حدٍّ أقصى فلا يبقى إشعارها معلّقاً إن لم يكتمل الصوت
         // (مثلاً إن جمّد النظامُ العمليّةَ في أثناء التشغيل، ثمّ استُؤنفت).
         watchdog?.cancel()
@@ -181,5 +182,11 @@ class AdhanService : Service() {
         const val SOUND_POST_DHIKR = "post_dhikr"
         const val ACTION_STOP = "io.github.salehgnutux.gtsalat.ADHAN_STOP"
         private const val MAX_SERVICE_MS = 7 * 60_000L   // حدٌّ أقصى لعمر الخدمة (أطول من الأذان + الدعاء)
+
+        /** إيقاف الصوت الجاري من الواجهة (زرّ الرئيسيّة). */
+        fun stop(context: android.content.Context) {
+            val i = android.content.Intent(context, AdhanService::class.java).setAction(ACTION_STOP)
+            runCatching { context.startService(i) }
+        }
     }
 }

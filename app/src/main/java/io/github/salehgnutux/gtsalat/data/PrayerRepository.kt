@@ -28,6 +28,7 @@ class PrayerRepository @Inject constructor(
     private val api: AladhanApi,
     private val settingsRepo: SettingsRepository,
     private val locationProvider: LocationProvider,
+    private val content: ContentRepository,
 ) {
     private fun locKey(lat: Double, lon: Double): String =
         String.format(Locale.US, "%.2f_%.2f", lat, lon)
@@ -131,7 +132,21 @@ class PrayerRepository @Inject constructor(
 
     /** اكتشاف الموقع وحفظه (يقترح طريقة الحساب حسب البلد). يعيد الموقع المكتشَف. */
     suspend fun detectAndSaveLocation(): DetectedLocation? {
-        val loc = locationProvider.detect() ?: return null
+        var loc = locationProvider.detect() ?: return null
+        // دون إنترنت قد يفشل الترميز العكسيّ (المدينة/البلد فارغة) بينما تبقى الإحداثيّات صحيحة.
+        // نستدلّ حينئذٍ على أقرب مدينةٍ من القاعدة المُضمَّنة (ضمن نطاقٍ) — فتظهر المدينة وتُقترح الطريقة دون إنترنت.
+        if (loc.city.isBlank() || loc.country.isBlank()) {
+            val near = runCatching {
+                io.github.salehgnutux.gtsalat.domain.Places.nearest(loc.lat, loc.lon, content.places())
+            }.getOrNull()
+            if (near != null) {
+                loc = loc.copy(
+                    city = loc.city.ifBlank { near.city },
+                    country = loc.country.ifBlank { near.country },
+                )
+            }
+        }
+        // نحفظ الإحداثيّات الحقيقيّة من GPS (لا إحداثيّات المدينة) فتبقى المواقيت دقيقة؛ والاسم للعرض والاقتراح فقط.
         settingsRepo.setLocation(loc.lat, loc.lon, loc.city, loc.country)
         if (loc.country.isNotBlank()) {
             settingsRepo.setMethod(CalculationMethods.suggestByCountry(loc.country))

@@ -119,7 +119,7 @@ fun DownloadsSectionContent(vm: DownloadsViewModel = hiltViewModel()) {
         }
         if (pendingDelete == riwaya) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("سيُحذف مصحف ${riwayaName(riwaya)} خلال ١٠ ثوانٍ…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                Text("سيُحذف مصحف ${riwayaName(riwaya)} خلال 10 ثوانٍ…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 FilledTonalButton(onClick = { pendingDelete = null }) { Text("تراجع") }
             }
         }

@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -40,7 +41,13 @@ class RootViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     init {
-        // فحص التحديثات مرّةً عند الإقلاع (إن كان مفعّلاً).
-        viewModelScope.launch { runCatching { updateRepo.checkForUpdate() } }
+        // فحص التحديثات عند الإقلاع ثمّ دوريّاً كلّ 3 ساعات ما دام التطبيق مفتوحاً —
+        // فيظهر شريط التحديث دون الحاجة إلى إغلاق التطبيق وإعادة فتحه.
+        viewModelScope.launch {
+            while (isActive) {
+                runCatching { updateRepo.checkForUpdate() }
+                kotlinx.coroutines.delay(3 * 60 * 60 * 1000L)
+            }
+        }
     }
 }

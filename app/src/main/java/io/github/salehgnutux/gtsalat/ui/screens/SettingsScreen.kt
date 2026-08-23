@@ -378,6 +378,20 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             }
         }
 
+        SectionCard("عامّ", openSection == "عامّ", { toggle("عامّ") }) {
+            LabeledRow("طريقة الخروج من التطبيق") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(settings.exitMode != "double", { vm.setExitMode("dialog") }, { Text("نافذة تأكيد") })
+                    FilterChip(settings.exitMode == "double", { vm.setExitMode("double") }, { Text("نقرتان للرجوع") })
+                }
+            }
+            Text(
+                "عند ضغط «رجوع» من الرئيسيّة: إمّا نافذةُ تأكيدٍ للخروج، أو الضغط مرّتين متتاليتين للخروج.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+            )
+        }
+
         SectionCard("تنزيل المحتوى", openSection == "تنزيل المحتوى", { toggle("تنزيل المحتوى") }) {
             DownloadsSectionContent()
         }
