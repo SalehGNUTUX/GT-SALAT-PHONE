@@ -21,6 +21,9 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -511,8 +514,15 @@ private fun DailyCard(
 @Composable
 private fun AdhanStopBanner() {
     val active by io.github.salehgnutux.gtsalat.audio.AdhanPlayback.active.collectAsStateWithLifecycle()
+    val kind by io.github.salehgnutux.gtsalat.audio.AdhanPlayback.kind.collectAsStateWithLifecycle()
     if (!active) return
     val ctx = LocalContext.current
+    // أيقونةٌ ورسالةٌ حسب نوع الصوت الجاري.
+    val (icon, label) = when (kind) {
+        "prenotify" -> Icons.Filled.NotificationsActive to "يُشغَّل صوت تنبيه الاقتراب"
+        "dhikr" -> Icons.Filled.Favorite to "يُشغَّل صوت الذكر الآن"
+        else -> Icons.Filled.VolumeUp to "يُشغَّل صوت الأذان الآن"
+    }
     Card(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
@@ -522,9 +532,9 @@ private fun AdhanStopBanner() {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Icon(Icons.Outlined.Radio, null, tint = MaterialTheme.colorScheme.onErrorContainer)
+            Icon(icon, null, tint = MaterialTheme.colorScheme.onErrorContainer)
             Text(
-                "يُشغَّل الصوت الآن",
+                label,
                 Modifier.weight(1f),
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onErrorContainer,

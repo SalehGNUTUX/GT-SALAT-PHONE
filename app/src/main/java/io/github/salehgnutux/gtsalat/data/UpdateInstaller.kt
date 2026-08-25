@@ -35,46 +35,74 @@ sealed interface UpdateDownload {
 class UpdateInstaller @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
-    private val http = OkHttpClient()
+    // مهلاتٌ سخيّةٌ للاتّصال/القراءة/الكتابة فلا يُقطَع التنزيل الطويل بسهولة.
+    private val http = OkHttpClient.Builder()
+        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
     private val _state = MutableStateFlow<UpdateDownload>(UpdateDownload.Idle)
     val state: StateFlow<UpdateDownload> = _state.asStateFlow()
 
-    /** ينزّل الـAPK من [url] ثمّ يطلق التثبيت. */
-    suspend fun downloadAndInstall(url: String) {
+    private fun updatesDir() = File(context.filesDir, "updates").apply { mkdirs() }
+    private fun partFile() = File(updatesDir(), "GT-SALAT-update.apk.part")
+    private fun apkFile() = File(updatesDir(), "GT-SALAT-update.apk")
+
+    /** يبدأ التنزيل عبر خدمةٍ مقدّمة (يُكمِل في الخلفية والتطبيق مغلق) — تُستدعى من الواجهة. */
+    fun startDownload(url: String) {
         _state.value = UpdateDownload.Downloading(0)
-        val file = withContext(Dispatchers.IO) {
-            runCatching {
-                val dir = File(context.filesDir, "updates").apply { mkdirs() }
-                val out = File(dir, "GT-SALAT-update.apk")
-                val req = Request.Builder().url(url).build()
-                http.newCall(req).execute().use { r ->
-                    if (!r.isSuccessful) return@runCatching null
-                    val body = r.body ?: return@runCatching null
-                    val total = body.contentLength()
+        io.github.salehgnutux.gtsalat.data.UpdateDownloadService.start(context, url)
+    }
+
+    /**
+     * تنزيلٌ **قابلٌ للاستئناف**: يُلحِق بالملفّ الجزئيّ (`.part`) عبر ترويسة `Range`، فإن انقطع النت
+     * أو أُغلق التطبيق يُستأنف من حيث توقّف بلا بدءٍ من جديد. يعيد ملفّ الـAPK المكتمل أو null.
+     */
+    suspend fun downloadResumable(url: String, onProgress: (Int) -> Unit = {}): File? = withContext(Dispatchers.IO) {
+        val part = partFile()
+        val out = apkFile()
+        runCatching {
+            val existing = if (part.exists()) part.length() else 0L
+            val reqB = Request.Builder().url(url)
+            if (existing > 0) reqB.header("Range", "bytes=$existing-")
+            http.newCall(reqB.build()).execute().use { r ->
+                if (r.code != 200 && r.code != 206) return@runCatching null
+                val body = r.body ?: return@runCatching null
+                // إن طلبنا استئنافاً فردّ الخادمُ 200 (لا يدعم Range) نبدأ من جديد.
+                val append = r.code == 206 && existing > 0
+                val startAt = if (append) existing else 0L
+                if (!append) runCatching { part.delete() }
+                val total = if (append) existing + body.contentLength() else body.contentLength()
+                java.io.RandomAccessFile(part, "rw").use { raf ->
+                    raf.seek(startAt)
                     body.byteStream().use { input ->
-                        out.outputStream().use { output ->
-                            val buf = ByteArray(64 * 1024)
-                            var read = 0L
-                            var n: Int
-                            while (input.read(buf).also { n = it } != -1) {
-                                output.write(buf, 0, n)
-                                read += n
-                                if (total > 0) {
-                                    _state.value = UpdateDownload.Downloading(((read * 100) / total).toInt().coerceIn(0, 100))
+                        val buf = ByteArray(64 * 1024)
+                        var read = startAt
+                        var n: Int
+                        var lastPct = -1
+                        while (input.read(buf).also { n = it } != -1) {
+                            raf.write(buf, 0, n)
+                            read += n
+                            if (total > 0) {
+                                val pct = ((read * 100) / total).toInt().coerceIn(0, 100)
+                                if (pct != lastPct) {
+                                    lastPct = pct
+                                    _state.value = UpdateDownload.Downloading(pct)
+                                    onProgress(pct)
                                 }
                             }
                         }
                     }
-                    out
                 }
-            }.getOrNull()
-        }
-        if (file == null || !file.exists() || file.length() == 0L) {
-            _state.value = UpdateDownload.Failed("تعذّر تنزيل التحديث — تحقّق من الاتّصال وأعد المحاولة.")
-            return
-        }
-        _state.value = UpdateDownload.Ready(file)
-        install(file)
+                if (out.exists()) out.delete()
+                part.renameTo(out)
+                out
+            }
+        }.getOrNull()
+    }
+
+    fun setDownloadFailed() {
+        _state.value = UpdateDownload.Failed("تعذّر تنزيل التحديث — سيُستأنف عند إعادة المحاولة من حيث توقّف.")
     }
 
     /** يستدعي مثبّت النظام على [file]؛ إن نقص سماح المصادر المجهولة يوجّه المستخدم إليه. */

@@ -116,6 +116,31 @@ fun AppRoot(
     if (showWhatsNew) {
         io.github.salehgnutux.gtsalat.ui.screens.WhatsNewDialog(onDismiss = { whatsNewVm.markShown() })
     }
+    // رسالةُ الأذونات المطلوبة بعد التثبيت/التحديث — تظهر بعد «ما الجديد» إن كانت أذوناتٌ مهمّةٌ ناقصة،
+    // وتنقل المستخدم إلى قسم «موثوقيّة التنبيهات» لتفعيلها ليعمل التطبيق بشكلٍ سليم.
+    val permDue by whatsNewVm.permPromptDue.collectAsStateWithLifecycle()
+    val permCtx = LocalContext.current
+    val permsMissing = remember(permDue) { criticalPermsMissing(permCtx) }
+    if (!showWhatsNew && permDue && permsMissing) {
+        AlertDialog(
+            onDismissRequest = { whatsNewVm.markPermShown() },
+            icon = { Icon(Icons.Outlined.Settings, null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text("أذوناتٌ مطلوبةٌ لعمل التطبيق") },
+            text = {
+                Text(
+                    "ليصلك الأذان في وقته حتى والتطبيق مغلق، فعّل الأذونات من بطاقة «موثوقيّة التنبيهات»: " +
+                        "الإشعارات، والإنذارات الدقيقة، وإعفاء البطاريّة، ونافذة ملء الشاشة (على أندرويد 14+).",
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    whatsNewVm.openReliabilitySection()
+                    nav.navigate(Dest.SETTINGS.route) { launchSingleTop = true }
+                }) { Text("فتح الإعدادات") }
+            },
+            dismissButton = { FilledTonalButton(onClick = { whatsNewVm.markPermShown() }) { Text("لاحقاً") } },
+        )
+    }
     val backStack by nav.currentBackStackEntryAsState()
     val currentDest = backStack?.destination
     // رسالةٌ عند إعادة النقر على «المزيد» ونحن داخل أحد أقسامه.
@@ -386,4 +411,18 @@ private fun onTabClick(
         Dest.DASHBOARD -> UiEvents.requestHomeTop()  // إعادة النقر على الرئيسيّة تعود لرأس الصفحة
         else -> nav.popBackStack(dest.route, inclusive = false)
     }
+}
+
+/** هل تنقص أذوناتٌ مهمّةٌ لعمل التنبيهات؟ (إشعارات · إنذاراتٌ دقيقة · إعفاء بطاريّة). */
+private fun criticalPermsMissing(context: android.content.Context): Boolean {
+    val notif = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+    } else false
+    val exact = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+        !(context.getSystemService(android.content.Context.ALARM_SERVICE) as android.app.AlarmManager).canScheduleExactAlarms()
+    } else false
+    val battery = !(context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager)
+        .isIgnoringBatteryOptimizations(context.packageName)
+    return notif || exact || battery
 }

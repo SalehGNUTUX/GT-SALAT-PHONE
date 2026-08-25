@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.serialization.encodeToString
 import io.github.salehgnutux.gtsalat.domain.AsrMadhab
 import io.github.salehgnutux.gtsalat.domain.CalendarKind
 import io.github.salehgnutux.gtsalat.domain.MonthScheme
@@ -25,6 +26,8 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class SettingsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
+    private val locJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
     private object Keys {
         val LAT = doublePreferencesKey("lat")
         val LON = doublePreferencesKey("lon")
@@ -75,7 +78,10 @@ class SettingsRepository @Inject constructor(
         val CLOCK_24 = booleanPreferencesKey("clock_24h")
         val HIJRI_OFFSET = intPreferencesKey("hijri_offset")
         val LAST_WHATSNEW_CODE = intPreferencesKey("last_whatsnew_code")
+        val LAST_PERM_PROMPT_CODE = intPreferencesKey("last_perm_prompt_code")
         val EXIT_MODE = stringPreferencesKey("exit_mode")
+        val AUTO_UPDATE_LOC = booleanPreferencesKey("auto_update_loc")
+        val LOCATION_HISTORY = stringPreferencesKey("location_history")
         val SETTINGS_OPEN_SECTION = stringPreferencesKey("settings_open_section")
         val CHECK_UPDATES = booleanPreferencesKey("check_updates")
         val FULLSCREEN_ADHAN = booleanPreferencesKey("fullscreen_adhan")
@@ -168,7 +174,10 @@ class SettingsRepository @Inject constructor(
             clock24h = this[Keys.CLOCK_24] ?: true,
             hijriOffset = this[Keys.HIJRI_OFFSET] ?: 0,
             lastWhatsNewCode = this[Keys.LAST_WHATSNEW_CODE] ?: -1,
+            lastPermPromptCode = this[Keys.LAST_PERM_PROMPT_CODE] ?: -1,
             exitMode = this[Keys.EXIT_MODE] ?: "",
+            autoUpdateLocation = this[Keys.AUTO_UPDATE_LOC] ?: false,
+            locationHistory = this[Keys.LOCATION_HISTORY]?.let { runCatching { locJson.decodeFromString<List<io.github.salehgnutux.gtsalat.domain.Place>>(it) }.getOrNull() } ?: emptyList(),
             settingsOpenSection = this[Keys.SETTINGS_OPEN_SECTION] ?: "الموقع وطريقة الحساب",
             checkUpdates = this[Keys.CHECK_UPDATES] ?: true,
             fullScreenAdhan = this[Keys.FULLSCREEN_ADHAN] ?: true,
@@ -377,7 +386,19 @@ class SettingsRepository @Inject constructor(
     suspend fun setClock24h(v: Boolean) = context.dataStore.edit { it[Keys.CLOCK_24] = v }
     suspend fun setHijriOffset(days: Int) = context.dataStore.edit { it[Keys.HIJRI_OFFSET] = days.coerceIn(-3, 3) }
     suspend fun setLastWhatsNewCode(code: Int) = context.dataStore.edit { it[Keys.LAST_WHATSNEW_CODE] = code }
+    suspend fun setLastPermPromptCode(code: Int) = context.dataStore.edit { it[Keys.LAST_PERM_PROMPT_CODE] = code }
     suspend fun setExitMode(mode: String) = context.dataStore.edit { it[Keys.EXIT_MODE] = mode }
+    suspend fun setAutoUpdateLocation(v: Boolean) = context.dataStore.edit { it[Keys.AUTO_UPDATE_LOC] = v }
+
+    /** يضيف موقعاً إلى سجلّ آخر 5 مواقع (يزيل المكرّر ويُبقي الأحدث). */
+    suspend fun addLocationToHistory(place: io.github.salehgnutux.gtsalat.domain.Place) = context.dataStore.edit { p ->
+        val cur = p[Keys.LOCATION_HISTORY]?.let { runCatching { locJson.decodeFromString<List<io.github.salehgnutux.gtsalat.domain.Place>>(it) }.getOrNull() } ?: emptyList()
+        fun sameSpot(a: io.github.salehgnutux.gtsalat.domain.Place, b: io.github.salehgnutux.gtsalat.domain.Place) =
+            (a.city.isNotBlank() && a.city == b.city && a.country == b.country) ||
+                (kotlin.math.abs(a.lat - b.lat) < 0.05 && kotlin.math.abs(a.lon - b.lon) < 0.05)
+        val next = (listOf(place) + cur.filterNot { sameSpot(it, place) }).take(5)
+        p[Keys.LOCATION_HISTORY] = locJson.encodeToString(next)
+    }
     suspend fun setSettingsOpenSection(title: String) = context.dataStore.edit { it[Keys.SETTINGS_OPEN_SECTION] = title }
     suspend fun setCheckUpdates(v: Boolean) = context.dataStore.edit { it[Keys.CHECK_UPDATES] = v }
     suspend fun setFullScreenAdhan(v: Boolean) = context.dataStore.edit { it[Keys.FULLSCREEN_ADHAN] = v }

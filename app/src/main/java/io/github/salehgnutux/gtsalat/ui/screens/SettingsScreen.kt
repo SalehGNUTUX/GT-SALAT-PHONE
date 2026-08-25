@@ -197,6 +197,21 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             if (showPlaces) {
                 PlacePickerDialog(places = places, onDismiss = { showPlaces = false }) { p -> vm.pickPlace(p); showPlaces = false }
             }
+            SwitchRow("تحديث الموقع تلقائيّاً", settings.autoUpdateLocation) { vm.setAutoUpdateLocation(it) }
+            Text(
+                "يُحدِّث موقعك تلقائيّاً عند فتح التطبيق ودوريّاً (عبر الإنترنت أو GPS حسب المتاح) — مفيدٌ لكثير التنقّل.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+            )
+            // سجلّ آخر المواقع المكتشَفة — للعودة إليها إن تعذّر الكشف التلقائيّ.
+            if (settings.locationHistory.isNotEmpty()) {
+                Text("مواقعُ سابقة (اضغط للعودة إليها):", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                settings.locationHistory.forEach { pl ->
+                    val name = listOf(pl.city, pl.country).filter { it.isNotBlank() }.joinToString("، ")
+                        .ifBlank { String.format(java.util.Locale.US, "%.3f، %.3f", pl.lat, pl.lon) }
+                    ClickRow(name) { vm.restoreLocation(pl) }
+                }
+            }
             HorizontalDivider()
             MethodDropdown(settings.methodId) { vm.setMethod(it) }
             LabeledRow("مذهب حساب العصر") {

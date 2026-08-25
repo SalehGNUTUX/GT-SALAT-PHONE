@@ -61,8 +61,11 @@ data class AppSettings(
     val timetableCalendar: CalendarKind = CalendarKind.HIJRI,
     val clock24h: Boolean = true,                 // عرض الوقت: 24 ساعة أو 12 (ص/م)
     val hijriOffset: Int = 0,                     // إزاحة التاريخ الهجريّ بالأيّام (تصحيح فرق المنطقة)
-    val lastWhatsNewCode: Int = -1,               // آخر versionCode عُرضت مستجدّاته (لعرض «ما الجديد» بعد التحديث)
+    val lastWhatsNewCode: Int = -1,             // آخر versionCode عُرضت مستجدّاته («ما الجديد» بعد التحديث)
+    val lastPermPromptCode: Int = -1,           // آخر versionCode عُرضت فيه رسالة الأذونات المطلوبة
     val exitMode: String = "",                    // طريقة الخروج: "" لم تُختَر بعد · "dialog" نافذة تأكيد · "double" نقرتان للرجوع
+    val autoUpdateLocation: Boolean = false,      // تحديث الموقع تلقائيّاً عند فتح التطبيق ودوريّاً (للمتنقّلين)
+    val locationHistory: List<io.github.salehgnutux.gtsalat.domain.Place> = emptyList(), // آخر 5 مواقع مكتشَفة (للعودة إليها)
     val settingsOpenSection: String = "الموقع وطريقة الحساب",  // آخر قسم إعداداتٍ مفتوح ("" = الكلّ مطويّ)
     val checkUpdates: Boolean = true,             // إشعارٌ عند توفّر نسخةٍ جديدة
     val fullScreenAdhan: Boolean = true,          // نافذة أذانٍ ملء الشاشة فوق القفل

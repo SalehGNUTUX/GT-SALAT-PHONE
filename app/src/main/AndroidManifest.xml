@@ -28,6 +28,7 @@
     <!-- خدمة المقدّمة لتشغيل الأذان كاملاً -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- الكاتم التلقائيّ أثناء الصلاة: تغيير وضع الرنين يتطلّب الوصول لسياسة الإشعارات -->
@@ -103,6 +104,12 @@
             android:name=".audio.AdhkarAudioService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
+
+        <!-- خدمة تنزيل التحديث في الخلفية (قابلة للاستئناف) -->
+        <service
+            android:name=".data.UpdateDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- مُستقبِل إطلاق الإنذار عند دخول وقت الصلاة -->
         <receiver

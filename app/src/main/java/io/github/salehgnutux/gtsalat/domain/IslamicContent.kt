@@ -118,7 +118,7 @@ object Places {
      * أقربُ مدينةٍ من القائمة المُضمَّنة لإحداثيّاتٍ معطاة، بشرط أن تكون ضمن النطاق [maxKm]
      * (وإلّا فلا نُلصق اسمًا بعيدًا) — يُستعمَل للترميز العكسيّ دون إنترنت.
      */
-    fun nearest(lat: Double, lon: Double, list: List<Place>, maxKm: Double = 150.0): Place? =
+    fun nearest(lat: Double, lon: Double, list: List<Place>, maxKm: Double = 200.0): Place? =
         list.minByOrNull { haversineKm(lat, lon, it.lat, it.lon) }
             ?.takeIf { haversineKm(lat, lon, it.lat, it.lon) <= maxKm }
 

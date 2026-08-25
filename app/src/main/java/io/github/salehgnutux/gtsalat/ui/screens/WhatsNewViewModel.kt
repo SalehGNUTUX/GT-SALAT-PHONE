@@ -23,4 +23,17 @@ class WhatsNewViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     fun markShown() = viewModelScope.launch { settingsRepo.setLastWhatsNewCode(BuildConfig.VERSION_CODE) }
+
+    /** رسالةُ الأذونات المطلوبة تُعرَض مرّةً بعد التثبيت/التحديث. */
+    val permPromptDue: StateFlow<Boolean> = settingsRepo.settings
+        .map { it.lastPermPromptCode != BuildConfig.VERSION_CODE }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun markPermShown() = viewModelScope.launch { settingsRepo.setLastPermPromptCode(BuildConfig.VERSION_CODE) }
+
+    /** يفتح قسم «موثوقيّة التنبيهات» في الإعدادات (لتفعيل الأذونات) ويُعلِّم الرسالة كمعروضة. */
+    fun openReliabilitySection() = viewModelScope.launch {
+        settingsRepo.setSettingsOpenSection("موثوقيّة التنبيهات")
+        settingsRepo.setLastPermPromptCode(BuildConfig.VERSION_CODE)
+    }
 }

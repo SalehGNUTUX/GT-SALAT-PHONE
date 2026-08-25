@@ -46,7 +46,8 @@ class UpdateViewModel @Inject constructor(
     private val installer: UpdateInstaller,
 ) : ViewModel() {
     val download = installer.state
-    fun downloadAndInstall(url: String) = viewModelScope.launch { installer.downloadAndInstall(url) }
+    // التنزيل عبر خدمةٍ مقدّمة (يُكمِل في الخلفية ويُستأنف بعد انقطاع النت).
+    fun downloadAndInstall(url: String) = installer.startDownload(url)
     fun install(file: File) = installer.install(file)
     fun reset() = installer.reset()
 }

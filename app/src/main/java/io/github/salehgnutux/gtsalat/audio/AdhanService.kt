@@ -26,11 +26,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** حالةٌ عالميّةٌ: هل يُشغَّل صوت أذان/ذكرٍ الآن؟ تراقبها نافذة ملء الشاشة لتُغلَق عند الانتهاء. */
+/**
+ * حالةٌ عالميّةٌ: هل يُشغَّل صوت أذان/تنبيه/ذكرٍ الآن؟ تراقبها نافذة ملء الشاشة (لتُغلَق عند الانتهاء)
+ * وبطاقةُ الإيقاف في الرئيسيّة (لإظهار نوع الصوت). [kind]: adhan · prenotify · dhikr.
+ */
 object AdhanPlayback {
     private val _active = MutableStateFlow(false)
     val active: StateFlow<Boolean> = _active.asStateFlow()
-    fun set(v: Boolean) { _active.value = v }
+    private val _kind = MutableStateFlow("")
+    val kind: StateFlow<String> = _kind.asStateFlow()
+    fun set(v: Boolean, kind: String = "") { _active.value = v; if (v) _kind.value = kind }
 }
 
 /**
@@ -73,9 +78,14 @@ class AdhanService : Service() {
             else -> "🔊 يُشغَّل الآن أذان $prayerAr"
         }
         startForeground(NotificationHelper.ID_SERVICE, notifications.serviceNotification(title, stopPendingIntent()))
-        // إعلام الواجهة أنّ صوتاً يُشغَّل الآن (أذان/تنبيه اقتراب/ذكر بعد الصلاة) — لإظهار زرّ الإيقاف في الرئيسيّة،
-        // وإبقاء نافذة ملء الشاشة (للأذان/الأذكار) ما دام الصوت جارياً.
-        AdhanPlayback.set(true)
+        // إعلام الواجهة أنّ صوتاً يُشغَّل الآن (أذان/تنبيه اقتراب/ذكر بعد الصلاة) — لإظهار زرّ الإيقاف في الرئيسيّة
+        // بنوع الصوت، وإبقاء نافذة ملء الشاشة ما دام الصوت جارياً.
+        val kind = when (sound) {
+            SOUND_PRENOTIFY -> "prenotify"
+            SOUND_POST_DHIKR -> "dhikr"
+            else -> "adhan"
+        }
+        AdhanPlayback.set(true, kind)
         // حارسٌ زمنيّ: يوقف الخدمة قسراً بعد حدٍّ أقصى فلا يبقى إشعارها معلّقاً إن لم يكتمل الصوت
         // (مثلاً إن جمّد النظامُ العمليّةَ في أثناء التشغيل، ثمّ استُؤنفت).
         watchdog?.cancel()

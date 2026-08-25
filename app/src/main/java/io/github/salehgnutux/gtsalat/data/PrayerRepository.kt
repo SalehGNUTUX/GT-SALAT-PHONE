@@ -151,6 +151,8 @@ class PrayerRepository @Inject constructor(
         if (loc.country.isNotBlank()) {
             settingsRepo.setMethod(CalculationMethods.suggestByCountry(loc.country))
         }
+        // سجلّ آخر 5 مواقع مكتشَفة (للعودة إليها إن تعذّر الكشف لاحقاً).
+        settingsRepo.addLocationToHistory(io.github.salehgnutux.gtsalat.domain.Place(loc.country, loc.city, loc.lat, loc.lon))
         return loc
     }
 

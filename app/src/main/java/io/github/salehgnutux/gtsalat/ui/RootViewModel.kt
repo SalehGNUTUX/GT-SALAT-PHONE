@@ -27,8 +27,10 @@ data class RootState(
 
 @HiltViewModel
 class RootViewModel @Inject constructor(
-    settingsRepo: SettingsRepository,
+    private val settingsRepo: SettingsRepository,
     private val updateRepo: io.github.salehgnutux.gtsalat.data.UpdateRepository,
+    private val repo: io.github.salehgnutux.gtsalat.data.PrayerRepository,
+    private val scheduler: io.github.salehgnutux.gtsalat.alarm.PrayerAlarmScheduler,
 ) : ViewModel() {
     val state: StateFlow<RootState?> = settingsRepo.settings
         .map {
@@ -46,6 +48,13 @@ class RootViewModel @Inject constructor(
         viewModelScope.launch {
             while (isActive) {
                 runCatching { updateRepo.checkForUpdate() }
+                // تحديث الموقع تلقائيّاً (إن فُعّل): عند فتح التطبيق ودوريّاً — للمتنقّلين كثيراً.
+                if (runCatching { settingsRepo.current().autoUpdateLocation }.getOrDefault(false)) {
+                    runCatching {
+                        val loc = repo.detectAndSaveLocation()
+                        if (loc != null) { repo.prefetchMonths(3); scheduler.scheduleNext() }
+                    }
+                }
                 kotlinx.coroutines.delay(3 * 60 * 60 * 1000L)
             }
         }

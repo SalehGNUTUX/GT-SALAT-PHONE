@@ -113,6 +113,7 @@ class SettingsViewModel @Inject constructor(
     private suspend fun refreshWidgets() = runCatching { io.github.salehgnutux.gtsalat.widget.updateAllPrayerWidgets(context) }
     fun setCheckUpdates(v: Boolean) = viewModelScope.launch { settingsRepo.setCheckUpdates(v) }
     fun setExitMode(mode: String) = viewModelScope.launch { settingsRepo.setExitMode(mode) }
+    fun setAutoUpdateLocation(v: Boolean) = viewModelScope.launch { settingsRepo.setAutoUpdateLocation(v) }
     fun setEnableWird(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableWird(v) }
     fun setHijriOffset(days: Int) = viewModelScope.launch { settingsRepo.setHijriOffset(days) }
     fun setSettingsSection(title: String) = viewModelScope.launch { settingsRepo.setSettingsOpenSection(title) }
@@ -211,6 +212,15 @@ class SettingsViewModel @Inject constructor(
         repo.prefetchMonths(3); reschedule()
         val name = listOf(place.city, place.country).filter { it.isNotBlank() }.joinToString("، ")
         _locationStatus.value = "✓ حُدّد الموقع يدويّاً: $name"
+    }
+
+    /** استعادة موقعٍ من سجلّ آخر المواقع المكتشَفة. */
+    fun restoreLocation(place: io.github.salehgnutux.gtsalat.domain.Place) = viewModelScope.launch {
+        settingsRepo.setLocation(place.lat, place.lon, place.city, place.country)
+        if (place.country.isNotBlank()) settingsRepo.setMethod(io.github.salehgnutux.gtsalat.domain.CalculationMethods.suggestByCountry(place.country))
+        repo.prefetchMonths(3); reschedule()
+        val name = listOf(place.city, place.country).filter { it.isNotBlank() }.joinToString("، ").ifBlank { "موقعٌ محفوظ" }
+        _locationStatus.value = "✓ استُعيد الموقع: $name"
     }
 
     /** إدخال الموقع يدويّاً بخطّي العرض/الطول (دون إنترنت). */
