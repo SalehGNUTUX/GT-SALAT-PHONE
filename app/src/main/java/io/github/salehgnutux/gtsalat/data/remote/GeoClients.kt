@@ -12,13 +12,19 @@ import javax.inject.Singleton
 
 /** ترميز جغرافيّ عكسيّ عبر OpenStreetMap (Nominatim) — بلا اعتماد على Google. */
 @Singleton
-class NominatimGeocoder @Inject constructor(private val http: OkHttpClient) {
+class NominatimGeocoder @Inject constructor(
+    private val http: OkHttpClient,
+    private val settingsRepo: io.github.salehgnutux.gtsalat.data.settings.SettingsRepository,
+) {
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** يعيد (المدينة، البلد) أو null. */
+    /** يعيد (المدينة، البلد) أو null. الاسمُ بلغة الموقع افتراضيّاً، وبالعربيّة إن فُعّلت الترجمة في الإعدادات. */
     suspend fun reverse(lat: Double, lon: Double): Pair<String, String>? = withContext(Dispatchers.IO) {
+        // افتراضيّاً نجلب الاسم بلغة الموقع (بلا accept-language=ar) — لئلّا يُترجَم «Jerez» إلى «شريش».
+        val toArabic = runCatching { settingsRepo.current().translateLocationNames }.getOrDefault(false)
+        val lang = if (toArabic) "&accept-language=ar" else ""
         val url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2" +
-            "&lat=$lat&lon=$lon&accept-language=ar&zoom=10"
+            "&lat=$lat&lon=$lon$lang&zoom=10"
         try {
             val req = Request.Builder().url(url)
                 .header("User-Agent", "GT-SALAT-Android/0.1 (islamic prayer times)")

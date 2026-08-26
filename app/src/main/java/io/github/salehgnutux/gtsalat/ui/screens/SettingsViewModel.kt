@@ -114,6 +114,7 @@ class SettingsViewModel @Inject constructor(
     fun setCheckUpdates(v: Boolean) = viewModelScope.launch { settingsRepo.setCheckUpdates(v) }
     fun setExitMode(mode: String) = viewModelScope.launch { settingsRepo.setExitMode(mode) }
     fun setAutoUpdateLocation(v: Boolean) = viewModelScope.launch { settingsRepo.setAutoUpdateLocation(v) }
+    fun setTranslateLocationNames(v: Boolean) = viewModelScope.launch { settingsRepo.setTranslateLocationNames(v) }
     fun setEnableWird(v: Boolean) = viewModelScope.launch { settingsRepo.setEnableWird(v) }
     fun setHijriOffset(days: Int) = viewModelScope.launch { settingsRepo.setHijriOffset(days) }
     fun setSettingsSection(title: String) = viewModelScope.launch { settingsRepo.setSettingsOpenSection(title) }

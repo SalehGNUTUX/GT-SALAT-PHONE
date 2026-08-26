@@ -81,6 +81,7 @@ class SettingsRepository @Inject constructor(
         val LAST_PERM_PROMPT_CODE = intPreferencesKey("last_perm_prompt_code")
         val EXIT_MODE = stringPreferencesKey("exit_mode")
         val AUTO_UPDATE_LOC = booleanPreferencesKey("auto_update_loc")
+        val TRANSLATE_LOC = booleanPreferencesKey("translate_loc_names")
         val LOCATION_HISTORY = stringPreferencesKey("location_history")
         val SETTINGS_OPEN_SECTION = stringPreferencesKey("settings_open_section")
         val CHECK_UPDATES = booleanPreferencesKey("check_updates")
@@ -177,6 +178,7 @@ class SettingsRepository @Inject constructor(
             lastPermPromptCode = this[Keys.LAST_PERM_PROMPT_CODE] ?: -1,
             exitMode = this[Keys.EXIT_MODE] ?: "",
             autoUpdateLocation = this[Keys.AUTO_UPDATE_LOC] ?: false,
+            translateLocationNames = this[Keys.TRANSLATE_LOC] ?: false,
             locationHistory = this[Keys.LOCATION_HISTORY]?.let { runCatching { locJson.decodeFromString<List<io.github.salehgnutux.gtsalat.domain.Place>>(it) }.getOrNull() } ?: emptyList(),
             settingsOpenSection = this[Keys.SETTINGS_OPEN_SECTION] ?: "الموقع وطريقة الحساب",
             checkUpdates = this[Keys.CHECK_UPDATES] ?: true,
@@ -389,6 +391,7 @@ class SettingsRepository @Inject constructor(
     suspend fun setLastPermPromptCode(code: Int) = context.dataStore.edit { it[Keys.LAST_PERM_PROMPT_CODE] = code }
     suspend fun setExitMode(mode: String) = context.dataStore.edit { it[Keys.EXIT_MODE] = mode }
     suspend fun setAutoUpdateLocation(v: Boolean) = context.dataStore.edit { it[Keys.AUTO_UPDATE_LOC] = v }
+    suspend fun setTranslateLocationNames(v: Boolean) = context.dataStore.edit { it[Keys.TRANSLATE_LOC] = v }
 
     /** يضيف موقعاً إلى سجلّ آخر 5 مواقع (يزيل المكرّر ويُبقي الأحدث). */
     suspend fun addLocationToHistory(place: io.github.salehgnutux.gtsalat.domain.Place) = context.dataStore.edit { p ->

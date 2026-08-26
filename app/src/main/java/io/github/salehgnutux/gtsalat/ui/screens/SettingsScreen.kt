@@ -203,6 +203,12 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
             )
+            SwitchRow("ترجمة أسماء المواقع الأجنبيّة للعربيّة", settings.translateLocationNames) { vm.setTranslateLocationNames(it) }
+            Text(
+                "افتراضيّاً يظهر اسم الموقع بلغته (مثلاً «Jerez»). عند التفعيل يُترجَم للعربيّة إن توفّرت الترجمة (مثلاً «شريش») — يسري عند تحديث الموقع التالي.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+            )
             // سجلّ آخر المواقع المكتشَفة — للعودة إليها إن تعذّر الكشف التلقائيّ.
             if (settings.locationHistory.isNotEmpty()) {
                 Text("مواقعُ سابقة (اضغط للعودة إليها):", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
