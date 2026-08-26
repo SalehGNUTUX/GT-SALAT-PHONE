@@ -19,7 +19,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MicNone
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
@@ -28,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,20 +53,67 @@ fun TasbihScreen(onBack: () -> Unit, vm: TasbihViewModel = hiltViewModel()) {
     val view = LocalView.current
     val context = LocalContext.current
 
+    // الوضع الصوتيّ: كلّ نطقةٍ = تسبيحة (يعمل دون إنترنت). الحالة مرفوعةٌ لتُستعمَل في الترويسة والجسم.
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val voice = androidx.compose.runtime.remember { io.github.salehgnutux.gtsalat.audio.VoiceCounter() }
+    var voiceOn by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var sensitivity by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(60) }
+    fun startVoice() { voice.stop(); voice.start(scope, sensitivity) { vm.increment(); view.performHapticFeedbackCompat() } }
+    val micLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) { voiceOn = true; startVoice() }
+        else android.widget.Toast.makeText(context, "يلزم إذن الميكروفون لتشغيل الوضع الصوتيّ", android.widget.Toast.LENGTH_SHORT).show()
+    }
+    fun toggleVoice() {
+        if (voiceOn) { voiceOn = false; voice.stop() } else {
+            val granted = androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.RECORD_AUDIO) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (granted) { voiceOn = true; startVoice() } else micLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+        }
+    }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { voice.stop() } }
+
     Column(Modifier.fillMaxSize()) {
-        SubScreenHeader("التسبيح", onBack)
+        SubScreenHeader("التسبيح", onBack, actions = {
+            IconButton(onClick = { toggleVoice() }) {
+                Icon(
+                    if (voiceOn) Icons.Filled.Mic else Icons.Filled.MicNone,
+                    contentDescription = "الوضع الصوتيّ",
+                    tint = if (voiceOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        })
         Column(
-            Modifier.fillMaxSize().padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // اختيار الوضع: عاديّ (ذكرٌ واحد) أو مختلط (دبر الصلاة بعدد السنّة)
+            // اختيار الوضع: عاديّ (ذكرٌ واحد) أو دبر الصلاة (متتالية بعدد السنّة)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(selected = !ui.mixed, onClick = { vm.setMixed(false) }, label = { Text("عاديّ") })
-                FilterChip(selected = ui.mixed, onClick = { vm.setMixed(true) }, label = { Text("مختلط (دبر الصلاة)") })
+                FilterChip(selected = ui.mixed, onClick = { vm.setMixed(true) }, label = { Text("دبر الصلاة") })
             }
 
-            // في الوضع العاديّ فقط: اختيار الذِّكر
+            // ضبط الوضع الصوتيّ — بطاقةٌ مضغوطةٌ تظهر عند التفعيل فقط.
+            if (voiceOn) {
+                Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = MaterialTheme.shapes.medium, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+                        Text(
+                            "🎙️ يستمع — كلّ نطقةٍ تُحسَب تسبيحة. اضبط الحساسيّة إن عدّ الضجيج أو لم يستجب:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                        androidx.compose.material3.Slider(
+                            value = sensitivity / 100f,
+                            onValueChange = { sensitivity = (it * 100).toInt().coerceIn(0, 100) },
+                            onValueChangeFinished = { startVoice() },
+                        )
+                    }
+                }
+            }
+
+            // العاديّ: اختيار الذِّكر · المختلط: اختيار النوع (كلماتُ كلٍّ تتناوب واحدةً بعد الأخرى).
             if (!ui.mixed) {
                 LazyChips(
                     options = TasbihUi.DHIKR_LIST,
@@ -67,12 +121,11 @@ fun TasbihScreen(onBack: () -> Unit, vm: TasbihViewModel = hiltViewModel()) {
                     onSelect = { vm.setDhikr(it) },
                 )
             } else {
-                Text(
-                    "الخطوة ${ui.mixedStep + 1} من ${TasbihUi.MIXED.size} · المجموع ${ui.mixedOverall} / ${TasbihUi.MIXED_TOTAL}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TasbihUi.MIXED_TYPES.forEachIndexed { i, t ->
+                        FilterChip(selected = ui.mixedType == i, onClick = { vm.setMixedType(i) }, label = { Text(t.name) })
+                    }
+                }
             }
 
             Text(
@@ -115,14 +168,16 @@ fun TasbihScreen(onBack: () -> Unit, vm: TasbihViewModel = hiltViewModel()) {
                 }
             }
 
-            if (ui.mixed && ui.mixedDone) {
-                Text("✓ تمّ تسبيح دبر الصلاة (${TasbihUi.MIXED_TOTAL}) — تقبّل الله", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-            } else if (!ui.mixed && ui.laps > 0) {
-                Text("اكتملت ${ui.laps} لفّة", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            if (ui.laps > 0) {
+                Text(
+                    "اكتملت ${ui.laps} ${if (ui.mixed) "دورة" else "لفّة"}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             }
 
-            // الأهداف (الوضع العاديّ فقط)
-            if (!ui.mixed) {
+            // الأهداف (في الوضعين)
+            run {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TasbihUi.TARGETS.forEach { t ->
                         FilterChip(

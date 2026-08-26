@@ -112,13 +112,7 @@ fun AdhkarSessionScreen(onBack: () -> Unit, vm: AdhkarSessionViewModel = hiltVie
                     }
                 })
             }
-            Text(
-                "${pager.currentPage + 1} / ${vm.items.size}",
-                style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-            )
+            // (أُزيل مؤشّر «الصفحة / المجموع» السفليّ — شريطُ التقدّم العلويّ يكفي، وتتّسع مساحة الذكر.)
         } else {
             LazyColumn(
                 Modifier.fillMaxSize(),

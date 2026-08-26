@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Favorite
@@ -76,6 +77,16 @@ fun DashboardScreen(onOpenSettings: () -> Unit = {}, onOpenRadio: () -> Unit = {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
+    // رسالةُ نتيجة تحديث الموقع (نجاح/تعذّر) كـToast.
+    val ctxDash = LocalContext.current
+    val locateMsg by vm.locateMsg.collectAsStateWithLifecycle()
+    androidx.compose.runtime.LaunchedEffect(locateMsg) {
+        locateMsg?.let {
+            android.widget.Toast.makeText(ctxDash, it, android.widget.Toast.LENGTH_LONG).show()
+            vm.clearLocateMsg()
+        }
+    }
+
     // دخول الشاشة (أو العودة إليها من قسمٍ آخر) يبدأ من رأس الصفحة — لا من آخر موضعٍ محفوظ.
     androidx.compose.runtime.LaunchedEffect(Unit) { listState.scrollToItem(0) }
     // إعادة النقر على «الرئيسيّة» وهي ظاهرة → التمرير لرأس الصفحة.
@@ -112,7 +123,8 @@ fun DashboardScreen(onOpenSettings: () -> Unit = {}, onOpenRadio: () -> Unit = {
                 AdhanStopBanner()
                 NotificationPermissionBanner()
                 UpdateBanner()
-                HeroCard(ui, tick)
+                val locating by vm.locating.collectAsStateWithLifecycle()
+                HeroCard(ui, tick, locating = locating, onRefreshLocation = { vm.redetectLocation() })
                 RamadanCard(ui, tick)
             }
         }
@@ -202,7 +214,7 @@ private fun DailyNavButton(label: String, icon: androidx.compose.ui.graphics.vec
 }
 
 @Composable
-private fun HeroCard(ui: DashboardUi, tick: DashboardTick) {
+private fun HeroCard(ui: DashboardUi, tick: DashboardTick, locating: Boolean = false, onRefreshLocation: () -> Unit = {}) {
     val cs = MaterialTheme.colorScheme
     val dark = isSystemInDarkTheme()
     val brush = androidx.compose.runtime.remember(cs.primaryContainer, cs.primary, dark) {
@@ -230,6 +242,14 @@ private fun HeroCard(ui: DashboardUi, tick: DashboardTick) {
                         fontWeight = FontWeight.Bold,
                         color = onHero,
                     )
+                    // زرّ سهمين دائريّين لتحديث الموقع يدويّاً دون الذهاب للإعدادات.
+                    IconButton(onClick = onRefreshLocation, enabled = !locating, modifier = Modifier.size(30.dp)) {
+                        if (locating) {
+                            androidx.compose.material3.CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = onHero)
+                        } else {
+                            Icon(Icons.Filled.Sync, contentDescription = "تحديث الموقع", tint = onHero, modifier = Modifier.size(18.dp))
+                        }
+                    }
                 }
                 Text(tick.clock, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = onHero)
             }

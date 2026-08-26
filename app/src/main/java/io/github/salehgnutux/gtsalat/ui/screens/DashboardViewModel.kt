@@ -52,10 +52,32 @@ class DashboardViewModel @Inject constructor(
     private val settingsRepo: SettingsRepository,
     private val azkar: AzkarRepository,
     private val content: ContentRepository,
+    private val scheduler: io.github.salehgnutux.gtsalat.alarm.PrayerAlarmScheduler,
 ) : ViewModel() {
 
     private val _ui = MutableStateFlow(DashboardUi())
     val ui: StateFlow<DashboardUi> = _ui.asStateFlow()
+
+    // تحديثُ الموقع من الرئيسيّة مباشرةً (زرّ السهمين بجانب اسم الموقع).
+    private val _locating = MutableStateFlow(false)
+    val locating: StateFlow<Boolean> = _locating.asStateFlow()
+    // رسالةٌ لِمرّةٍ واحدة تُعرَض للمستخدم عند تعذّر تحديد الموقع (تُقرأ ثمّ تُمسَح).
+    private val _locateMsg = MutableStateFlow<String?>(null)
+    val locateMsg: StateFlow<String?> = _locateMsg.asStateFlow()
+    fun clearLocateMsg() { _locateMsg.value = null }
+
+    fun redetectLocation() = viewModelScope.launch {
+        _locating.value = true
+        val loc = runCatching { repo.detectAndSaveLocation() }.getOrNull()
+        if (loc != null) {
+            repo.prefetchMonths(3); scheduler.scheduleNext()
+            val name = listOf(loc.city, loc.country).filter { it.isNotBlank() }.joinToString("، ").ifBlank { "موقعك" }
+            _locateMsg.value = "✓ حُدّث الموقع: $name"
+        } else {
+            _locateMsg.value = "تعذّر تحديد الموقع — فعّل الإنترنت أو خدمة تحديد المواقع (GPS) ثمّ أعد المحاولة."
+        }
+        _locating.value = false
+    }
 
     // تدفّقٌ منفصلٌ للساعة/العدّاد (يتغيّر كلّ ثانية) — تقرؤه بطاقة البطل فقط.
     private val _tick = MutableStateFlow(DashboardTick())
