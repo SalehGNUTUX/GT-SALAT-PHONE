@@ -232,15 +232,18 @@ private fun HeroCard(ui: DashboardUi, tick: DashboardTick, locating: Boolean = f
             Modifier.fillMaxWidth().background(brush).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            // الموقع + الساعة الحيّة
-            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            // الموقع + الساعة الحيّة — الاسمُ الطويل يُختصَر بنقاطٍ ولا يضغط الساعةَ فتلتفّ.
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = onHero, modifier = Modifier.height(18.dp))
                     Text(
                         if (ui.city.isNotBlank()) ui.city else "موقعك",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = onHero,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false).padding(horizontal = 2.dp),
                     )
                     // زرّ سهمين دائريّين لتحديث الموقع يدويّاً دون الذهاب للإعدادات.
                     IconButton(onClick = onRefreshLocation, enabled = !locating, modifier = Modifier.size(30.dp)) {
@@ -251,7 +254,14 @@ private fun HeroCard(ui: DashboardUi, tick: DashboardTick, locating: Boolean = f
                         }
                     }
                 }
-                Text(tick.clock, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = onHero)
+                Text(
+                    tick.clock,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = onHero,
+                    maxLines = 1,
+                    softWrap = false,
+                )
             }
             // التاريخان
             ui.hijri?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = onHero, fontWeight = FontWeight.Bold) }
