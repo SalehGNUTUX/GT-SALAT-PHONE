@@ -5,10 +5,13 @@ import android.content.Context
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.salehgnutux.gtsalat.data.remote.IpLocationClient
 import io.github.salehgnutux.gtsalat.data.remote.NominatimGeocoder
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -35,17 +38,31 @@ class PlatformLocationProvider @Inject constructor(
 
     private suspend fun fused(): Pair<Double, Double>? {
         if (!hasPermission()) return null
-        return try {
-            val client = LocationServices.getFusedLocationProviderClient(context)
-            suspendCancellableCoroutine { cont ->
+        val client = LocationServices.getFusedLocationProviderClient(context)
+        // آخر موقعٍ معروفٍ أوّلاً (فوريّ)، فإن غاب فطلبٌ نشطٌ بمهلةٍ (للمتنقّلين).
+        val last = try {
+            suspendCancellableCoroutine<Pair<Double, Double>?> { cont ->
                 client.lastLocation
-                    .addOnSuccessListener { loc ->
-                        cont.resume(loc?.let { it.latitude to it.longitude })
-                    }
+                    .addOnSuccessListener { loc -> cont.resume(loc?.let { it.latitude to it.longitude }) }
                     .addOnFailureListener { cont.resume(null) }
             }
         } catch (_: SecurityException) {
-            null
+            return null
+        }
+        if (last != null) return last
+        // طلبٌ نشطٌ لموقعٍ حاليٍّ بمهلة 15 ثانية (توازنٌ بين الدقّة والطاقة).
+        return withTimeoutOrNull(15_000L) {
+            val cts = CancellationTokenSource()
+            try {
+                suspendCancellableCoroutine<Pair<Double, Double>?> { cont ->
+                    cont.invokeOnCancellation { cts.cancel() }
+                    client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cts.token)
+                        .addOnSuccessListener { loc -> cont.resume(loc?.let { it.latitude to it.longitude }) }
+                        .addOnFailureListener { cont.resume(null) }
+                }
+            } catch (_: SecurityException) {
+                null
+            }
         }
     }
 

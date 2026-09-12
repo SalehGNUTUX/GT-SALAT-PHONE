@@ -226,10 +226,15 @@ fun AppRoot(
                 }
             },
         ) { padding ->
+            val animOn = remember { animationsEnabled(ctx) }
             NavHost(
                 navController = nav,
                 startDestination = Dest.DASHBOARD.route,
                 modifier = Modifier.padding(padding),
+                enterTransition = { navEnter(animOn) },
+                exitTransition = { navExit(animOn) },
+                popEnterTransition = { navEnter(animOn) },
+                popExitTransition = { navExit(animOn) },
             ) {
                 composable(Dest.DASHBOARD.route) {
                     DashboardScreen(

@@ -40,8 +40,7 @@
     <!-- نافذة أذانٍ ملء الشاشة فوق القفل -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
-    <!-- تنزيل وتثبيت التحديث من داخل التطبيق -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- إذن التحديث الذاتيّ (REQUEST_INSTALL_PACKAGES) في نكهة foss وحدها: src/foss/AndroidManifest.xml -->
 
     <application
         android:name=".GtSalatApp"
@@ -107,11 +106,7 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
-        <!-- خدمة تنزيل التحديث في الخلفية (قابلة للاستئناف) -->
-        <service
-            android:name=".data.UpdateDownloadService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
+        <!-- خدمة تنزيل التحديث (dataSync) في نكهة foss وحدها: src/foss/AndroidManifest.xml -->
 
         <!-- مُستقبِل إطلاق الإنذار عند دخول وقت الصلاة -->
         <receiver

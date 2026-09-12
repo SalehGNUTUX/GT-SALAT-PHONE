@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  تراكبُ نكهة foss (تنزيلٌ مباشر + F-Droid): تضيف ما يخصّ المحدِّث الذاتيّ وحده.
+  سياسةُ غوغل بلاي تمنع هذا (تحديثُ التطبيق نفسَه)، فيخرج من نكهة full كلَّه — شيفرةً
+  وبياناً — عبر شجرة المصدر لا رايةً وقتَ التشغيل.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- تنزيل وتثبيت التحديث من داخل التطبيق -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <application>
+        <!-- خدمة تنزيل التحديث في الخلفية (قابلة للاستئناف) -->
+        <service
+            android:name=".data.UpdateDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+    </application>
+</manifest>

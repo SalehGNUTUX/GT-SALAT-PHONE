@@ -109,8 +109,10 @@ class PrayerAlarmScheduler @Inject constructor(
     fun scheduleAdhkarReminders(s: io.github.salehgnutux.gtsalat.data.settings.AppSettings) {
         am.cancel(adhkarIntent(morning = true))
         am.cancel(adhkarIntent(morning = false))
-        if (s.enableMorningAdhkar) setExact(nextDailyMillis(s.morningAdhkarHour), adhkarIntent(morning = true))
-        if (s.enableEveningAdhkar) setExact(nextDailyMillis(s.eveningAdhkarHour), adhkarIntent(morning = false))
+        // setAlarmClock (كالأذان) لا يؤجّله Doze/توفير البطاريّة، فتصل الأذكار والشاشة مغلقة
+        // على الأجهزة الصارمة (Xiaomi/Oppo/Infinix). المقابل: رمز منبّهٍ في شريط الحالة.
+        if (s.enableMorningAdhkar) setAlarmClock(nextDailyMillis(s.morningAdhkarHour), adhkarIntent(morning = true))
+        if (s.enableEveningAdhkar) setAlarmClock(nextDailyMillis(s.eveningAdhkarHour), adhkarIntent(morning = false))
     }
 
     /** إعادة جدولة تذكير أذكارٍ واحدٍ لليوم التالي (يُستدعى من المُستقبِل). */
@@ -119,7 +121,7 @@ class PrayerAlarmScheduler @Inject constructor(
         val on = if (morning) s.enableMorningAdhkar else s.enableEveningAdhkar
         if (!on) return
         val hour = if (morning) s.morningAdhkarHour else s.eveningAdhkarHour
-        setExact(nextDailyMillis(hour), adhkarIntent(morning))
+        setAlarmClock(nextDailyMillis(hour), adhkarIntent(morning))
     }
 
     private fun nextDailyMillis(hour: Int): Long {

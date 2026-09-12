@@ -463,7 +463,10 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             FilledTonalButton(onClick = { showWhatsNew = true }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
                 Text("🎉 ما الجديد في هذا الإصدار")
             }
-            SwitchRow("إشعارٌ عند توفّر نسخةٍ جديدة", settings.checkUpdates) { vm.setCheckUpdates(it) }
+            // خيار التحديث الذاتيّ يظهر في نكهة foss فقط (تنزيلٌ مباشر + F-Droid)؛ يُخفى في full (بلاي).
+            if (io.github.salehgnutux.gtsalat.ui.update.SELF_UPDATE_AVAILABLE) {
+                SwitchRow("إشعارٌ عند توفّر نسخةٍ جديدة", settings.checkUpdates) { vm.setCheckUpdates(it) }
+            }
             HorizontalDivider()
             LinkRow("المطوّر", io.github.salehgnutux.gtsalat.domain.Credits.DEVELOPER) { openUrl(context, io.github.salehgnutux.gtsalat.domain.Credits.GITHUB) }
             LinkRow("المستودع (GitHub)", "الشيفرة المصدريّة") { openUrl(context, io.github.salehgnutux.gtsalat.domain.Credits.REPO) }
@@ -852,6 +855,9 @@ private fun openAutoStartSettings(context: Context) {
         "com.vivo.permissionmanager" to "com.vivo.permissionmanager.activity.BgStartUpManagerActivity",
         "com.huawei.systemmanager" to "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity",
         "com.huawei.systemmanager" to "com.huawei.systemmanager.optimize.process.ProtectActivity",
+        // Transsion: Infinix (XOS) · Tecno (HiOS) · itel — «مدير الهاتف»/التشغيل التلقائيّ
+        "com.transsion.phonemanager" to "com.itel.autobootmanager.activity.AutoBootMgrActivity",
+        "com.transsion.phonemanager" to "com.cyin.himgr.autostart.AutoStartActivity",
     )
     for ((pkg, cls) in candidates) {
         val intent = Intent().apply {

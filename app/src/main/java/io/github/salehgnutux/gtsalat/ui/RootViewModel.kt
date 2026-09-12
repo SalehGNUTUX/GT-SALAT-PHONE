@@ -31,6 +31,7 @@ class RootViewModel @Inject constructor(
     private val updateRepo: io.github.salehgnutux.gtsalat.data.UpdateRepository,
     private val repo: io.github.salehgnutux.gtsalat.data.PrayerRepository,
     private val scheduler: io.github.salehgnutux.gtsalat.alarm.PrayerAlarmScheduler,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context,
 ) : ViewModel() {
     val state: StateFlow<RootState?> = settingsRepo.settings
         .map {
@@ -49,7 +50,10 @@ class RootViewModel @Inject constructor(
             while (isActive) {
                 runCatching { updateRepo.checkForUpdate() }
                 // تحديث الموقع تلقائيّاً (إن فُعّل): عند فتح التطبيق ودوريّاً — للمتنقّلين كثيراً.
-                if (runCatching { settingsRepo.current().autoUpdateLocation }.getOrDefault(false)) {
+                // بوّابةٌ خفيفة: لا نبذل جهداً إن غاب الإنترنت وGPS معاً.
+                if (runCatching { settingsRepo.current().autoUpdateLocation }.getOrDefault(false) &&
+                    io.github.salehgnutux.gtsalat.util.Connectivity.canLocate(appContext)
+                ) {
                     runCatching {
                         val loc = repo.detectAndSaveLocation()
                         if (loc != null) { repo.prefetchMonths(3); scheduler.scheduleNext() }

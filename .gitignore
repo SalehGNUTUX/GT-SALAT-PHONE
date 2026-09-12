@@ -13,3 +13,8 @@ local.properties
 *.apk
 *.aab
 /.kotlin/
+# مفتاح رفع نكهة بلاي — لا يدخل git أبداً
+keystore.properties
+*.jks
+*.keystore
+play-api.json

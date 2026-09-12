@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -14,10 +16,25 @@ android {
     defaultConfig {
         applicationId = "io.github.salehgnutux.gtsalat"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 38
-        versionName = "1.17.2"
+        targetSdk = 36
+        versionCode = 39
+        versionName = "1.18"
         vectorDrawables { useSupportLibrary = true }
+    }
+
+    // مفتاح رفع نكهة بلاي (full): يُقرأ من keystore.properties (متجاهَلٌ في git) بشرط
+    // وجودٍ، فلا يتعطّل البناء على جهازٍ بلا مفتاح. نكهة foss تبقى على مفتاحها الحاليّ
+    // (فلا ينكسر تحديث مستخدميها الذاتيّ). signingConfigs قبل productFlavors (وإلّا
+    // ردّت findByName عدماً بصمت).
+    val ksProps = rootProject.file("keystore.properties").takeIf { it.exists() }
+        ?.let { Properties().apply { it.inputStream().use(::load) } }
+    signingConfigs {
+        if (ksProps != null) create("playUpload") {
+            storeFile = file(ksProps.getProperty("storeFile"))
+            storePassword = ksProps.getProperty("storePassword")
+            keyAlias = ksProps.getProperty("keyAlias")
+            keyPassword = ksProps.getProperty("keyPassword")
+        }
     }
 
     // نكهتان: foss (حرّة بالكامل، بلا Google) و full (بخدمات Google للموقع الأدقّ)
@@ -34,6 +51,8 @@ android {
             dimension = "edition"
             buildConfigField("boolean", "USES_GMS", "true")
             resValue("string", "app_edition", "كاملة")
+            // نسخة غوغل بلاي: توقَّع بمفتاح الرفع إن وُجد keystore.properties.
+            signingConfigs.findByName("playUpload")?.let { signingConfig = it }
         }
     }
 
