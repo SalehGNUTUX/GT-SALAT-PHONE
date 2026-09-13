@@ -55,6 +55,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
@@ -686,43 +687,48 @@ private fun ReliabilityCard(expanded: Boolean, onToggle: () -> Unit, onTest: () 
         onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
     }
 
+    val notifOk = remember(refreshKey) { notificationsOk(context) }
     val exactOk = remember(refreshKey) { canScheduleExact(context) }
     val batteryOk = remember(refreshKey) { isBatteryUnrestricted(context) }
     val fullScreenOk = remember(refreshKey) { canUseFullScreenIntent(context) }
-    val allOk = exactOk && batteryOk && fullScreenOk
+    val allOk = notifOk && exactOk && batteryOk && fullScreenOk
 
     SectionCard(if (allOk) "موثوقيّة التنبيهات ✓" else "موثوقيّة التنبيهات", expanded, onToggle) {
         Text(
-            if (allOk) "التنبيهات الأساسيّة مفعّلة. إن لم يصلك الأذان والشاشة مغلقة، فالسبب غالباً «التشغيل التلقائيّ» أو تقييد الخلفيّة في نظامك."
-            else "لضمان وصول الأذان في وقته حتى والتطبيق مغلق، فعّل ما يلي:",
+            "الصلاحيات للعمل في الخلفيّة — تضمن وصول الأذان والأذكار في وقتها حتى والتطبيق مغلق:",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.outline,
         )
-        if (!exactOk) {
-            ReliabilityRow(
-                title = "الإنذارات الدقيقة",
-                desc = "يسمح بإطلاق الأذان في لحظته بالضبط.",
-                onFix = { openExactAlarmSettings(context) },
-            )
-        }
-        if (!batteryOk) {
-            ReliabilityRow(
-                title = "إعفاء من تحسين البطاريّة",
-                desc = "يمنع النظام من تعطيل التطبيق في الخلفيّة (مهمّ على أجهزة Xiaomi وHuawei وغيرها).",
-                onFix = { openBatteryExemption(context) },
-            )
-        }
-        if (!fullScreenOk) {
-            ReliabilityRow(
-                title = "إظهار نافذة الأذان فوق القفل",
-                desc = "يسمح بإيقاظ الشاشة وإظهار نافذة الأذان فورَ دخول الوقت (أندرويد 14 فأحدث).",
-                onFix = { openFullScreenIntentSettings(context) },
-            )
-        }
-        // التشغيل التلقائيّ (autostart) — إعدادٌ خاصٌّ ببعض الأنظمة لا يُقرأ برمجيّاً؛ نوجّه له بخطوةٍ حسب المُصنّع.
-        ReliabilityRow(
+        // كلّ صلاحيّةٍ تظهر دائماً بشارة حالةٍ («مفوّض»/«ينقص الإذن»)، وزرُّ التفعيل عند نقصها فقط.
+        PermStatusRow(
+            title = "إشعارات النظام",
+            desc = "بدونها لا تظهر التنبيهات أصلاً.",
+            granted = notifOk,
+            onFix = { openNotificationSettings(context) },
+        )
+        PermStatusRow(
+            title = "المنبّهات الدقيقة",
+            desc = "لإطلاق الأذان في لحظته بالضبط (أندرويد 12 فأحدث).",
+            granted = exactOk,
+            onFix = { openExactAlarmSettings(context) },
+        )
+        PermStatusRow(
+            title = "إعفاء من تحسين البطاريّة",
+            desc = "يمنع النظام من تعطيل التطبيق في الخلفيّة (مهمّ على أجهزة Xiaomi وOppo وHuawei وغيرها).",
+            granted = batteryOk,
+            onFix = { openBatteryExemption(context) },
+        )
+        PermStatusRow(
+            title = "نافذة الأذان فوق القفل",
+            desc = "لإيقاظ الشاشة وإظهار نافذة الأذان فورَ دخول الوقت (أندرويد 14 فأحدث).",
+            granted = fullScreenOk,
+            onFix = { openFullScreenIntentSettings(context) },
+        )
+        // التشغيل التلقائيّ (autostart) — إعدادٌ خاصٌّ ببعض الأنظمة لا يُقرأ برمجيّاً؛ إرشادٌ دائمٌ حسب المُصنّع.
+        PermStatusRow(
             title = "التشغيل التلقائيّ وتقييد الخلفيّة",
             desc = oemAutostartDesc(),
+            granted = null,
             onFix = { openAutoStartSettings(context) },
         )
         HorizontalDivider()
@@ -740,15 +746,57 @@ private fun ReliabilityCard(expanded: Boolean, onToggle: () -> Unit, onTest: () 
     }
 }
 
+/**
+ * صفُّ صلاحيّةٍ دائم الظهور بشارة حالة: [granted] = true «مفوّض» · false «ينقص الإذن» ·
+ * null لا يُقرأ برمجيّاً (كالتشغيل التلقائيّ) فبلا شارة. زرُّ «تفعيل» يظهر ما لم تكن مفوّضة.
+ */
 @Composable
-private fun ReliabilityRow(title: String, desc: String, onFix: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+private fun PermStatusRow(title: String, desc: String, granted: Boolean?, onFix: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                when (granted) {
+                    true -> StatusChip("مفوّض", MaterialTheme.colorScheme.primary)
+                    false -> StatusChip("ينقص الإذن", Color(0xFFCC8A00))
+                    null -> {}
+                }
+            }
             Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
         }
-        FilledTonalButton(onClick = onFix) { Text("تفعيل") }
+        if (granted != true) {
+            FilledTonalButton(onClick = onFix) { Text("تفعيل") }
+        }
     }
+}
+
+/** شارةُ حالةٍ صغيرةٌ ملوّنة (كبسولة). */
+@Composable
+private fun StatusChip(text: String, color: Color) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.Bold,
+        color = color,
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(color.copy(alpha = 0.14f))
+            .padding(horizontal = 10.dp, vertical = 3.dp),
+    )
+}
+
+private fun notificationsOk(context: Context): Boolean =
+    androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+
+private fun openNotificationSettings(context: Context) {
+    runCatching {
+        context.startActivity(
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            },
+        )
+    }.onFailure { openAppDetails(context) }
 }
 
 private fun canScheduleExact(context: Context): Boolean {
