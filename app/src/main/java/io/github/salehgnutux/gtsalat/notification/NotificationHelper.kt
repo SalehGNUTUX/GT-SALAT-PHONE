@@ -64,11 +64,14 @@ class NotificationHelper @Inject constructor(
             .build()
 
     /** تنبيهٌ اختباريٌّ (لقياس وصول التنبيهات والشاشة مغلقة) — على قناة الأذان ليُسمَع كالأذان. */
-    fun testNotification(): Notification =
+    fun testNotification(lateSeconds: Long = 0L): Notification =
         NotificationCompat.Builder(context, CH_PRENOTIFY)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("✅ تنبيهٌ اختباريّ")
-            .setContentText("وصلك هذا التنبيه بنجاح — التنبيهات تعمل والشاشة مغلقة.")
+            .setContentText(
+                if (lateSeconds <= 30) "وصل في وقته — التنبيهات تعمل والشاشة مغلقة."
+                else "وصل متأخّراً $lateSeconds ثانية — يحبسه النظام: فعّل إعفاء البطاريّة والتشغيل التلقائيّ.",
+            )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
@@ -86,7 +89,10 @@ class NotificationHelper @Inject constructor(
             ID_UPDATE,
             NotificationCompat.Builder(context, CH_REMINDERS)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("تحديثٌ متوفّر: GT-SALAT v$version")
+                .setContentTitle(
+                    if (io.github.salehgnutux.gtsalat.domain.AppVersion.isPrerelease(version)) "تحديثٌ اختباريٌّ متوفّر: GT-SALAT v$version"
+                    else "تحديثٌ متوفّر: GT-SALAT v$version",
+                )
                 .setContentText("اضغط لفتح صفحة التنزيل.")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true)
@@ -95,12 +101,16 @@ class NotificationHelper @Inject constructor(
         )
     }
 
-    fun showRecitationReminder() = nm.notify(ID_RECITATION, reminder("📖 وِرد التلاوة", "لا تنسَ وردك اليوميّ من تلاوة القرآن الكريم."))
+    fun showRecitationReminder() = nm.notify(ID_RECITATION, reminder("📖 وِرد التلاوة", "لا تنسَ وردك اليوميّ من تلاوة القرآن الكريم.", "quran", 93))
     fun showMorningAdhkar() = nm.notify(ID_MORNING_ADHKAR, reminder("🌅 أذكار الصباح", "حان وقت أذكار الصباح — «أصبحنا وأصبح الملك لله».", "adhkar_session/morning", 91))
     fun showEveningAdhkar() = nm.notify(ID_EVENING_ADHKAR, reminder("🌇 أذكار المساء", "حان وقت أذكار المساء — «أمسينا وأمسى الملك لله».", "adhkar_session/evening", 92))
     fun showWhiteDaysReminder(text: String) = nm.notify(ID_WHITEDAYS, reminder("🌕 الأيّام البيض", text))
     fun showSunnahReminder(title: String, text: String) = nm.notify(ID_SUNNAH, reminder("🌙 سُنّة: $title", text))
-    fun showDailyAyah(surah: String, n: Int, text: String) = nm.notify(ID_AYAH, reminder("آية اليوم — سورة $surah [$n]", text))
+    /** [surahNumber] يفتح الآية في موضعها من السورة؛ وإلّا فقسم القرآن. */
+    fun showDailyAyah(surah: String, n: Int, text: String, surahNumber: Int?) = nm.notify(
+        ID_AYAH,
+        reminder("آية اليوم — سورة $surah [$n]", text, surahNumber?.let { "quran_read/$it?ayah=$n" } ?: "quran", 94),
+    )
 
     private fun contentIntent(route: String? = null, requestCode: Int = 0): PendingIntent {
         val i = Intent(context, MainActivity::class.java)
@@ -122,6 +132,19 @@ class NotificationHelper @Inject constructor(
             .apply { if (fullScreen != null) setFullScreenIntent(fullScreen, true) }
             .build()
 
+    /** إعلامٌ صامتٌ بدخول وقتٍ مضى: حبس النظام الإنذار حتى فتح الهاتف، فلا يُسمَع الأذان خارج وقته. */
+    fun latePrayerNotification(prayerName: String, timeText: String): Notification =
+        NotificationCompat.Builder(context, CH_REMINDERS)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("🕌 دخل وقت صلاة $prayerName الساعة $timeText")
+            .setContentText("أخّر النظام هذا التنبيه. لتصلك في وقتها فعّل صلاحيّات «موثوقيّة التنبيهات».")
+            .setStyle(NotificationCompat.BigTextStyle().bigText("أخّر النظام هذا التنبيه. لتصلك في وقتها فعّل صلاحيّات «موثوقيّة التنبيهات»."))
+            .setSilent(true)
+            .setAutoCancel(true)
+            .setTimeoutAfter(25 * 60_000L)
+            .setContentIntent(contentIntent())
+            .build()
+
     /** إشعارُ أذكار ما بعد الصلاة (بنافذةٍ ملء الشاشة اختياريّاً كالأذان). */
     fun dhikrNotification(prayerName: String, fullScreen: PendingIntent? = null): Notification =
         NotificationCompat.Builder(context, CH_ADHAN)
@@ -131,7 +154,8 @@ class NotificationHelper @Inject constructor(
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
-            .setContentIntent(contentIntent())
+            .setTimeoutAfter(25 * 60_000L)
+            .setContentIntent(contentIntent(ROUTE_POST_PRAYER_DHIKR, 95))
             .apply { if (fullScreen != null) setFullScreenIntent(fullScreen, true) }
             .build()
 
@@ -184,8 +208,8 @@ class NotificationHelper @Inject constructor(
 
     fun cancelStatus() = nm.cancel(ID_STATUS)
 
-    /** يمسح تنبيهات الأذان/التنبيه المسبق العالقة (تُعاد عند إطلاق أذان الصلاة الحاليّ). */
-    fun cancelPrayerAlerts() { nm.cancel(ID_PRAYER); nm.cancel(ID_PRENOTIFY) }
+    /** يمسح تنبيه الاقتراب عند دخول الوقت. */
+    fun cancelPreNotify() = nm.cancel(ID_PRENOTIFY)
 
     /** يمسح إشعار خدمة الأذان العالق (يُستدعى فقط حين لا يكون ثمّة صوتٌ يُشغَّل الآن). */
     fun cancelAdhanService() = nm.cancel(ID_SERVICE)
@@ -193,6 +217,7 @@ class NotificationHelper @Inject constructor(
     fun notify(id: Int, n: Notification) = nm.notify(id, n)
 
     companion object {
+        private const val ROUTE_POST_PRAYER_DHIKR = "hisn/27"   // «الأذكار بعد السلام من الصلاة» في hisn.json
         const val CH_ADHAN = "adhan"
         const val CH_PRENOTIFY = "prenotify"
         const val CH_SERVICE = "adhan_service"

@@ -15,6 +15,8 @@ import io.github.salehgnutux.gtsalat.domain.PrayerCalculator
 import io.github.salehgnutux.gtsalat.domain.PrayerId
 import io.github.salehgnutux.gtsalat.domain.PrayerTime
 import io.github.salehgnutux.gtsalat.util.Format
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,6 +59,12 @@ class DashboardViewModel @Inject constructor(
 
     private val _ui = MutableStateFlow(DashboardUi())
     val ui: StateFlow<DashboardUi> = _ui.asStateFlow()
+
+    /** قسم اختصار أعلى الرئيسيّة. */
+    val shortcutRoute: StateFlow<String> = settingsRepo.settings
+        .map { it.homeShortcutRoute }
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), AppFeatures.DEFAULT_SHORTCUT)
+    fun setShortcut(route: String) = viewModelScope.launch { settingsRepo.setHomeShortcut(route) }
 
     // تحديثُ الموقع من الرئيسيّة مباشرةً (زرّ السهمين بجانب اسم الموقع).
     private val _locating = MutableStateFlow(false)

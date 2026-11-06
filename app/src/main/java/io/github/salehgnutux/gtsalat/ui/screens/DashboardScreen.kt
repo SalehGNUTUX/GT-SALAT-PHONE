@@ -1,6 +1,10 @@
 package io.github.salehgnutux.gtsalat.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.ui.draw.clip
+import io.github.salehgnutux.gtsalat.ui.tour.tourTarget
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,8 +74,13 @@ private const val I_DHIKR = 3
 private const val I_HIKMAH = 4
 private const val I_AYAH = 5
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun DashboardScreen(onOpenSettings: () -> Unit = {}, onOpenRadio: () -> Unit = {}, vm: DashboardViewModel = hiltViewModel()) {
+fun DashboardScreen(onOpenSettings: () -> Unit = {}, onOpenShortcut: (String) -> Unit = {}, vm: DashboardViewModel = hiltViewModel()) {
+    // الشرح الحركيّ يمرّر الصفحة إلى العنصر الذي يشرحه.
+    val tour = io.github.salehgnutux.gtsalat.ui.tour.LocalTour.current
+    val shortcutRoute by vm.shortcutRoute.collectAsStateWithLifecycle()
+    var pickShortcut by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val tick by vm.tick.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
@@ -96,6 +105,16 @@ fun DashboardScreen(onOpenSettings: () -> Unit = {}, onOpenRadio: () -> Unit = {
         }
     }
 
+    if (pickShortcut) {
+        ShortcutPickerSheet(shortcutRoute, onPick = vm::setShortcut, onDismiss = { pickShortcut = false })
+    }
+    if (tour != null && tour.active) {
+        androidx.compose.runtime.LaunchedEffect(tour.stepIndex) {
+            val item = io.github.salehgnutux.gtsalat.ui.tour.TourSteps[tour.stepIndex].listItem
+            listState.animateScrollToItem(item)
+        }
+    }
+
     LazyColumn(
         Modifier.fillMaxSize(),
         state = listState,
@@ -105,33 +124,57 @@ fun DashboardScreen(onOpenSettings: () -> Unit = {}, onOpenRadio: () -> Unit = {
         // 0 — صفٌّ علويٌّ (اختصار الإعدادات + تبديل السِمة) ثمّ البطاقة الرئيسيّة (بلا تغيير المؤشّرات)
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                // فوق الصورة: خلفيّةٌ بلون البطاقات تحفظ وضوح الاسم والأزرار.
+                val headerShape = RoundedCornerShape(20.dp)
+                val headerBg = if (homeElementsNeedFill()) {
+                    Modifier.frostedGlass(headerShape).background(homeCardColor(), headerShape)
+                } else Modifier
+                Row(Modifier.fillMaxWidth().then(headerBg), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onOpenSettings) {
+                        IconButton(onClick = onOpenSettings, modifier = Modifier.tourTarget(io.github.salehgnutux.gtsalat.ui.tour.TourKeys.SETTINGS)) {
                             Icon(Icons.Outlined.Settings, contentDescription = "الإعدادات", tint = MaterialTheme.colorScheme.primary)
                         }
-                        IconButton(onClick = onOpenRadio) {
-                            Icon(Icons.Outlined.Radio, contentDescription = "الإذاعات", tint = MaterialTheme.colorScheme.primary)
+                        // نقرةٌ تفتح القسم المختار، وضغطةٌ مطوّلةٌ تعرض بقيّة الأقسام.
+                        val shortcut = AppFeatures.byRoute(shortcutRoute)
+                        val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+                        Box(
+                            Modifier
+                                .tourTarget(io.github.salehgnutux.gtsalat.ui.tour.TourKeys.SHORTCUT)
+                                .size(48.dp)
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .combinedClickable(
+                                    onClickLabel = "فتح ${shortcut.label}",
+                                    onLongClickLabel = "تغيير الاختصار",
+                                    onLongClick = {
+                                        haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        pickShortcut = true
+                                    },
+                                    onClick = { onOpenShortcut(shortcut.route) },
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(shortcut.icon, contentDescription = shortcut.label, tint = MaterialTheme.colorScheme.primary)
                         }
                     }
                     Text("GT-SALAT", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         ClockFormatToggleButton()
-                        ThemeToggleButton()
+                        Box(Modifier.tourTarget(io.github.salehgnutux.gtsalat.ui.tour.TourKeys.THEME)) { ThemeToggleButton() }
                     }
                 }
                 AdhanStopBanner()
                 NotificationPermissionBanner()
                 UpdateBanner()
                 val locating by vm.locating.collectAsStateWithLifecycle()
-                HeroCard(ui, tick, locating = locating, onRefreshLocation = { vm.redetectLocation() })
+                val locationGate = io.github.salehgnutux.gtsalat.ui.location.rememberLocationGate()
+                HeroCard(ui, tick, locating = locating, onRefreshLocation = { locationGate { vm.redetectLocation() } })
                 RamadanCard(ui, tick)
             }
         }
 
         // 1 — أزرار ذكر/حكمة/آية اليوم (تنزل للمحتوى أسفل الصفحة) — متّسقةٌ بسطرٍ واحد
         item {
-            Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth().tourTarget(io.github.salehgnutux.gtsalat.ui.tour.TourKeys.DAILY), Arrangement.spacedBy(10.dp)) {
                 DailyNavButton("ذكر اليوم", Icons.Outlined.FavoriteBorder, Modifier.weight(1f)) {
                     scope.launch { listState.animateScrollToItem(I_DHIKR) }
                 }
@@ -192,7 +235,11 @@ fun DashboardScreen(onOpenSettings: () -> Unit = {}, onOpenRadio: () -> Unit = {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().then(
+                    if (homeElementsNeedFill()) {
+                        Modifier.frostedGlass(RoundedCornerShape(12.dp)).background(homeCardColor(), RoundedCornerShape(12.dp)).padding(8.dp)
+                    } else Modifier,
+                ),
             )
         }
     }
@@ -201,9 +248,18 @@ fun DashboardScreen(onOpenSettings: () -> Unit = {}, onOpenRadio: () -> Unit = {
 /** زرُّ تنقّلٍ يوميّ متّسق: أيقونةٌ فوق نصٍّ بسطرٍ واحد (فلا يلتفّ ولا يصير دائرة). */
 @Composable
 private fun DailyNavButton(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier, onClick: () -> Unit) {
+    val glass = io.github.salehgnutux.gtsalat.ui.theme.LocalGlassTheme.current
+    val shape = RoundedCornerShape(18.dp)
     FilledTonalButton(
         onClick = onClick,
-        modifier = modifier,
+        modifier = if (glass) modifier.frostedGlass(shape) else modifier,
+        shape = if (glass) shape else androidx.compose.material3.ButtonDefaults.filledTonalShape,
+        colors = if (glass) {
+            androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            )
+        } else androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp, horizontal = 4.dp),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -217,24 +273,34 @@ private fun DailyNavButton(label: String, icon: androidx.compose.ui.graphics.vec
 private fun HeroCard(ui: DashboardUi, tick: DashboardTick, locating: Boolean = false, onRefreshLocation: () -> Unit = {}) {
     val cs = MaterialTheme.colorScheme
     val dark = isSystemInDarkTheme()
-    val brush = androidx.compose.runtime.remember(cs.primaryContainer, cs.primary, dark) {
-        Brush.verticalGradient(
+    val heroAlpha = homeHeroAlpha()
+    val glass = io.github.salehgnutux.gtsalat.ui.theme.LocalGlassTheme.current
+    val strong = glassStrongFill()
+    val brush = androidx.compose.runtime.remember(cs.primaryContainer, cs.primary, dark, heroAlpha, glass, strong) {
+        if (glass) androidx.compose.ui.graphics.SolidColor(strong) else Brush.verticalGradient(
             listOf(
-                lerp(cs.primaryContainer, cs.primary, if (dark) 0.35f else 0.14f),
-                cs.primaryContainer,
+                lerp(cs.primaryContainer, cs.primary, if (dark) 0.35f else 0.14f).copy(alpha = heroAlpha),
+                cs.primaryContainer.copy(alpha = heroAlpha),
             ),
         )
     }
-    val onHero = cs.onPrimaryContainer
+    val onHero = if (glass) cs.onSurface else cs.onPrimaryContainer
+    val heroShape = RoundedCornerShape(if (glass) 24.dp else 22.dp)
 
-    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
+    Card(
+        Modifier.fillMaxWidth().frostedGlass(heroShape),
+        shape = heroShape,
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = if (glass || heroAlpha < 1f) androidx.compose.ui.graphics.Color.Transparent else androidx.compose.material3.CardDefaults.cardColors().containerColor,
+        ),
+    ) {
         Column(
             Modifier.fillMaxWidth().background(brush).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             // الموقع + الساعة الحيّة — الاسمُ الطويل يُختصَر بنقاطٍ ولا يضغط الساعةَ فتلتفّ.
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f).tourTarget(io.github.salehgnutux.gtsalat.ui.tour.TourKeys.LOCATION), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = onHero, modifier = Modifier.height(18.dp))
                     Text(
                         if (ui.city.isNotBlank()) ui.city else "موقعك",
@@ -272,7 +338,7 @@ private fun HeroCard(ui: DashboardUi, tick: DashboardTick, locating: Boolean = f
             HorizontalDivider(Modifier.padding(vertical = 8.dp), color = onHero.copy(alpha = 0.25f))
 
             // الصلاة القادمة + حلقة تقدّمٍ حيّة تمتلئ باقتراب الوقت
-            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().tourTarget(io.github.salehgnutux.gtsalat.ui.tour.TourKeys.NEXT), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("الصلاة القادمة", style = MaterialTheme.typography.labelLarge, color = onHero.copy(alpha = 0.85f))
                     Text(
@@ -284,13 +350,13 @@ private fun HeroCard(ui: DashboardUi, tick: DashboardTick, locating: Boolean = f
                     Text(
                         ui.next?.let { Format.clock(it.prayer.epochMillis) } ?: "",
                         style = MaterialTheme.typography.headlineSmall,
-                        color = onHero,
+                        color = if (glass) cs.tertiary else onHero,
                     )
                 }
                 CountdownRing(
                     progress = tick.progress,
                     countdown = tick.countdownText,
-                    ringColor = onHero,
+                    ringColor = if (glass) cs.primary else onHero,
                     trackColor = onHero.copy(alpha = 0.22f),
                     labelColor = onHero.copy(alpha = 0.85f),
                 )
@@ -362,10 +428,17 @@ private fun RamadanCard(ui: DashboardUi, tick: DashboardTick) {
     val remaining = (target - now).coerceAtLeast(0L)
     val day = io.github.salehgnutux.gtsalat.domain.Ramadan.dayOfRamadan()
 
-    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
+    val ramadanAlpha = homeHeroAlpha()
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = if (ramadanAlpha < 1f) androidx.compose.ui.graphics.Color.Transparent else androidx.compose.material3.CardDefaults.cardColors().containerColor,
+        ),
+    ) {
         Column(
             Modifier.fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.secondaryContainer)))
+                .background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = ramadanAlpha), MaterialTheme.colorScheme.secondaryContainer.copy(alpha = ramadanAlpha))))
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -443,7 +516,7 @@ private fun CountdownRing(
 @Composable
 private fun TodayPrayersCard(ui: DashboardUi) {
     val today = ui.today
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth().tourTarget(io.github.salehgnutux.gtsalat.ui.tour.TourKeys.PRAYERS).frostedGlass(MaterialTheme.shapes.medium), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = homeCardColor())) {
         Column(Modifier.padding(vertical = 6.dp)) {
             Text(
                 "مواقيت اليوم والليلة",
@@ -501,7 +574,7 @@ private fun DailyCard(
 ) {
     val clipboard = LocalClipboardManager.current
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth().frostedGlass(MaterialTheme.shapes.medium), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = homeCardColor())) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)

@@ -65,19 +65,28 @@ class PrayerRepository @Inject constructor(
         return local
     }
 
-    suspend fun todayTimetable(): DayTimetable? {
+    /**
+     * [allowNetwork]=false لمسار المنبّهات: الكاش ثمّ الحساب المحلّيّ فقط، فلا تُؤخّر الشبكة
+     * (المقطوعة أصلاً في Doze) إطلاق الأذان وإعادة التسليح، ولا يُحفَظ حسابٌ محلّيٌّ يحجب بيانات API لاحقاً.
+     */
+    suspend fun todayTimetable(allowNetwork: Boolean = true): DayTimetable? {
         val s = settingsRepo.current()
         if (!s.hasLocation) return null
         val now = LocalDate.now()
+        if (!allowNetwork) {
+            val iso = now.toString()
+            return dao.range(iso, iso, s.methodId, locKey(s.lat!!, s.lon!!)).firstOrNull()?.toDomain()
+                ?: PrayerCalculator.computeDay(now, s.lat, s.lon, s.methodId, s.madhab)
+        }
         val month = monthTimetable(now.year, now.monthValue, s)
         return month.firstOrNull { it.dateIso == now.toString() }
             ?: PrayerCalculator.computeDay(now, s.lat!!, s.lon!!, s.methodId, s.madhab)
     }
 
-    suspend fun nextPrayer(nowMillis: Long = System.currentTimeMillis()): NextPrayer? {
+    suspend fun nextPrayer(nowMillis: Long = System.currentTimeMillis(), allowNetwork: Boolean = true): NextPrayer? {
         val s = settingsRepo.current()
         if (!s.hasLocation) return null
-        val today = todayTimetable() ?: return null
+        val today = todayTimetable(allowNetwork) ?: return null
         val tomorrow = LocalDate.now().plusDays(1)
         val tomorrowFajr: PrayerTime? =
             PrayerCalculator.computeDay(tomorrow, s.lat!!, s.lon!!, s.methodId, s.madhab).time(PrayerId.FAJR)
@@ -88,14 +97,18 @@ class PrayerRepository @Inject constructor(
      * الصلوات الـ[count] القادمة (عبر اليوم والأيّام التالية) — لتسليح عدّة إنذاراتٍ مقدّماً
      * كشبكة أمانٍ إن جُمّد التطبيق فلم يُعِد جدولة التالية.
      */
-    suspend fun upcomingPrayers(count: Int = 6, nowMillis: Long = System.currentTimeMillis()): List<PrayerTime> {
+    suspend fun upcomingPrayers(
+        count: Int = 6,
+        nowMillis: Long = System.currentTimeMillis(),
+        allowNetwork: Boolean = true,
+    ): List<PrayerTime> {
         val s = settingsRepo.current()
         if (!s.hasLocation) return emptyList()
         val out = ArrayList<PrayerTime>()
         var day = LocalDate.now()
         var guard = 0
         while (out.size < count && guard < 5) {
-            val dt = if (day == LocalDate.now()) todayTimetable()
+            val dt = if (day == LocalDate.now()) todayTimetable(allowNetwork)
             else PrayerCalculator.computeDay(day, s.lat!!, s.lon!!, s.methodId, s.madhab)
             dt?.prayers?.filter { it.id.isPrayer && it.epochMillis > nowMillis }
                 ?.sortedBy { it.epochMillis }

@@ -19,7 +19,12 @@ import androidx.compose.ui.unit.dp
 /** شريطٌ علويٌّ بسيطٌ لشاشةٍ فرعيّة: عنوانٌ وزرّ رجوعٍ (متوافقٌ مع RTL) + أزرارٌ اختياريّة + زرّ تبديل السِمة. */
 @Composable
 fun SubScreenHeader(title: String, onBack: () -> Unit, actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {}) {
-    Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
+    val glass = io.github.salehgnutux.gtsalat.ui.theme.LocalGlassTheme.current
+    // ظلّ العناصر الشفّافة يظهر من خلالها، فلا ظلّ في السمة الزجاجيّة.
+    Surface(
+        color = if (glass) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
+        shadowElevation = if (glass) 0.dp else 2.dp,
+    ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,

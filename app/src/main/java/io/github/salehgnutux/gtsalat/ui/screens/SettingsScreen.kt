@@ -78,7 +78,7 @@ import io.github.salehgnutux.gtsalat.domain.CalendarKind
 import io.github.salehgnutux.gtsalat.domain.MonthScheme
 
 @Composable
-fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(onShowTour: () -> Unit = {}, vm: SettingsViewModel = hiltViewModel()) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val months by vm.cachedMonths.collectAsStateWithLifecycle()
     val previewing by vm.previewing.collectAsStateWithLifecycle()
@@ -148,7 +148,8 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     ) {
         SectionCard("الموقع وطريقة الحساب", openSection == "الموقع وطريقة الحساب", { toggle("الموقع وطريقة الحساب") }) {
             InfoRow("الموقع الحاليّ", listOf(settings.city, settings.country).filter { it.isNotBlank() }.joinToString("، ").ifBlank { "غير محدّد" })
-            ClickRow("إعادة اكتشاف الموقع") { vm.redetectLocation() }
+            val locationGate = io.github.salehgnutux.gtsalat.ui.location.rememberLocationGate()
+            ClickRow("إعادة اكتشاف الموقع") { locationGate { vm.redetectLocation() } }
             val locStatus by vm.locationStatus.collectAsStateWithLifecycle()
             locStatus?.let { st ->
                 if (st.isEmpty()) {
@@ -251,6 +252,16 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                     "قصير", settings.adhanType == AdhanType.SHORT, previewing == AdhanType.SHORT,
                     onSelect = { vm.setAdhanType(AdhanType.SHORT) },
                     onPreview = { vm.previewAdhan(AdhanType.SHORT) },
+                )
+                AdhanTypeRow(
+                    "بالصيغة المغربيّة — كامل", settings.adhanType == AdhanType.MAGHRIBI_FULL, previewing == AdhanType.MAGHRIBI_FULL,
+                    onSelect = { vm.setAdhanType(AdhanType.MAGHRIBI_FULL) },
+                    onPreview = { vm.previewAdhan(AdhanType.MAGHRIBI_FULL) },
+                )
+                AdhanTypeRow(
+                    "بالصيغة المغربيّة — قصير", settings.adhanType == AdhanType.MAGHRIBI_SHORT, previewing == AdhanType.MAGHRIBI_SHORT,
+                    onSelect = { vm.setAdhanType(AdhanType.MAGHRIBI_SHORT) },
+                    onPreview = { vm.previewAdhan(AdhanType.MAGHRIBI_SHORT) },
                 )
                 val hasCustom = settings.customAdhanUri != null
                 AdhanTypeRow(
@@ -373,7 +384,32 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             }
         }
 
+        SectionCard("خلفيّة الرئيسيّة", openSection == "خلفيّة الرئيسيّة", { toggle("خلفيّة الرئيسيّة") }) {
+            HomeBackgroundSettings(
+                enabled = settings.homeBackgroundEnabled,
+                selectedId = settings.homeBackgroundId,
+                level = settings.homeBackgroundLevel,
+                onEnabled = vm::setHomeBackgroundEnabled,
+                onSelect = vm::selectHomeBackground,
+                onLevel = vm::setHomeBackgroundLevel,
+                switchRow = { label, checked, onChange -> SwitchRow(label, checked, onChange) },
+            )
+        }
+
         SectionCard("المظهر", openSection == "المظهر", { toggle("المظهر") }) {
+            SwitchRow("السمة الزجاجيّة", settings.glassTheme) { vm.setGlassTheme(it) }
+            // اختصار أعلى الرئيسيّة (يُغيَّر أيضاً بضغطةٍ مطوّلةٍ على أيقونته هناك).
+            var pickShortcut by remember { mutableStateOf(false) }
+            val shortcut = AppFeatures.byRoute(settings.homeShortcutRoute)
+            LabeledRow("اختصار أعلى الرئيسيّة") {
+                FilledTonalButton(onClick = { pickShortcut = true }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(shortcut.icon, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text(shortcut.label, modifier = Modifier.padding(start = 8.dp))
+                }
+            }
+            if (pickShortcut) {
+                ShortcutPickerSheet(settings.homeShortcutRoute, onPick = vm::setHomeShortcut, onDismiss = { pickShortcut = false })
+            }
             LabeledRow("السِمة") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(settings.themeMode == ThemeMode.SYSTEM, { vm.setTheme(ThemeMode.SYSTEM) }, { Text("النظام") })
@@ -382,6 +418,13 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 }
             }
             SwitchRow("الألوان الديناميكيّة (Material You)", settings.dynamicColor) { vm.setDynamicColor(it) }
+            if (settings.glassTheme && settings.dynamicColor) {
+                Text(
+                    "السمة الزجاجيّة تستعمل ألوانها الخاصّة؛ أطفئها لتطبيق الألوان الديناميكيّة.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
             if (!settings.dynamicColor) {
                 ColorTool(settings, vm)
             } else {
@@ -464,9 +507,29 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             FilledTonalButton(onClick = { showWhatsNew = true }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
                 Text("🎉 ما الجديد في هذا الإصدار")
             }
+            FilledTonalButton(
+                onClick = { vm.replayTour(); onShowTour() },
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            ) { Text("🎬 عرض الشرح المرئيّ للواجهة") }
             // خيار التحديث الذاتيّ يظهر في نكهة foss فقط (تنزيلٌ مباشر + F-Droid)؛ يُخفى في full (بلاي).
+            if (!io.github.salehgnutux.gtsalat.ui.update.SELF_UPDATE_AVAILABLE) {
+                // بلا هذا يبدو غياب خيارات التحديث خللاً.
+                Text(
+                    "إشعارات التحديث والتحديث من داخل التطبيق في النسخة الحرّة (foss). أمّا هذه النسخة فمخصّصةٌ لغوغل بلاي، وتتحدّث من المتجر.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
             if (io.github.salehgnutux.gtsalat.ui.update.SELF_UPDATE_AVAILABLE) {
                 SwitchRow("إشعارٌ عند توفّر نسخةٍ جديدة", settings.checkUpdates) { vm.setCheckUpdates(it) }
+                if (settings.checkUpdates) {
+                    SwitchRow("إشعارٌ عند توفّر تحديثاتٍ اختباريّة", settings.allowPrereleaseUpdates) { vm.setAllowPrereleaseUpdates(it) }
+                    Text(
+                        "نسخٌ ألفا وبيتا لتجربة الجديد قبل صدوره، وقد تحوي أخطاء.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
             }
             HorizontalDivider()
             LinkRow("المطوّر", io.github.salehgnutux.gtsalat.domain.Credits.DEVELOPER) { openUrl(context, io.github.salehgnutux.gtsalat.domain.Credits.GITHUB) }
@@ -743,7 +806,53 @@ private fun ReliabilityCard(expanded: Boolean, onToggle: () -> Unit, onTest: () 
                 Toast.makeText(context, "سيصلك تنبيهٌ اختباريٌّ بعد دقيقة — اقفل الشاشة", Toast.LENGTH_LONG).show()
             }) { Text("جرّب") }
         }
+        HorizontalDivider()
+        // سجلّ وصول التنبيهات: يبيّن هل حبسها النظام أم تعطّل شيءٌ داخل التطبيق.
+        var showLog by remember { mutableStateOf(false) }
+        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("سجلّ التنبيهات", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                Text("موعد كلّ تنبيهٍ ووقت وصوله فعلاً. يبقى على هاتفك ولا يُرسَل.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+            }
+            FilledTonalButton(onClick = { showLog = true }) { Text("عرض") }
+        }
+        if (showLog) AlarmLogDialog { showLog = false }
     }
+}
+
+@Composable
+private fun AlarmLogDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    var log by remember { mutableStateOf(io.github.salehgnutux.gtsalat.alarm.AlarmLog.read(context)) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("سجلّ التنبيهات") },
+        text = {
+            androidx.compose.foundation.text.selection.SelectionContainer {
+                Text(
+                    log.ifBlank { "لا تنبيهات مسجَّلة بعد." },
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(enabled = log.isNotBlank(), onClick = {
+                val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("GT-SALAT", log))
+                Toast.makeText(context, "نُسخ السجلّ", Toast.LENGTH_SHORT).show()
+            }) { Text("نسخ") }
+        },
+        dismissButton = {
+            Row {
+                androidx.compose.material3.TextButton(enabled = log.isNotBlank(), onClick = {
+                    io.github.salehgnutux.gtsalat.alarm.AlarmLog.clear(context)
+                    log = ""
+                }) { Text("مسح") }
+                androidx.compose.material3.TextButton(onClick = onDismiss) { Text("إغلاق") }
+            }
+        },
+    )
 }
 
 /**

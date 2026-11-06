@@ -56,12 +56,14 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         deepLinkRoute.value = intent.getStringExtra(EXTRA_ROUTE)
+        intent.removeExtra(EXTRA_ROUTE)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        deepLinkRoute.value = intent?.getStringExtra(EXTRA_ROUTE)
+        if (savedInstanceState == null) deepLinkRoute.value = intent?.getStringExtra(EXTRA_ROUTE)
+        intent?.removeExtra(EXTRA_ROUTE)   // فلا يُعاد الانتقال عند الفتح من «الأخيرة»
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -93,12 +95,15 @@ class MainActivity : ComponentActivity() {
                 }
                 // نظام عرض الوقت (24/12) — يُضبَط عالميّاً في Format.
                 LaunchedEffect(s.clock24h) { io.github.salehgnutux.gtsalat.util.Format.use24 = s.clock24h }
-                GtSalatTheme(darkTheme = dark, dynamicColor = s.dynamicColor, seedColor = s.seedColor) {
+                GtSalatTheme(darkTheme = dark, dynamicColor = s.dynamicColor, seedColor = s.seedColor, glass = s.glassTheme) {
                     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                         AppRoot(
                             setupCompleted = s.setupCompleted,
                             gradientTop = gradTop,
                             gradientBottom = gradBot,
+                            homeBackgroundId = io.github.salehgnutux.gtsalat.domain.HomeBackgrounds.resolve(s.homeBackgroundId, dark).takeIf { s.homeBackgroundEnabled },
+                            homeBackgroundLevel = s.homeBackgroundLevel,
+                            tourShown = s.tourShown,
                             deepLink = deepLinkRoute.value,
                             onDeepLinkHandled = { deepLinkRoute.value = null },
                         )

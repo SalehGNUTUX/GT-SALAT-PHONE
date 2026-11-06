@@ -2,6 +2,15 @@ package io.github.salehgnutux.gtsalat.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.luminance
+import io.github.salehgnutux.gtsalat.ui.screens.frostedGlass
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,6 +69,7 @@ import io.github.salehgnutux.gtsalat.ui.screens.AudioRecitersScreen
 import io.github.salehgnutux.gtsalat.ui.screens.DownloadedSurahsScreen
 import io.github.salehgnutux.gtsalat.ui.screens.ReciterSurahsScreen
 import io.github.salehgnutux.gtsalat.ui.screens.MoreScreen
+import io.github.salehgnutux.gtsalat.ui.tour.tourTarget
 import io.github.salehgnutux.gtsalat.ui.screens.MushafScreen
 import io.github.salehgnutux.gtsalat.ui.screens.QiblaScreen
 import io.github.salehgnutux.gtsalat.ui.screens.ImsakiahScreen
@@ -93,6 +103,9 @@ fun AppRoot(
     setupCompleted: Boolean,
     gradientTop: Int = 0,
     gradientBottom: Int = 0,
+    homeBackgroundId: String? = null,
+    homeBackgroundLevel: Int = 1,
+    tourShown: Boolean = true,
     deepLink: String? = null,
     onDeepLinkHandled: () -> Unit = {},
 ) {
@@ -182,17 +195,65 @@ fun AppRoot(
     val dark = isSystemInDarkTheme()
     // تدرّجٌ مخصّصٌ إن عُيّن، وإلّا مشتقٌّ من ألوان السِمة (يحترم الداكن/الفاتح وMaterial You).
     // يُثبَّت بـ remember حتّى لا يُعاد توليد الشيدر مع كلّ إعادة تركيبٍ أثناء انتقالات التنقّل.
-    val gradient = remember(gradientTop, gradientBottom, dark, cs.background, cs.primary) {
+    val glass = io.github.salehgnutux.gtsalat.ui.theme.LocalGlassTheme.current
+    val gradient = remember(gradientTop, gradientBottom, dark, cs.background, cs.primary, glass) {
         if (gradientTop != 0 && gradientBottom != 0) {
             Brush.verticalGradient(listOf(Color(gradientTop), Color(gradientBottom)))
         } else {
-            Brush.verticalGradient(
+            if (glass) {
+                // تدرّج الزجاج الهادئ حين لا تكون ثمّة صورة.
+                Brush.verticalGradient(
+                    if (cs.background.luminance() < 0.5f) listOf(Color(0xFF0F1512), Color(0xFF14241C))
+                    else listOf(Color(0xFFF4F8F5), Color(0xFFD6E6DC)),
+                )
+            } else Brush.verticalGradient(
                 listOf(cs.background, lerp(cs.background, cs.primary, if (dark) 0.14f else 0.06f)),
             )
         }
     }
 
+    // الشرح الحركيّ: يبدأ في الرئيسيّة بعد الرسائل المعروضة، مرّةً عند التثبيت ومتى طُلب من الإعدادات.
+    val tour = remember { io.github.salehgnutux.gtsalat.ui.tour.TourController() }
+    val tourActive = onDashboard && !tourShown && !showWhatsNew && !(permDue && permsMissing)
+    LaunchedEffect(tourShown) { if (!tourShown) tour.stepIndex = 0 }
+    LaunchedEffect(tourActive) { tour.active = tourActive }
+    val blurredBitmap = io.github.salehgnutux.gtsalat.ui.screens.rememberBlurredBitmap(homeBackgroundId.takeIf { glass })
+    val frostScrim = cs.background.copy(alpha = io.github.salehgnutux.gtsalat.ui.screens.homeScrimTop(homeBackgroundLevel))
+    val frosted = remember(blurredBitmap, frostScrim) {
+        blurredBitmap?.let { io.github.salehgnutux.gtsalat.ui.screens.FrostedBackdrop(it, frostScrim) }
+    }
+    // القارئ النصّيّ والمصحف بلا صورة: القراءة الطويلة أريح على خلفيّةٍ هادئة.
+    val readingRoute = currentDest?.route?.let { it.startsWith("quran_read") || it == "quran_mushaf" } == true
+
     Box(Modifier.fillMaxSize().background(gradient)) {
+        androidx.compose.animation.AnimatedVisibility(
+            visible = glass && !onDashboard && !readingRoute && homeBackgroundId != null,
+            enter = androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.fadeOut(),
+        ) {
+            val lastBlurId = remember { mutableStateOf(homeBackgroundId) }
+            if (homeBackgroundId != null) lastBlurId.value = homeBackgroundId
+            lastBlurId.value?.let {
+                io.github.salehgnutux.gtsalat.ui.screens.BlurredBackdrop(it, Modifier.fillMaxSize())
+            }
+        }
+        // صورة الرئيسيّة خلف الشاشة كلّها (تحت شريط الحالة أيضاً)، وتتلاشى عند مغادرة الرئيسيّة.
+        androidx.compose.animation.AnimatedVisibility(
+            visible = onDashboard && homeBackgroundId != null,
+            enter = androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.fadeOut(),
+        ) {
+            // يبقى آخر معرّفٍ أثناء التلاشي بعد إطفاء الخلفيّة.
+            val lastId = remember { mutableStateOf(homeBackgroundId) }
+            if (homeBackgroundId != null) lastId.value = homeBackgroundId
+            lastId.value?.let {
+                io.github.salehgnutux.gtsalat.ui.screens.HomeBackdrop(it, homeBackgroundLevel, Modifier.fillMaxSize())
+            }
+        }
+        androidx.compose.runtime.CompositionLocalProvider(
+            io.github.salehgnutux.gtsalat.ui.tour.LocalTour provides tour,
+            io.github.salehgnutux.gtsalat.ui.screens.LocalFrostedBackdrop provides frosted.takeIf { onDashboard },
+        ) {
         Scaffold(
             // الخلفيّة شفّافة لإظهار التدرّج؛ لكن يجب تحديد لون المحتوى صراحةً وإلّا
             // سقط Material3 إلى الأسود للنصوص/الأيقونات غير المحدَّدة اللون (خلل الوضع الداكن).
@@ -210,17 +271,24 @@ fun AppRoot(
                     io.github.salehgnutux.gtsalat.ui.screens.AdhkarMiniPlayer(onOpen = { route ->
                         nav.navigate(route) { launchSingleTop = true }
                     })
-                    NavigationBar {
-                        Dest.entries.forEach { d ->
-                            val selected = currentDest?.hierarchy?.any { it.route == d.route } == true
-                            NavigationBarItem(
-                                selected = selected,
-                                onClick = {
-                                    onTabClick(nav, d, selected, currentDest?.route) { askReturnToMore = true }
-                                },
-                                icon = { Icon(d.icon, contentDescription = d.label) },
-                                label = { Text(d.label) },
-                            )
+                    if (glass) {
+                        GlassBottomBar(currentDest) { d, selected ->
+                            onTabClick(nav, d, selected, currentDest?.route) { askReturnToMore = true }
+                        }
+                    } else {
+                        NavigationBar {
+                            Dest.entries.forEach { d ->
+                                val selected = currentDest?.hierarchy?.any { it.route == d.route } == true
+                                NavigationBarItem(
+                                    selected = selected,
+                                    onClick = {
+                                        onTabClick(nav, d, selected, currentDest?.route) { askReturnToMore = true }
+                                    },
+                                    icon = { Icon(d.icon, contentDescription = d.label) },
+                                    label = { Text(d.label) },
+                                    modifier = Modifier.tourTarget(io.github.salehgnutux.gtsalat.ui.tour.TourKeys.TAB_PREFIX + d.route),
+                                )
+                            }
                         }
                     }
                 }
@@ -237,19 +305,30 @@ fun AppRoot(
                 popExitTransition = { navExit(animOn) },
             ) {
                 composable(Dest.DASHBOARD.route) {
-                    DashboardScreen(
-                        onOpenSettings = {
-                            nav.navigate(Dest.SETTINGS.route) {
-                                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true; restoreState = true
-                            }
-                        },
-                        onOpenRadio = { nav.navigate("radios") { launchSingleTop = true } },
-                    )
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        io.github.salehgnutux.gtsalat.ui.screens.LocalHomeBackdropOn provides (homeBackgroundId != null),
+                    ) {
+                        DashboardScreen(
+                            onOpenSettings = {
+                                nav.navigate(Dest.SETTINGS.route) {
+                                    popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true; restoreState = true
+                                }
+                            },
+                            onOpenShortcut = { route -> nav.navigate(route) { launchSingleTop = true } },
+                        )
+                    }
                 }
                 composable(Dest.TIMETABLE.route) { TimetableScreen() }
                 composable(Dest.QIBLA.route) { QiblaScreen() }
-                composable(Dest.SETTINGS.route) { SettingsScreen() }
+                composable(Dest.SETTINGS.route) {
+                    SettingsScreen(onShowTour = {
+                        nav.navigate(Dest.DASHBOARD.route) {
+                            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                        }
+                    })
+                }
 
                 // «المزيد» رسمٌ متداخل: تُحفظ حالته وتُستعاد عند العودة إليه من تبويبٍ آخر.
                 navigation(startDestination = MORE_HOME, route = MORE_GRAPH) {
@@ -335,6 +414,11 @@ fun AppRoot(
                 }
             }
         }
+        }
+        // طبقة الشرح الحركيّ فوق الواجهة الحقيقيّة.
+        if (tourActive) {
+            io.github.salehgnutux.gtsalat.ui.tour.AppTourOverlay(tour, onFinish = { whatsNewVm.markTourShown() })
+        }
     }
 
     if (askReturnToMore) {
@@ -345,7 +429,13 @@ fun AppRoot(
             confirmButton = {
                 Button(onClick = {
                     askReturnToMore = false
-                    nav.popBackStack(MORE_HOME, inclusive = false)
+                    // القسم المفتوح باختصارٍ أو إشعارٍ ليس تحته بطاقات «المزيد» في المكدّس.
+                    if (!nav.popBackStack(MORE_HOME, inclusive = false)) {
+                        nav.navigate(MORE_GRAPH) {
+                            popUpTo(nav.graph.findStartDestination().id)
+                            launchSingleTop = true
+                        }
+                    }
                 }) { Text("العودة للمزيد") }
             },
             dismissButton = {
@@ -390,6 +480,48 @@ fun AppRoot(
     }
 }
 
+/** الشريط السفليّ العائم في السمة الزجاجيّة. */
+@Composable
+private fun GlassBottomBar(currentDest: androidx.navigation.NavDestination?, onClick: (Dest, Boolean) -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+    val fill = io.github.salehgnutux.gtsalat.ui.screens.glassStrongFill()
+    androidx.compose.foundation.layout.Row(
+        Modifier
+            .navigationBarsPadding()
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+            .fillMaxWidth()
+            .frostedGlass(shape)
+            .background(fill, shape)
+            .border(1.dp, cs.outlineVariant.copy(alpha = 0.6f), shape)
+            .padding(4.dp),
+    ) {
+        Dest.entries.forEach { d ->
+            val selected = currentDest?.hierarchy?.any { it.route == d.route } == true
+            val tint = if (selected) cs.primary else cs.onSurfaceVariant
+            androidx.compose.foundation.layout.Column(
+                Modifier
+                    .weight(1f)
+                    .tourTarget(io.github.salehgnutux.gtsalat.ui.tour.TourKeys.TAB_PREFIX + d.route)
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
+                    .background(if (selected) cs.primary.copy(alpha = 0.16f) else Color.Transparent)
+                    .clickable(role = androidx.compose.ui.semantics.Role.Tab) { onClick(d, selected) }
+                    .padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(d.icon, contentDescription = null, tint = tint)
+                Text(
+                    d.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = tint,
+                    fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Bold else null,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
 /**
  * سلوك أزرار الشريط السفليّ:
  * - تبويبٌ غير محدَّد ← الانتقال إليه مع استعادة حالته السابقة (restoreState) — فيعود المستخدم لآخر قسمٍ كان فيه.
@@ -403,6 +535,12 @@ private fun onTabClick(
     currentRoute: String?,
     askReturnToMore: () -> Unit,
 ) {
+    if (!selected && dest == Dest.DASHBOARD) {
+        // الرئيسيّة بالرجوع إليها لا بالتنقّل إليها: popUpTo(saveState) يحفظ القسم الحاليّ تحت مفتاح الرئيسيّة إن
+        // دُخل بتنقّلٍ مباشر (اختصار/إشعار)، فيعيده restoreState بدلها ويبدو الزرّ معطّلاً.
+        nav.popBackStack(dest.route, inclusive = false, saveState = true)
+        return
+    }
     if (!selected) {
         nav.navigate(dest.route) {
             popUpTo(nav.graph.findStartDestination().id) { saveState = true }

@@ -27,6 +27,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
+    private val updateRepo: io.github.salehgnutux.gtsalat.data.UpdateRepository,
     @ApplicationContext private val context: Context,
     private val settingsRepo: SettingsRepository,
     private val repo: PrayerRepository,
@@ -112,6 +113,11 @@ class SettingsViewModel @Inject constructor(
     fun setWidgetProgressStyle(style: String) = viewModelScope.launch { settingsRepo.setWidgetProgressStyle(style); refreshWidgets() }
     private suspend fun refreshWidgets() = runCatching { io.github.salehgnutux.gtsalat.widget.updateAllPrayerWidgets(context) }
     fun setCheckUpdates(v: Boolean) = viewModelScope.launch { settingsRepo.setCheckUpdates(v) }
+    /** يعيد الفحص فوراً ليظهر التحديث الاختباريّ أو يزول شريطه. */
+    fun setAllowPrereleaseUpdates(v: Boolean) = viewModelScope.launch {
+        settingsRepo.setAllowPrereleaseUpdates(v)
+        runCatching { updateRepo.checkForUpdate() }
+    }
     fun setExitMode(mode: String) = viewModelScope.launch { settingsRepo.setExitMode(mode) }
     fun setAutoUpdateLocation(v: Boolean) = viewModelScope.launch { settingsRepo.setAutoUpdateLocation(v) }
     fun setTranslateLocationNames(v: Boolean) = viewModelScope.launch { settingsRepo.setTranslateLocationNames(v) }
@@ -183,6 +189,12 @@ class SettingsViewModel @Inject constructor(
     fun testNotification() = scheduler.scheduleTest()
     fun setDynamicColor(v: Boolean) = viewModelScope.launch { settingsRepo.setDynamicColor(v) }
     fun setSeedColor(argb: Int) = viewModelScope.launch { settingsRepo.setSeedColor(argb) }
+    fun setHomeBackgroundEnabled(v: Boolean) = viewModelScope.launch { settingsRepo.setHomeBackgroundEnabled(v) }
+    fun selectHomeBackground(id: String) = viewModelScope.launch { settingsRepo.selectHomeBackground(id) }
+    fun setHomeBackgroundLevel(v: Int) = viewModelScope.launch { settingsRepo.setHomeBackgroundLevel(v) }
+    fun setGlassTheme(v: Boolean) = viewModelScope.launch { settingsRepo.setGlassTheme(v) }
+    fun setHomeShortcut(route: String) = viewModelScope.launch { settingsRepo.setHomeShortcut(route) }
+    fun replayTour() = viewModelScope.launch { settingsRepo.setTourShown(false) }
     fun setGradient(dark: Boolean, top: Boolean, argb: Int) = viewModelScope.launch { settingsRepo.setGradient(dark, top, argb) }
     fun resetGradient(dark: Boolean) = viewModelScope.launch { settingsRepo.resetGradient(dark) }
     fun setMonthScheme(s: io.github.salehgnutux.gtsalat.domain.MonthScheme) = viewModelScope.launch { settingsRepo.setMonthScheme(s) }

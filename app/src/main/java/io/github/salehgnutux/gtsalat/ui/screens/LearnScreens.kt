@@ -296,7 +296,7 @@ private fun LearnGallery(dir: String, count: Int) {
     Column {
         HorizontalPager(state = pager, modifier = Modifier.fillMaxWidth().aspectRatio(1f)) { page ->
             coil.compose.AsyncImage(
-                model = "file:///android_asset/$dir/${"%02d".format(page + 1)}.webp",
+                model = "file:///android_asset/$dir/${String.format(java.util.Locale.US, "%02d", page + 1)}.webp",
                 contentDescription = "صورةٌ توضيحيّة ${page + 1}",
                 contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                 modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp)
@@ -348,7 +348,7 @@ private fun ZoomableImageViewer(dir: String, count: Int, startIndex: Int, onDism
         Box(Modifier.fillMaxSize().background(Color.Black)) {
             HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
                 coil.compose.AsyncImage(
-                    model = "file:///android_asset/$dir/${"%02d".format(page + 1)}.webp",
+                    model = "file:///android_asset/$dir/${String.format(java.util.Locale.US, "%02d", page + 1)}.webp",
                     contentDescription = "صورةٌ توضيحيّة ${page + 1}",
                     contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                     modifier = Modifier.fillMaxSize()

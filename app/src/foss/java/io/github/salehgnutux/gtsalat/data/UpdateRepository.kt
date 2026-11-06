@@ -2,6 +2,7 @@ package io.github.salehgnutux.gtsalat.data
 
 import io.github.salehgnutux.gtsalat.BuildConfig
 import io.github.salehgnutux.gtsalat.data.settings.SettingsRepository
+import io.github.salehgnutux.gtsalat.domain.AppVersion
 import io.github.salehgnutux.gtsalat.notification.NotificationHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,27 +43,33 @@ class UpdateRepository @Inject constructor(
     @Serializable private data class Release(
         val tag_name: String = "",
         val html_url: String = "",
+        val draft: Boolean = false,
         val assets: List<Asset> = emptyList(),
     )
     @Serializable private data class Asset(val name: String = "", val browser_download_url: String = "")
 
     /** يفحص أحدث إصدار؛ إن كان أجدَّ من الحاليّ يضبط [UpdateInfo] ويُطلق إشعاراً. */
     suspend fun checkForUpdate() {
-        if (!settingsRepo.settings.first().checkUpdates) return
+        val settings = settingsRepo.settings.first()
+        if (!settings.checkUpdates) {
+            UpdateInfo.set(null)
+            return
+        }
+        // «/latest» يتجاهل الإصدارات الاختباريّة، فلا تصل إلّا لمن فعّل خيارها، من قائمة الإصدارات كلّها.
         val rel = withContext(Dispatchers.IO) {
             runCatching {
-                val req = Request.Builder()
-                    .url("https://api.github.com/repos/SalehGNUTUX/GT-SALAT-PHONE/releases/latest")
-                    .header("Accept", "application/vnd.github+json")
-                    .build()
-                http.newCall(req).execute().use { r ->
-                    if (!r.isSuccessful) null else json.decodeFromString<Release>(r.body?.string().orEmpty())
+                if (settings.allowPrereleaseUpdates) {
+                    val body = fetch("$RELEASES?per_page=30") ?: return@runCatching null
+                    json.decodeFromString<List<Release>>(body)
+                        .filter { !it.draft && it.tag_name.isNotBlank() }
+                        .reduceOrNull { best, r -> if (AppVersion.isNewer(r.tag_name, best.tag_name)) r else best }
+                } else {
+                    fetch("$RELEASES/latest")?.let { json.decodeFromString<Release>(it) }
                 }
             }.getOrNull()
         } ?: return
         val latest = rel.tag_name.removePrefix("v").trim()
-        val current = BuildConfig.VERSION_NAME.substringBefore("-").trim()  // نزع لاحقة النكهة
-        if (latest.isNotBlank() && isNewer(latest, current)) {
+        if (latest.isNotBlank() && AppVersion.isNewer(latest, BuildConfig.VERSION_NAME)) {
             val url = rel.html_url.ifBlank { "https://github.com/SalehGNUTUX/GT-SALAT-PHONE/releases/latest" }
             // اختيار الـAPK المطابق للنكهة: full ← "-full.apk"، foss ← "-foss.apk".
             val suffix = if (BuildConfig.USES_GMS) "-full.apk" else "-foss.apk"
@@ -74,14 +81,12 @@ class UpdateRepository @Inject constructor(
         }
     }
 
-    /** مقارنةُ نسخٍ رقميّةٍ منقّطة (a > b). */
-    private fun isNewer(a: String, b: String): Boolean {
-        val pa = a.split(".").mapNotNull { it.toIntOrNull() }
-        val pb = b.split(".").mapNotNull { it.toIntOrNull() }
-        for (i in 0 until maxOf(pa.size, pb.size)) {
-            val x = pa.getOrElse(i) { 0 }; val y = pb.getOrElse(i) { 0 }
-            if (x != y) return x > y
-        }
-        return false
+    private fun fetch(url: String): String? {
+        val req = Request.Builder().url(url).header("Accept", "application/vnd.github+json").build()
+        return http.newCall(req).execute().use { r -> if (r.isSuccessful) r.body?.string() else null }
+    }
+
+    private companion object {
+        const val RELEASES = "https://api.github.com/repos/SalehGNUTUX/GT-SALAT-PHONE/releases"
     }
 }

@@ -35,10 +35,16 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.Default).launch {
             try {
                 val s = settingsRepo.current()
+                val now = System.currentTimeMillis()
+                // الموعد المقرَّر: يكشف ما حبسه النظام أو إدارة البطاريّة حتى فتح الهاتف (0 في إنذارٍ قديم).
+                val scheduledAt = intent.getLongExtra(EXTRA_SCHEDULED_AT, 0L).takeIf { it > 0L } ?: now
+                val late = now - scheduledAt
                 when (intent.action) {
                     ACTION_PRENOTIFY -> {
                         val minutes = intent.getIntExtra(EXTRA_MINUTES, s.preNotifyMinutes)
-                        if (s.enablePreNotify && !s.doNotDisturb) {
+                        val stale = late > MAX_LATE_PRENOTIFY_MS
+                        AlarmLog.add(context, "تنبيه اقتراب $prayerAr", scheduledAt, if (stale) "أُسقِط: فات موعده" else "")
+                        if (!stale && s.enablePreNotify && !s.doNotDisturb) {
                             notifications.notify(
                                 NotificationHelper.ID_PRENOTIFY,
                                 notifications.preNotifyNotification(prayerAr, minutes),
@@ -50,20 +56,30 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                         }
                     }
                     ACTION_ADHAN -> {
-                        // جدولة الصلاة التالية أوّلاً (النمط الذاتيّ المتسلسل): لو قُتلت العمليّة
-                        // أثناء التشغيل لا تنقطع السلسلة، فالإنذار التالي مُسلَّح قبل أيّ عملٍ قد يتأخّر.
-                        scheduler.scheduleNext()
-                        val now = System.currentTimeMillis()
-                        // الكاتم التلقائيّ: نكتم الرنين ونجدول استعادته بعد مدّة الكتم.
-                        if (s.autoSilence) {
+                        // الإشعار والصوت أوّلاً، فإذن بدء خدمة المقدّمة بعد الإنذار قصير الأمد. وإعادة
+                        // الجدولة (في finally) لا تسبقهما؛ فالصلوات التالية مسلَّحةٌ مقدّماً على أيّ حال.
+                        val stale = late > MAX_LATE_ADHAN_MS
+                        AlarmLog.add(context, "أذان $prayerAr", scheduledAt, if (stale) "فات موعده: إشعارٌ صامت" else "")
+                        notifications.cancelPreNotify()
+                        // الكاتم التلقائيّ: مدّته من دخول الوقت، فلا يُكتَم الهاتف إن انقضت.
+                        val silenceEnd = scheduledAt + s.silenceMinutes * 60_000L
+                        if (s.autoSilence && silenceEnd > now) {
                             ringer.silence()
-                            scheduler.scheduleRestoreSound(now + s.silenceMinutes * 60_000L)
+                            scheduler.scheduleRestoreSound(silenceEnd)
                         }
                         // ذكر ما بعد الصلاة: يُجدوَل بعد دخول الوقت بدقائق.
-                        if (s.enablePostDhikr) {
-                            scheduler.schedulePostDhikr(now + s.postDhikrMinutes * 60_000L)
+                        if (s.enablePostDhikr && !stale) {
+                            scheduler.schedulePostDhikr(scheduledAt + s.postDhikrMinutes * 60_000L, prayerAr)
                         }
-                        if (s.enableSalatNotify && !s.doNotDisturb) {
+                        if (stale) {
+                            // وصل متأخّراً (جمّده النظام حتى فتح الهاتف): نُعلِم بصمتٍ ولا نؤذّن خارج الوقت.
+                            if (s.enableSalatNotify && !s.doNotDisturb) {
+                                notifications.notify(
+                                    NotificationHelper.ID_PRAYER,
+                                    notifications.latePrayerNotification(prayerAr, io.github.salehgnutux.gtsalat.util.Format.clock(scheduledAt)),
+                                )
+                            }
+                        } else if (s.enableSalatNotify && !s.doNotDisturb) {
                             // نافذة الأذان ملء الشاشة فوق القفل (إن فُعّلت) — عبر full-screen intent
                             // + محاولة إطلاقٍ مباشر (تعمل والتطبيق نشطٌ في المقدّمة).
                             val fs = if (s.fullScreenAdhan) {
@@ -87,13 +103,15 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                         scheduler.refreshWidgets()
                         scheduler.scheduleWidgetRefresh()
                     }
-                    ACTION_TEST -> notifications.notify(
-                        NotificationHelper.ID_TEST,
-                        notifications.testNotification(),
-                    )
+                    ACTION_TEST -> {
+                        AlarmLog.add(context, "تنبيهٌ اختباريّ", scheduledAt)
+                        notifications.notify(NotificationHelper.ID_TEST, notifications.testNotification(late / 1000))
+                    }
                     ACTION_RESTORE_SOUND -> ringer.restore()
                     ACTION_POST_DHIKR -> {
-                        if (s.enablePostDhikr && !s.doNotDisturb) {
+                        val stale = late > MAX_LATE_DHIKR_MS
+                        AlarmLog.add(context, "ذكر بعد صلاة $prayerAr", scheduledAt, if (stale) "أُسقِط: فات موعده" else "")
+                        if (!stale && s.enablePostDhikr && !s.doNotDisturb) {
                             val fs = if (s.fullScreenAdhan) {
                                 launchFullScreen(context, prayerAr, "", isDhikr = true)
                                 notifications.fullScreenAdhanIntent(prayerAr, "", isDhikr = true)
@@ -106,7 +124,14 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                         }
                     }
                 }
+            } catch (e: Exception) {
+                AlarmLog.add(context, "خطأ في معالجة التنبيه", detail = e.toString())
             } finally {
+                // إعادة التسليح بعد الأذان حتى لو فشل ما سبق، بلا شبكة.
+                if (intent.action == ACTION_ADHAN) {
+                    runCatching { scheduler.scheduleNext(allowNetwork = false) }
+                        .onFailure { AlarmLog.add(context, "تعذّرت إعادة الجدولة", detail = it.toString()) }
+                }
                 runCatching { if (wl.isHeld) wl.release() }
                 pending.finish()
             }
@@ -133,6 +158,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
             putExtra(AdhanService.EXTRA_VOLUME, volume)
         }
         runCatching { ContextCompat.startForegroundService(context, svc) }
+            .onFailure { AlarmLog.add(context, "تعذّر تشغيل الصوت", detail = it.toString()) }
     }
 
     companion object {
@@ -145,5 +171,11 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
         const val EXTRA_PRAYER = "prayer"
         const val EXTRA_PRAYER_AR = "prayer_ar"
         const val EXTRA_MINUTES = "minutes"
+        const val EXTRA_SCHEDULED_AT = "scheduled_at"
+
+        // أقصى تأخّرٍ مقبولٍ للصوت؛ ما بعده يعني أنّ النظام حبس الإنذار، فلا نُسمِعه خارج موعده.
+        private const val MAX_LATE_ADHAN_MS = 3 * 60_000L
+        private const val MAX_LATE_PRENOTIFY_MS = 2 * 60_000L
+        private const val MAX_LATE_DHIKR_MS = 3 * 60_000L
     }
 }

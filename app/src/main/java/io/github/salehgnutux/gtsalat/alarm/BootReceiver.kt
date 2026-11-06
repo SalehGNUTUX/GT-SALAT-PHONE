@@ -30,7 +30,7 @@ class BootReceiver : BroadcastReceiver() {
                 val pending = goAsync()
                 CoroutineScope(Dispatchers.Default).launch {
                     try {
-                        scheduler.scheduleNext()
+                        scheduler.scheduleNext(allowNetwork = false)
                         workScheduler.ensurePeriodic()
                     } finally {
                         pending.finish()

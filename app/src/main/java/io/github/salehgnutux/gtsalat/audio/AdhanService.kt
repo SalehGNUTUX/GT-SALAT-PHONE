@@ -77,7 +77,15 @@ class AdhanService : Service() {
             SOUND_POST_DHIKR -> "📿 أذكار بعد صلاة $prayerAr"
             else -> "🔊 يُشغَّل الآن أذان $prayerAr"
         }
-        startForeground(NotificationHelper.ID_SERVICE, notifications.serviceNotification(title, stopPendingIntent()))
+        // قد يرفض النظام بدء خدمة المقدّمة إن انقضى إذن الإنذار؛ نسجّل بدل أن تنهار العمليّة.
+        val started = runCatching {
+            startForeground(NotificationHelper.ID_SERVICE, notifications.serviceNotification(title, stopPendingIntent()))
+        }
+        if (started.isFailure) {
+            io.github.salehgnutux.gtsalat.alarm.AlarmLog.add(this, "رفض النظام خدمة الصوت", detail = started.exceptionOrNull().toString())
+            stopSelf()
+            return START_NOT_STICKY
+        }
         // إعلام الواجهة أنّ صوتاً يُشغَّل الآن (أذان/تنبيه اقتراب/ذكر بعد الصلاة) — لإظهار زرّ الإيقاف في الرئيسيّة
         // بنوع الصوت، وإبقاء نافذة ملء الشاشة ما دام الصوت جارياً.
         val kind = when (sound) {
@@ -118,8 +126,10 @@ class AdhanService : Service() {
     /** مصدر الأذان حسب النوع؛ يسقط إلى الكامل إن تعذّر الأذان المخصّص. */
     private fun adhanUri(s: io.github.salehgnutux.gtsalat.data.settings.AppSettings): Uri = when (s.adhanType) {
         AdhanType.SHORT -> resUri(R.raw.adhan_short)
+        AdhanType.MAGHRIBI_FULL -> resUri(R.raw.adhan_maghribi_full)
+        AdhanType.MAGHRIBI_SHORT -> resUri(R.raw.adhan_maghribi_short)
         AdhanType.CUSTOM -> s.customAdhanUri?.let { runCatching { Uri.parse(it) }.getOrNull() }
-            ?: resUri(R.raw.adhan_full)
+            ?: resUri(R.raw.adhan_maghribi_full)
         AdhanType.FULL -> resUri(R.raw.adhan_full)
     }
 
@@ -128,9 +138,9 @@ class AdhanService : Service() {
         player = MediaPlayer().apply {
             setAudioAttributes(audioAttributes)
             setWakeMode(this@AdhanService, PowerManager.PARTIAL_WAKE_LOCK)
-            // إن فشل المسار المخصّص (حُذف الملفّ/سُحب الإذن) نسقط إلى الأذان الكامل.
+            // إن فشل المسار المخصّص (حُذف الملفّ/سُحب الإذن) نسقط إلى الأذان الافتراضيّ.
             val ok = runCatching { setDataSource(this@AdhanService, uri) }.isSuccess
-            if (!ok) runCatching { setDataSource(this@AdhanService, resUri(R.raw.adhan_full)) }
+            if (!ok) runCatching { setDataSource(this@AdhanService, resUri(R.raw.adhan_maghribi_full)) }
             setOnCompletionListener { onComplete() }
             setOnErrorListener { _, _, _ -> stopEverything(); true }
             setOnPreparedListener { setVolume(volume, volume); start() }

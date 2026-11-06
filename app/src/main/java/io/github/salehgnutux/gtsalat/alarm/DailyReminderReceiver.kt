@@ -26,6 +26,7 @@ class DailyReminderReceiver : BroadcastReceiver() {
     @Inject lateinit var notifications: NotificationHelper
     @Inject lateinit var content: ContentRepository
     @Inject lateinit var scheduler: PrayerAlarmScheduler
+    @Inject lateinit var quran: io.github.salehgnutux.gtsalat.data.QuranRepository
 
     override fun onReceive(context: Context, intent: Intent) {
         val pending = goAsync()
@@ -63,7 +64,12 @@ class DailyReminderReceiver : BroadcastReceiver() {
 
                 if (s.enableDailyAyah) {
                     content.dailyAyah(LocalDate.now().dayOfYear)?.let {
-                        notifications.showDailyAyah(it.surah, it.n, it.text)
+                        // رقم السورة لفتح الآية في موضعها (daily_ayat.json يحفظ اسم السورة فقط).
+                        val q = io.github.salehgnutux.gtsalat.domain.Quran
+                        val number = runCatching {
+                            quran.surahs().firstOrNull { m -> q.normalize(m.ar) == q.normalize(it.surah) }?.n
+                        }.getOrNull()
+                        notifications.showDailyAyah(it.surah, it.n, it.text, number)
                     }
                 }
             } finally {

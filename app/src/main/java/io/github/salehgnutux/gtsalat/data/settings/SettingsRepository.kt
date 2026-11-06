@@ -70,6 +70,12 @@ class SettingsRepository @Inject constructor(
         val DYNAMIC = booleanPreferencesKey("dynamic_color")
         val SEED_COLOR = intPreferencesKey("seed_color")
         val GRAD_TOP_L = intPreferencesKey("grad_top_light")
+        val HOME_BG_ENABLED = booleanPreferencesKey("home_bg_enabled")
+        val HOME_BG_ID = stringPreferencesKey("home_bg_id")
+        val HOME_BG_LEVEL = intPreferencesKey("home_bg_level")
+        val GLASS_THEME = booleanPreferencesKey("glass_theme")
+        val HOME_SHORTCUT = stringPreferencesKey("home_shortcut")
+        val TOUR_SHOWN = booleanPreferencesKey("tour_shown")
         val GRAD_BOT_L = intPreferencesKey("grad_bot_light")
         val GRAD_TOP_D = intPreferencesKey("grad_top_dark")
         val GRAD_BOT_D = intPreferencesKey("grad_bot_dark")
@@ -84,6 +90,7 @@ class SettingsRepository @Inject constructor(
         val TRANSLATE_LOC = booleanPreferencesKey("translate_loc_names")
         val LOCATION_HISTORY = stringPreferencesKey("location_history")
         val SETTINGS_OPEN_SECTION = stringPreferencesKey("settings_open_section")
+        val ALLOW_PRERELEASE = booleanPreferencesKey("allow_prerelease_updates")
         val CHECK_UPDATES = booleanPreferencesKey("check_updates")
         val FULLSCREEN_ADHAN = booleanPreferencesKey("fullscreen_adhan")
         val KEEP_ADHAN_SCREEN = booleanPreferencesKey("keep_adhan_screen")
@@ -126,11 +133,7 @@ class SettingsRepository @Inject constructor(
             methodId = this[Keys.METHOD] ?: 3,
             madhab = if (this[Keys.MADHAB] == "HANAFI") AsrMadhab.HANAFI else AsrMadhab.SHAFI,
             preNotifyMinutes = this[Keys.PRE_NOTIFY] ?: 15,
-            adhanType = when (this[Keys.ADHAN_TYPE]) {
-                "SHORT" -> AdhanType.SHORT
-                "CUSTOM" -> AdhanType.CUSTOM
-                else -> AdhanType.FULL
-            },
+            adhanType = AdhanType.entries.firstOrNull { it.name == this[Keys.ADHAN_TYPE] } ?: AdhanType.MAGHRIBI_FULL,
             customAdhanUri = this[Keys.CUSTOM_ADHAN_URI],
             customAdhanName = this[Keys.CUSTOM_ADHAN_NAME] ?: "",
             enableSalatNotify = this[Keys.EN_SALAT] ?: true,
@@ -167,6 +170,12 @@ class SettingsRepository @Inject constructor(
             dynamicColor = this[Keys.DYNAMIC] ?: true,
             seedColor = this[Keys.SEED_COLOR] ?: 0,
             gradTopLight = this[Keys.GRAD_TOP_L] ?: 0,
+            homeBackgroundEnabled = this[Keys.HOME_BG_ENABLED] ?: true,
+            homeBackgroundId = this[Keys.HOME_BG_ID] ?: io.github.salehgnutux.gtsalat.domain.HomeBackgrounds.DEFAULT_ID,
+            homeBackgroundLevel = this[Keys.HOME_BG_LEVEL] ?: 1,
+            glassTheme = this[Keys.GLASS_THEME] ?: true,
+            homeShortcutRoute = this[Keys.HOME_SHORTCUT] ?: "radios",
+            tourShown = this[Keys.TOUR_SHOWN] ?: false,
             gradBotLight = this[Keys.GRAD_BOT_L] ?: 0,
             gradTopDark = this[Keys.GRAD_TOP_D] ?: 0,
             gradBotDark = this[Keys.GRAD_BOT_D] ?: 0,
@@ -182,6 +191,7 @@ class SettingsRepository @Inject constructor(
             locationHistory = this[Keys.LOCATION_HISTORY]?.let { runCatching { locJson.decodeFromString<List<io.github.salehgnutux.gtsalat.domain.Place>>(it) }.getOrNull() } ?: emptyList(),
             settingsOpenSection = this[Keys.SETTINGS_OPEN_SECTION] ?: "الموقع وطريقة الحساب",
             checkUpdates = this[Keys.CHECK_UPDATES] ?: true,
+            allowPrereleaseUpdates = this[Keys.ALLOW_PRERELEASE] ?: false,
             fullScreenAdhan = this[Keys.FULLSCREEN_ADHAN] ?: true,
             keepAdhanScreen = this[Keys.KEEP_ADHAN_SCREEN] ?: false,
             setupCompleted = this[Keys.SETUP] ?: false,
@@ -403,12 +413,23 @@ class SettingsRepository @Inject constructor(
         p[Keys.LOCATION_HISTORY] = locJson.encodeToString(next)
     }
     suspend fun setSettingsOpenSection(title: String) = context.dataStore.edit { it[Keys.SETTINGS_OPEN_SECTION] = title }
+    suspend fun setAllowPrereleaseUpdates(v: Boolean) = context.dataStore.edit { it[Keys.ALLOW_PRERELEASE] = v }
     suspend fun setCheckUpdates(v: Boolean) = context.dataStore.edit { it[Keys.CHECK_UPDATES] = v }
     suspend fun setFullScreenAdhan(v: Boolean) = context.dataStore.edit { it[Keys.FULLSCREEN_ADHAN] = v }
     suspend fun setKeepAdhanScreen(v: Boolean) = context.dataStore.edit { it[Keys.KEEP_ADHAN_SCREEN] = v }
     suspend fun setTheme(t: ThemeMode) = context.dataStore.edit { it[Keys.THEME] = t.name }
     suspend fun setDynamicColor(v: Boolean) = context.dataStore.edit { it[Keys.DYNAMIC] = v }
     suspend fun setSeedColor(argb: Int) = context.dataStore.edit { it[Keys.SEED_COLOR] = argb }
+    suspend fun setHomeBackgroundEnabled(v: Boolean) = context.dataStore.edit { it[Keys.HOME_BG_ENABLED] = v }
+    /** اختيار صورةٍ يفعّل الخلفيّة أيضاً. */
+    suspend fun selectHomeBackground(id: String) = context.dataStore.edit {
+        it[Keys.HOME_BG_ID] = id
+        it[Keys.HOME_BG_ENABLED] = true
+    }
+    suspend fun setHomeBackgroundLevel(v: Int) = context.dataStore.edit { it[Keys.HOME_BG_LEVEL] = v }
+    suspend fun setGlassTheme(v: Boolean) = context.dataStore.edit { it[Keys.GLASS_THEME] = v }
+    suspend fun setHomeShortcut(route: String) = context.dataStore.edit { it[Keys.HOME_SHORTCUT] = route }
+    suspend fun setTourShown(v: Boolean) = context.dataStore.edit { it[Keys.TOUR_SHOWN] = v }
     /** تعيين لون طرف التدرّج للوضع المطلوب (dark) أو الفاتح، أعلى (top) أو أسفل. */
     suspend fun setGradient(dark: Boolean, top: Boolean, argb: Int) = context.dataStore.edit {
         it[when {

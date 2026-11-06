@@ -10,13 +10,14 @@ import io.github.salehgnutux.gtsalat.data.PrayerRepository
 import io.github.salehgnutux.gtsalat.data.settings.SettingsRepository
 import io.github.salehgnutux.gtsalat.notification.NotificationHelper
 import io.github.salehgnutux.gtsalat.util.Format
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * جدولة إنذارٍ دقيق للصلاة القادمة فقط (نمط self-rescheduling): عند إطلاق أذان الصلاة
- * يُعاد استدعاء scheduleNext لجدولة التالية. يستعمل setExactAndAllowWhileIdle لاختراق Doze،
- * مع سقوطٍ آمن إلى setAndAllowWhileIdle إن رُفض إذن الإنذار الدقيق (Android 12+).
+ * يسلّح الصلوات القادمة مقدّماً بـsetAlarmClock، ويعيد التسليح عند كلّ أذان (self-rescheduling).
+ * تُحسَب الصلوات **قبل** إلغاء القديم، فلا يُترَك الجهاز بلا إنذاراتٍ إن تعذّر الحساب.
+ * وباقي الإنذارات بـsetExactAndAllowWhileIdle، مع سقوطٍ إلى setAndAllowWhileIdle إن رُفض الإذن.
  */
 @Singleton
 class PrayerAlarmScheduler @Inject constructor(
@@ -26,31 +27,44 @@ class PrayerAlarmScheduler @Inject constructor(
     private val notifications: NotificationHelper,
 ) {
     private val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    private val armLock = kotlinx.coroutines.sync.Mutex()
 
-    suspend fun scheduleNext() {
-        cancelAll()
+    /**
+     * [allowNetwork]=false في مسار المنبّهات والإقلاع. ولا يمسح هذا المسار إشعارَي الأذان والتنبيه
+     * المسبق: قد يبدأ التطبيق بسبب المنبّه نفسه فيمسح ما نشره المُستقبِل للتوّ، و`setTimeoutAfter` يكفي للعالق.
+     */
+    suspend fun scheduleNext(allowNetwork: Boolean = true) {
         val s = settingsRepo.current()
-        refreshStatus(s)          // الإشعار الدائم مستقلٌّ عن حارسات الأذان أدناه
-        refreshWidgets()          // وكذلك ودجتات سطح الهاتف
-        scheduleWidgetRefresh()   // إنذارٌ يقدّم الودجت عند كلّ صلاة/منتصف ليل (ولو كان الأذان مطفأً)
-        // امسح تنبيهات الأذان/التنبيه المسبق القديمة العالقة (تُعاد لحظةَ إطلاق أذان الصلاة الحاليّ)،
-        // وخدمة الأذان إن لم يكن ثمّة صوتٌ يُشغَّل الآن — تفاديّاً لإشعارٍ «زومبي» يبقى بعد تجميد النظام.
-        notifications.cancelPrayerAlerts()
+        armPrayers(s, allowNetwork)
+        // ما يلي تجميليٌّ وقد يطول (الودجت)؛ لا يوقف فشلُ واحدٍ منه البقيّة، ولا يمسّ الإنذارات.
+        runCatching { refreshStatus(s, allowNetwork) }    // الإشعار الدائم مستقلٌّ عن حارسات الأذان
+        // خدمة الأذان إن لم يكن ثمّة صوتٌ يُشغَّل الآن — تفاديّاً لإشعارٍ «زومبي» يبقى بعد تجميد النظام.
         if (!io.github.salehgnutux.gtsalat.audio.AdhanPlayback.active.value) notifications.cancelAdhanService()
-        scheduleDailyReminder()   // والتذكيرات اليوميّة (وِرد/أيّام بيض/آية)
-        scheduleAdhkarReminders(s) // وأذكار الصباح/المساء (إن فُعّلت)
-        if (!s.setupCompleted || !s.hasLocation || s.doNotDisturb || !s.enableSalatNotify) return
+        runCatching { scheduleDailyReminder() }           // والتذكيرات اليوميّة (وِرد/أيّام بيض/آية)
+        runCatching { scheduleAdhkarReminders(s) }        // وأذكار الصباح/المساء (إن فُعّلت)
+        runCatching { scheduleWidgetRefresh(allowNetwork) } // يقدّم الودجت عند كلّ صلاة/منتصف ليل
+        refreshWidgets()
+    }
 
+    private suspend fun armPrayers(
+        s: io.github.salehgnutux.gtsalat.data.settings.AppSettings,
+        allowNetwork: Boolean,
+    ) = armLock.withLock {
+        val enabled = s.setupCompleted && s.hasLocation && !s.doNotDisturb && s.enableSalatNotify
         val now = System.currentTimeMillis()
+        val upcoming = if (enabled) {
+            runCatching { repo.upcomingPrayers(AHEAD, now, allowNetwork) }
+                .onFailure { AlarmLog.add(context, "تعذّر حساب الصلوات القادمة", detail = it.toString()) }
+                .getOrNull() ?: return@withLock   // نُبقي الإنذارات القائمة بدل إلغائها
+        } else emptyList()
+        cancelAll()
         // نُسلّح **عدّة صلواتٍ مقدّماً** (لا القادمة فقط): شبكةُ أمانٍ لو جُمّد التطبيق فلم
         // يُعِد الجدولة الذاتيّة؛ فتبقى إنذارات النظام مسلَّحةً لعدّة أيّام.
-        val upcoming = repo.upcomingPrayers(AHEAD, now)
         upcoming.forEachIndexed { i, p ->
-            // الأذان عبر setAlarmClock: لا يؤجّله Doze/توفير البطاريّة إطلاقاً (كإنذار المنبّه).
-            setAlarmClock(p.epochMillis, adhanIntent(p.id.name, p.id.arabic, i))
+            setAlarmClock(p.epochMillis, adhanIntent(p.id.name, p.id.arabic, i, p.epochMillis))
             if (s.enablePreNotify) {
                 val preAt = p.epochMillis - s.preNotifyMinutes * 60_000L
-                if (preAt > now) setAlarmClock(preAt, preNotifyIntent(p.id.arabic, s.preNotifyMinutes, i))
+                if (preAt > now) setAlarmClock(preAt, preNotifyIntent(p.id.arabic, s.preNotifyMinutes, i, preAt))
             }
         }
     }
@@ -73,19 +87,21 @@ class PrayerAlarmScheduler @Inject constructor(
      * أنّ التنبيه يصل والشاشة مغلقة/التطبيق في الخلفيّة (تشخيص إدارة البطاريّة).
      */
     fun scheduleTest() {
-        setAlarmClock(System.currentTimeMillis() + 60_000L, testIntent())
+        val at = System.currentTimeMillis() + 60_000L
+        setAlarmClock(at, testIntent(at))
     }
 
-    private fun testIntent(): PendingIntent {
+    private fun testIntent(scheduledAt: Long): PendingIntent {
         val i = Intent(context, PrayerAlarmReceiver::class.java).apply {
             action = PrayerAlarmReceiver.ACTION_TEST
+            putExtra(PrayerAlarmReceiver.EXTRA_SCHEDULED_AT, scheduledAt)
         }
         return PendingIntent.getBroadcast(context, RC_TEST, i, FLAGS)
     }
 
     /** جدولة ذكر ما بعد الصلاة (بعد دخول الوقت بدقائق). */
-    fun schedulePostDhikr(triggerAt: Long) {
-        setAlarmClock(triggerAt, postDhikrIntent())
+    fun schedulePostDhikr(triggerAt: Long, prayerAr: String) {
+        setAlarmClock(triggerAt, postDhikrIntent(prayerAr, triggerAt))
     }
 
     /** جدولة التذكيرات اليوميّة (وِرد/أيّام بيض/آية) عند ساعةٍ محدّدة، تعيد جدولة نفسها. */
@@ -139,12 +155,12 @@ class PrayerAlarmScheduler @Inject constructor(
     }
 
     /** تحديث الإشعار الدائم بالصلاة القادمة (عدٌّ تنازليّ حيّ)، أو إلغاؤه. */
-    private suspend fun refreshStatus(s: io.github.salehgnutux.gtsalat.data.settings.AppSettings) {
+    private suspend fun refreshStatus(s: io.github.salehgnutux.gtsalat.data.settings.AppSettings, allowNetwork: Boolean) {
         if (!s.persistentNotification || !s.hasLocation) {
             notifications.cancelStatus()
             return
         }
-        val next = repo.nextPrayer()
+        val next = repo.nextPrayer(allowNetwork = allowNetwork)
         if (next == null) {
             notifications.cancelStatus()
             return
@@ -167,9 +183,9 @@ class PrayerAlarmScheduler @Inject constructor(
      * حتى والتطبيق في الخلفيّة. يُعيد جدولة نفسه من المُستقبِل عبر [ACTION_REFRESH_WIDGETS].
      * (لا يتجاوز قيود «الإيقاف القسريّ» على بعض الأجهزة؛ علاجها إعفاء البطاريّة والتشغيل التلقائيّ.)
      */
-    suspend fun scheduleWidgetRefresh() {
+    suspend fun scheduleWidgetRefresh(allowNetwork: Boolean = true) {
         val now = System.currentTimeMillis()
-        val nextPrayer = runCatching { repo.nextPrayer(now)?.prayer?.epochMillis }.getOrNull()
+        val nextPrayer = runCatching { repo.nextPrayer(now, allowNetwork)?.prayer?.epochMillis }.getOrNull()
         val midnight = java.time.LocalDate.now().plusDays(1)
             .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
         val at = listOfNotNull(nextPrayer?.plus(2_000L), midnight).filter { it > now }.minOrNull()
@@ -196,7 +212,7 @@ class PrayerAlarmScheduler @Inject constructor(
         }
     }
 
-    /** أدقّ وأوثق من setExact: يُعامَل كإنذار منبّه فلا يُؤجَّل في Doze، بلا حاجة لإذنٍ خاصّ. */
+    /** أدقّ وأوثق من setExact: يُعامَل كإنذار منبّه فلا يُؤجَّل في Doze. (يتطلّب إذن الإنذار الدقيق من أندرويد 12.) */
     private fun setAlarmClock(triggerAt: Long, pi: PendingIntent) {
         val show = PendingIntent.getActivity(
             context, RC_SHOW,
@@ -207,18 +223,20 @@ class PrayerAlarmScheduler @Inject constructor(
             .onFailure { setExact(triggerAt, pi) }
     }
 
-    private fun adhanIntent(prayerName: String, prayerAr: String, index: Int = 0): PendingIntent {
+    private fun adhanIntent(prayerName: String, prayerAr: String, index: Int = 0, scheduledAt: Long = 0L): PendingIntent {
         val i = Intent(context, PrayerAlarmReceiver::class.java).apply {
             action = PrayerAlarmReceiver.ACTION_ADHAN
+            putExtra(PrayerAlarmReceiver.EXTRA_SCHEDULED_AT, scheduledAt)
             putExtra(PrayerAlarmReceiver.EXTRA_PRAYER, prayerName)
             putExtra(PrayerAlarmReceiver.EXTRA_PRAYER_AR, prayerAr)
         }
         return PendingIntent.getBroadcast(context, RC_ADHAN_BASE + index, i, FLAGS)
     }
 
-    private fun preNotifyIntent(prayerAr: String, minutes: Int, index: Int = 0): PendingIntent {
+    private fun preNotifyIntent(prayerAr: String, minutes: Int, index: Int = 0, scheduledAt: Long = 0L): PendingIntent {
         val i = Intent(context, PrayerAlarmReceiver::class.java).apply {
             action = PrayerAlarmReceiver.ACTION_PRENOTIFY
+            putExtra(PrayerAlarmReceiver.EXTRA_SCHEDULED_AT, scheduledAt)
             putExtra(PrayerAlarmReceiver.EXTRA_PRAYER_AR, prayerAr)
             putExtra(PrayerAlarmReceiver.EXTRA_MINUTES, minutes)
         }
@@ -232,9 +250,11 @@ class PrayerAlarmScheduler @Inject constructor(
         return PendingIntent.getBroadcast(context, RC_RESTORE, i, FLAGS)
     }
 
-    private fun postDhikrIntent(): PendingIntent {
+    private fun postDhikrIntent(prayerAr: String, scheduledAt: Long): PendingIntent {
         val i = Intent(context, PrayerAlarmReceiver::class.java).apply {
             action = PrayerAlarmReceiver.ACTION_POST_DHIKR
+            putExtra(PrayerAlarmReceiver.EXTRA_PRAYER_AR, prayerAr)
+            putExtra(PrayerAlarmReceiver.EXTRA_SCHEDULED_AT, scheduledAt)
         }
         return PendingIntent.getBroadcast(context, RC_POSTDHIKR, i, FLAGS)
     }
@@ -249,8 +269,8 @@ class PrayerAlarmScheduler @Inject constructor(
         private const val RC_MORNING_ADHKAR = 1008
         private const val RC_EVENING_ADHKAR = 1009
         private const val RC_WIDGET = 1010
-        private const val RC_ADHAN_BASE = 1100     // 1100..1107
-        private const val RC_PRENOTIFY_BASE = 1200 // 1200..1207
+        private const val RC_ADHAN_BASE = 1100     // 1100..1111
+        private const val RC_PRENOTIFY_BASE = 1200 // 1200..1211
         private val FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     }
 }

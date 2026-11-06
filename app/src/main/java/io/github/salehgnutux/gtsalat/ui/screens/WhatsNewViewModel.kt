@@ -22,6 +22,8 @@ class WhatsNewViewModel @Inject constructor(
         .map { it.lastWhatsNewCode != BuildConfig.VERSION_CODE }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    fun markTourShown() = viewModelScope.launch { settingsRepo.setTourShown(true) }
+
     fun markShown() = viewModelScope.launch { settingsRepo.setLastWhatsNewCode(BuildConfig.VERSION_CODE) }
 
     /** رسالةُ الأذونات المطلوبة تُعرَض مرّةً بعد التثبيت/التحديث. */

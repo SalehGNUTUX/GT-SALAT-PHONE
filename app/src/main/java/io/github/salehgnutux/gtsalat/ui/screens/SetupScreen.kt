@@ -53,9 +53,10 @@ import io.github.salehgnutux.gtsalat.domain.CalculationMethods
 fun SetupScreen(vm: SetupViewModel = hiltViewModel()) {
     val ui by vm.ui.collectAsStateWithLifecycle()
 
+    val locationGate = io.github.salehgnutux.gtsalat.ui.location.rememberLocationGate()
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { vm.detectLocation() }
+    ) { locationGate { vm.detectLocation() } }
 
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val importLauncher = rememberLauncherForActivityResult(

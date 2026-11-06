@@ -17,18 +17,27 @@ android {
         applicationId = "io.github.salehgnutux.gtsalat"
         minSdk = 26
         targetSdk = 36
-        versionCode = 39
-        versionName = "1.18"
+        versionCode = 40
+        versionName = "2.0-alpha"
         vectorDrawables { useSupportLibrary = true }
     }
 
-    // مفتاح رفع نكهة بلاي (full): يُقرأ من keystore.properties (متجاهَلٌ في git) بشرط
-    // وجودٍ، فلا يتعطّل البناء على جهازٍ بلا مفتاح. نكهة foss تبقى على مفتاحها الحاليّ
-    // (فلا ينكسر تحديث مستخدميها الذاتيّ). signingConfigs قبل productFlavors (وإلّا
-    // ردّت findByName عدماً بصمت).
+    // المفتاح الدائم للحزم الموزَّعة مباشرةً: خارج المستودع، فضياعه يكسر التحديث لكلّ المستخدمين (انظر signing-fingerprints.txt).
+    // بدونه يقع البناء إلى مفتاح debug للجهاز، فلا يصلح الناتج للتوزيع.
+    val permanentProps = file(System.getProperty("user.home") + "/.gt-salat-keys/signing.properties").takeIf { it.exists() }
+        ?.let { Properties().apply { it.inputStream().use(::load) } }
+    if (permanentProps == null) logger.warn("تنبيه: المفتاح الدائم غير موجود، والحزم ستوقَّع بمفتاح debug لهذا الجهاز ولا تصلح للتوزيع.")
+    // مفتاح رفع نكهة بلاي: يُقرأ من keystore.properties (متجاهَلٌ في git) بشرط وجوده.
+    // signingConfigs قبل productFlavors (وإلّا ردّت findByName عدماً بصمت).
     val ksProps = rootProject.file("keystore.properties").takeIf { it.exists() }
         ?.let { Properties().apply { it.inputStream().use(::load) } }
     signingConfigs {
+        if (permanentProps != null) create("permanent") {
+            storeFile = file(permanentProps.getProperty("storeFile"))
+            storePassword = permanentProps.getProperty("storePassword")
+            keyAlias = permanentProps.getProperty("keyAlias")
+            keyPassword = permanentProps.getProperty("keyPassword")
+        }
         if (ksProps != null) create("playUpload") {
             storeFile = file(ksProps.getProperty("storeFile"))
             storePassword = ksProps.getProperty("storePassword")
@@ -44,6 +53,7 @@ android {
             dimension = "edition"
             applicationIdSuffix = ".foss"
             versionNameSuffix = "-foss"
+            signingConfigs.findByName("permanent")?.let { signingConfig = it }
             buildConfigField("boolean", "USES_GMS", "false")
             resValue("string", "app_edition", "حرّة")
         }
@@ -52,7 +62,7 @@ android {
             buildConfigField("boolean", "USES_GMS", "true")
             resValue("string", "app_edition", "كاملة")
             // نسخة غوغل بلاي: توقَّع بمفتاح الرفع إن وُجد keystore.properties.
-            signingConfigs.findByName("playUpload")?.let { signingConfig = it }
+            (signingConfigs.findByName("playUpload") ?: signingConfigs.findByName("permanent"))?.let { signingConfig = it }
         }
     }
 
@@ -63,6 +73,8 @@ android {
         }
         debug {
             applicationIdSuffix = ".debug"
+            // الحزم الموزَّعة تُبنى اليوم من نوع debug، فتوقَّع بالمفتاح الدائم لا بمفتاح الجهاز.
+            signingConfigs.findByName("permanent")?.let { signingConfig = it }
         }
     }
 

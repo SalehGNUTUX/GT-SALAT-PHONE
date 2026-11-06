@@ -42,6 +42,8 @@ class AdhanPreviewer @Inject constructor(
         stop()
         val uri = when (type) {
             AdhanType.SHORT -> resUri(R.raw.adhan_short)
+            AdhanType.MAGHRIBI_FULL -> resUri(R.raw.adhan_maghribi_full)
+            AdhanType.MAGHRIBI_SHORT -> resUri(R.raw.adhan_maghribi_short)
             AdhanType.FULL -> resUri(R.raw.adhan_full)
             AdhanType.CUSTOM -> customUri?.let { runCatching { Uri.parse(it) }.getOrNull() } ?: return
         }

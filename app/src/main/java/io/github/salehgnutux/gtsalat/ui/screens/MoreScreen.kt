@@ -82,28 +82,7 @@ class MoreViewModel @Inject constructor(
 
 @Composable
 fun MoreScreen(onOpen: (String) -> Unit, vm: MoreViewModel = hiltViewModel()) {
-    // مرتّبةٌ حسب الأولويّة الأصليّة: القرآن أوّلاً، ثمّ حصن المسلم، ثمّ الأذكار…
-    val features = remember {
-        listOf(
-            Feature("القرآن الكريم", Icons.Outlined.AutoStories, "quran"),
-            Feature("الطهارة والصلاة", Icons.Outlined.CleanHands, "learn_hub"),
-            Feature("الرقية الشرعية", Icons.Outlined.Spa, "ruqyah_hub"),
-            Feature("حصن المسلم", Icons.Outlined.Shield, "hisn"),
-            Feature("أذكار الصباح", Icons.Outlined.WbSunny, "adhkar_session/morning"),
-            Feature("أذكار المساء", Icons.Outlined.NightsStay, "adhkar_session/evening"),
-            Feature("أذكار النوم", Icons.Outlined.Bedtime, "hisn/2"),
-            Feature("الأذكار الصوتية", Icons.Outlined.Headphones, "adhkar_audio"),
-            Feature("التسبيح", Icons.Outlined.Fingerprint, "tasbih"),
-            Feature("الأدعية المأثورة", Icons.Outlined.VolunteerActivism, "duas"),
-            Feature("التفسير الميسّر", Icons.Outlined.Notes, "tafsir"),
-            Feature("الأربعون والأحاديث", Icons.Outlined.MenuBook, "hadith"),
-            Feature("أسماء الله الحسنى", Icons.Outlined.AutoAwesome, "asma"),
-            Feature("حِكَم ومواعظ", Icons.Outlined.FormatQuote, "hikam"),
-            Feature("أحداثٌ تاريخيّة", Icons.Outlined.HistoryEdu, "events"),
-            Feature("الإذاعات", Icons.Outlined.Radio, "radios"),
-            Feature("إمساكيّة رمضان", Icons.Outlined.DarkMode, "imsakiah"),
-        )
-    }
+    val features = remember { AppFeatures.all.map { Feature(it.label, it.icon, it.route) } }
     val favorites by vm.favorites.collectAsStateWithLifecycle()
     // المفضّلة تصعد للأعلى، وكلا المجموعتين تحفظان ترتيبهما الأصليّ (stable partition).
     val ordered = remember(features, favorites) {

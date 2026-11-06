@@ -5,7 +5,7 @@ import io.github.salehgnutux.gtsalat.domain.CalendarKind
 import io.github.salehgnutux.gtsalat.domain.MonthScheme
 import io.github.salehgnutux.gtsalat.domain.PrayerId
 
-enum class AdhanType { FULL, SHORT, CUSTOM }
+enum class AdhanType { FULL, SHORT, MAGHRIBI_FULL, MAGHRIBI_SHORT, CUSTOM }
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
 /** نمط تنبيه دخول الوقت: أذانٌ كامل، أم رنّة تنبيهٍ قصيرة، أم صامتٌ (إشعارٌ بلا صوت). */
@@ -20,7 +20,7 @@ data class AppSettings(
     val methodId: Int = 3,
     val madhab: AsrMadhab = AsrMadhab.SHAFI,
     val preNotifyMinutes: Int = 15,
-    val adhanType: AdhanType = AdhanType.FULL,
+    val adhanType: AdhanType = AdhanType.MAGHRIBI_FULL,
     val customAdhanUri: String? = null,
     val customAdhanName: String = "",
     val enableSalatNotify: Boolean = true,
@@ -56,6 +56,13 @@ data class AppSettings(
     val gradBotLight: Int = 0,
     val gradTopDark: Int = 0,
     val gradBotDark: Int = 0,
+    // صورة خلفيّة الرئيسيّة: مسجد حسّان افتراضيّاً، بنسخةٍ تتبع الوضع (يبقى آخر اختيارٍ عند الإطفاء)
+    val homeBackgroundEnabled: Boolean = true,
+    val homeBackgroundId: String = "hassan",
+    val homeBackgroundLevel: Int = 1,
+    val glassTheme: Boolean = true,              // السمة الزجاجيّة
+    val homeShortcutRoute: String = "radios",    // اختصار أعلى الرئيسيّة (أحد أقسام «المزيد»)
+    val tourShown: Boolean = false,              // هل عُرض الشرح المرئيّ؟
 
     val monthScheme: MonthScheme = MonthScheme.AUTO,
     val timetableCalendar: CalendarKind = CalendarKind.HIJRI,
@@ -68,6 +75,7 @@ data class AppSettings(
     val translateLocationNames: Boolean = false,  // ترجمة أسماء المواقع الأجنبيّة للعربيّة (الافتراضيّ: اسمُ الموقع بلغته)
     val locationHistory: List<io.github.salehgnutux.gtsalat.domain.Place> = emptyList(), // آخر 5 مواقع مكتشَفة (للعودة إليها)
     val settingsOpenSection: String = "الموقع وطريقة الحساب",  // آخر قسم إعداداتٍ مفتوح ("" = الكلّ مطويّ)
+    val allowPrereleaseUpdates: Boolean = false,  // إشعارٌ عن التحديثات الاختباريّة أيضاً
     val checkUpdates: Boolean = true,             // إشعارٌ عند توفّر نسخةٍ جديدة
     val fullScreenAdhan: Boolean = true,          // نافذة أذانٍ ملء الشاشة فوق القفل
     val keepAdhanScreen: Boolean = false,         // إبقاء نافذة ملء الشاشة بعد انتهاء الصوت حتى يغلقها المستخدم

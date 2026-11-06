@@ -29,7 +29,7 @@ class GtSalatApp : Application(), Configuration.Provider {
         workScheduler.ensurePeriodic()
         // إعادة تسليح + تحديث الإشعار الدائم والودجت عند كلّ إقلاعٍ للتطبيق (يعيد الإشعار إن أُزيل).
         CoroutineScope(Dispatchers.Default).launch {
-            runCatching { scheduler.scheduleNext() }
+            runCatching { scheduler.scheduleNext(allowNetwork = false) }
         }
     }
 }
