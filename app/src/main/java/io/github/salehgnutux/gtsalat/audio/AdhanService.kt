@@ -79,7 +79,10 @@ class AdhanService : Service() {
         }
         // قد يرفض النظام بدء خدمة المقدّمة إن انقضى إذن الإنذار؛ نسجّل بدل أن تنهار العمليّة.
         val started = runCatching {
-            startForeground(NotificationHelper.ID_SERVICE, notifications.serviceNotification(title, stopPendingIntent()))
+            val fullScreen = if (intent?.getBooleanExtra(EXTRA_FULL_SCREEN, false) == true) {
+                notifications.fullScreenAdhanIntent(prayerAr, intent.getStringExtra(EXTRA_SUBTITLE).orEmpty(), isDhikr = sound == SOUND_POST_DHIKR)
+            } else null
+            startForeground(NotificationHelper.ID_SERVICE, notifications.adhanSoundNotification(title, stopPendingIntent(), fullScreen))
         }
         if (started.isFailure) {
             io.github.salehgnutux.gtsalat.alarm.AlarmLog.add(this, "رفض النظام خدمة الصوت", detail = started.exceptionOrNull().toString())
@@ -197,6 +200,8 @@ class AdhanService : Service() {
         const val EXTRA_SOUND = "sound"
         const val EXTRA_ALERT_MODE = "alert_mode"
         const val EXTRA_VOLUME = "volume"
+        const val EXTRA_FULL_SCREEN = "full_screen"
+        const val EXTRA_SUBTITLE = "subtitle"
         const val SOUND_ADHAN = "adhan"
         const val SOUND_PRENOTIFY = "prenotify"
         const val SOUND_POST_DHIKR = "post_dhikr"

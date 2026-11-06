@@ -196,20 +196,8 @@ fun AppRoot(
     // تدرّجٌ مخصّصٌ إن عُيّن، وإلّا مشتقٌّ من ألوان السِمة (يحترم الداكن/الفاتح وMaterial You).
     // يُثبَّت بـ remember حتّى لا يُعاد توليد الشيدر مع كلّ إعادة تركيبٍ أثناء انتقالات التنقّل.
     val glass = io.github.salehgnutux.gtsalat.ui.theme.LocalGlassTheme.current
-    val gradient = remember(gradientTop, gradientBottom, dark, cs.background, cs.primary, glass) {
-        if (gradientTop != 0 && gradientBottom != 0) {
-            Brush.verticalGradient(listOf(Color(gradientTop), Color(gradientBottom)))
-        } else {
-            if (glass) {
-                // تدرّج الزجاج الهادئ حين لا تكون ثمّة صورة.
-                Brush.verticalGradient(
-                    if (cs.background.luminance() < 0.5f) listOf(Color(0xFF0F1512), Color(0xFF14241C))
-                    else listOf(Color(0xFFF4F8F5), Color(0xFFD6E6DC)),
-                )
-            } else Brush.verticalGradient(
-                listOf(cs.background, lerp(cs.background, cs.primary, if (dark) 0.14f else 0.06f)),
-            )
-        }
+    val gradient = remember(gradientTop, gradientBottom, cs.background, cs.primary, glass) {
+        io.github.salehgnutux.gtsalat.ui.screens.appGradient(gradientTop, gradientBottom, glass, cs.background, cs.primary)
     }
 
     // الشرح الحركيّ: يبدأ في الرئيسيّة بعد الرسائل المعروضة، مرّةً عند التثبيت ومتى طُلب من الإعدادات.

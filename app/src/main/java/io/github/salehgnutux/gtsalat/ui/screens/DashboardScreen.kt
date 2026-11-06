@@ -115,15 +115,9 @@ fun DashboardScreen(onOpenSettings: () -> Unit = {}, onOpenShortcut: (String) ->
         }
     }
 
-    LazyColumn(
-        Modifier.fillMaxSize(),
-        state = listState,
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        // 0 — صفٌّ علويٌّ (اختصار الإعدادات + تبديل السِمة) ثمّ البطاقة الرئيسيّة (بلا تغيير المؤشّرات)
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // الشريط العلويّ ثابتٌ خارج القائمة، ويمرّ المحتوى تحته. (عناصر القائمة وفهارسها كما هي: I_DHIKR…)
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)) {
                 // فوق الصورة: خلفيّةٌ بلون البطاقات تحفظ وضوح الاسم والأزرار.
                 val headerShape = RoundedCornerShape(20.dp)
                 val headerBg = if (homeElementsNeedFill()) {
@@ -162,85 +156,96 @@ fun DashboardScreen(onOpenSettings: () -> Unit = {}, onOpenShortcut: (String) ->
                         Box(Modifier.tourTarget(io.github.salehgnutux.gtsalat.ui.tour.TourKeys.THEME)) { ThemeToggleButton() }
                     }
                 }
-                AdhanStopBanner()
-                NotificationPermissionBanner()
-                UpdateBanner()
-                val locating by vm.locating.collectAsStateWithLifecycle()
-                val locationGate = io.github.salehgnutux.gtsalat.ui.location.rememberLocationGate()
-                HeroCard(ui, tick, locating = locating, onRefreshLocation = { locationGate { vm.redetectLocation() } })
-                RamadanCard(ui, tick)
-            }
         }
+        LazyColumn(
+            Modifier.weight(1f).fillMaxWidth(),
+            state = listState,
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            // 0 — صفٌّ علويٌّ (اختصار الإعدادات + تبديل السِمة) ثمّ البطاقة الرئيسيّة (بلا تغيير المؤشّرات)
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    AdhanStopBanner()
+                    NotificationPermissionBanner()
+                    UpdateBanner()
+                    val locating by vm.locating.collectAsStateWithLifecycle()
+                    val locationGate = io.github.salehgnutux.gtsalat.ui.location.rememberLocationGate()
+                    HeroCard(ui, tick, locating = locating, onRefreshLocation = { locationGate { vm.redetectLocation() } })
+                    RamadanCard(ui, tick)
+                }
+            }
 
-        // 1 — أزرار ذكر/حكمة/آية اليوم (تنزل للمحتوى أسفل الصفحة) — متّسقةٌ بسطرٍ واحد
-        item {
-            Row(Modifier.fillMaxWidth().tourTarget(io.github.salehgnutux.gtsalat.ui.tour.TourKeys.DAILY), Arrangement.spacedBy(10.dp)) {
-                DailyNavButton("ذكر اليوم", Icons.Outlined.FavoriteBorder, Modifier.weight(1f)) {
-                    scope.launch { listState.animateScrollToItem(I_DHIKR) }
-                }
-                DailyNavButton("حكمة اليوم", Icons.Outlined.AutoAwesome, Modifier.weight(1f)) {
-                    scope.launch { listState.animateScrollToItem(I_HIKMAH) }
-                }
-                if (ui.showAyah) {
-                    DailyNavButton("آية اليوم", Icons.Outlined.MenuBook, Modifier.weight(1f)) {
-                        scope.launch { listState.animateScrollToItem(I_AYAH) }
+            // 1 — أزرار ذكر/حكمة/آية اليوم (تنزل للمحتوى أسفل الصفحة) — متّسقةٌ بسطرٍ واحد
+            item {
+                Row(Modifier.fillMaxWidth().tourTarget(io.github.salehgnutux.gtsalat.ui.tour.TourKeys.DAILY), Arrangement.spacedBy(10.dp)) {
+                    DailyNavButton("ذكر اليوم", Icons.Outlined.FavoriteBorder, Modifier.weight(1f)) {
+                        scope.launch { listState.animateScrollToItem(I_DHIKR) }
+                    }
+                    DailyNavButton("حكمة اليوم", Icons.Outlined.AutoAwesome, Modifier.weight(1f)) {
+                        scope.launch { listState.animateScrollToItem(I_HIKMAH) }
+                    }
+                    if (ui.showAyah) {
+                        DailyNavButton("آية اليوم", Icons.Outlined.MenuBook, Modifier.weight(1f)) {
+                            scope.launch { listState.animateScrollToItem(I_AYAH) }
+                        }
                     }
                 }
             }
-        }
 
-        // 2 — قائمة صلوات اليوم والليلة
-        item { TodayPrayersCard(ui) }
+            // 2 — قائمة صلوات اليوم والليلة
+            item { TodayPrayersCard(ui) }
 
-        // 3 — ذكر اليوم (قابل للتجديد والنسخ)
-        item {
-            DailyCard(
-                title = "ذكر اليوم",
-                body = ui.dhikr,
-                onRefresh = { vm.refreshDhikr() },
-                refreshLabel = "ذكر جديد",
-            )
-        }
-
-        // 4 — حكمة اليوم
-        item {
-            val h = ui.hikmah
-            DailyCard(
-                title = "حكمة اليوم",
-                body = h?.text ?: "…",
-                caption = h?.let { listOfNotNull(it.sayer.ifBlank { null }, it.source.ifBlank { null }).joinToString(" — ") },
-                onRefresh = { vm.refreshHikmah() },
-                refreshLabel = "حكمة أخرى",
-            )
-        }
-
-        // 5 — آية اليوم (قابلة للتجديد والنسخ)
-        if (ui.showAyah) {
+            // 3 — ذكر اليوم (قابل للتجديد والنسخ)
             item {
-                val a = ui.ayah
                 DailyCard(
-                    title = "آية اليوم",
-                    body = a?.text ?: "…",
-                    caption = a?.let { "سورة ${it.surah} — الآية ${it.n}" },
-                    onRefresh = { vm.refreshAyah() },
-                    refreshLabel = "آية أخرى",
+                    title = "ذكر اليوم",
+                    body = ui.dhikr,
+                    onRefresh = { vm.refreshDhikr() },
+                    refreshLabel = "ذكر جديد",
                 )
             }
-        }
 
-        // 6 — تذييل
-        item {
-            Text(
-                "تعمل المواقيت والأذان دون إنترنت بعد الإعداد.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().then(
-                    if (homeElementsNeedFill()) {
-                        Modifier.frostedGlass(RoundedCornerShape(12.dp)).background(homeCardColor(), RoundedCornerShape(12.dp)).padding(8.dp)
-                    } else Modifier,
-                ),
-            )
+            // 4 — حكمة اليوم
+            item {
+                val h = ui.hikmah
+                DailyCard(
+                    title = "حكمة اليوم",
+                    body = h?.text ?: "…",
+                    caption = h?.let { listOfNotNull(it.sayer.ifBlank { null }, it.source.ifBlank { null }).joinToString(" — ") },
+                    onRefresh = { vm.refreshHikmah() },
+                    refreshLabel = "حكمة أخرى",
+                )
+            }
+
+            // 5 — آية اليوم (قابلة للتجديد والنسخ)
+            if (ui.showAyah) {
+                item {
+                    val a = ui.ayah
+                    DailyCard(
+                        title = "آية اليوم",
+                        body = a?.text ?: "…",
+                        caption = a?.let { "سورة ${it.surah} — الآية ${it.n}" },
+                        onRefresh = { vm.refreshAyah() },
+                        refreshLabel = "آية أخرى",
+                    )
+                }
+            }
+
+            // 6 — تذييل
+            item {
+                Text(
+                    "تعمل المواقيت والأذان دون إنترنت بعد الإعداد.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().then(
+                        if (homeElementsNeedFill()) {
+                            Modifier.frostedGlass(RoundedCornerShape(12.dp)).background(homeCardColor(), RoundedCornerShape(12.dp)).padding(8.dp)
+                        } else Modifier,
+                    ),
+                )
+            }
         }
     }
 }

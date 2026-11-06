@@ -38,6 +38,15 @@ class NotificationHelper @Inject constructor(
                 setShowBadge(false)
             }
         )
+        // إشعار صوت الأذان منبثقٌ بزرّ الإيقاف، فيظهر فوق ما يستعمله المرء من تطبيقات. والصوت من الخدمة لا القناة.
+        nm.createNotificationChannel(
+            NotificationChannel(CH_ADHAN_SOUND, "صوت الأذان والتذكيرات", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "إشعارٌ منبثقٌ بزرّ إيقاف الصوت أثناء الأذان والتذكيرات"
+                setSound(null, null)
+                enableVibration(true)
+                setBypassDnd(false)
+            }
+        )
         nm.createNotificationChannel(
             NotificationChannel(CH_STATUS, "الصلاة القادمة (دائم)", NotificationManager.IMPORTANCE_LOW).apply {
                 description = "إشعارٌ دائمٌ في القائمة المنسدلة بالصلاة القادمة وعدٍّ تنازليّ"
@@ -119,7 +128,8 @@ class NotificationHelper @Inject constructor(
         return PendingIntent.getActivity(context, requestCode, i, PI_FLAGS)
     }
 
-    fun prayerNotification(prayerName: String, fullScreen: PendingIntent? = null): Notification =
+    /** [silent]: لا ينبثق، لأنّ إشعار الصوت ينبثق بزرّ الإيقاف ولا ينبغي أن يحجبه هذا. */
+    fun prayerNotification(prayerName: String, fullScreen: PendingIntent? = null, silent: Boolean = false): Notification =
         NotificationCompat.Builder(context, CH_ADHAN)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("🕌 حان الآن وقت صلاة $prayerName")
@@ -128,6 +138,7 @@ class NotificationHelper @Inject constructor(
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
             .setTimeoutAfter(25 * 60_000L)   // يُمسَح تلقائيّاً بعد ربع ساعةٍ فلا يعلق (حتى لو جُمّد التطبيق)
+            .setSilent(silent)
             .setContentIntent(contentIntent())
             .apply { if (fullScreen != null) setFullScreenIntent(fullScreen, true) }
             .build()
@@ -146,7 +157,7 @@ class NotificationHelper @Inject constructor(
             .build()
 
     /** إشعارُ أذكار ما بعد الصلاة (بنافذةٍ ملء الشاشة اختياريّاً كالأذان). */
-    fun dhikrNotification(prayerName: String, fullScreen: PendingIntent? = null): Notification =
+    fun dhikrNotification(prayerName: String, fullScreen: PendingIntent? = null, silent: Boolean = false): Notification =
         NotificationCompat.Builder(context, CH_ADHAN)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("📿 أذكارٌ بعد صلاة $prayerName")
@@ -155,6 +166,7 @@ class NotificationHelper @Inject constructor(
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
             .setTimeoutAfter(25 * 60_000L)
+            .setSilent(silent)
             .setContentIntent(contentIntent(ROUTE_POST_PRAYER_DHIKR, 95))
             .apply { if (fullScreen != null) setFullScreenIntent(fullScreen, true) }
             .build()
@@ -165,7 +177,7 @@ class NotificationHelper @Inject constructor(
         return PendingIntent.getActivity(context, if (isDhikr) 71 else 70, i, PI_FLAGS)
     }
 
-    fun preNotifyNotification(prayerName: String, minutes: Int): Notification =
+    fun preNotifyNotification(prayerName: String, minutes: Int, silent: Boolean = false): Notification =
         NotificationCompat.Builder(context, CH_PRENOTIFY)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("⏰ تبقّى $minutes دقيقة على صلاة $prayerName")
@@ -174,7 +186,23 @@ class NotificationHelper @Inject constructor(
             .setAutoCancel(true)
             // يُمسَح تلقائيّاً عند دخول وقت الصلاة (بعد المدّة + دقيقة) فلا يبقى معلّقاً لساعات.
             .setTimeoutAfter((minutes + 1) * 60_000L)
+            .setSilent(silent)
             .setContentIntent(contentIntent())
+            .build()
+
+    /** إشعار تشغيل الأذان أو التذكير: منبثقٌ وبزرٍّ واضحٍ لإيقاف الصوت، ويحمل نافذة ملء الشاشة إن فُعّلت. */
+    fun adhanSoundNotification(title: String, stopIntent: PendingIntent, fullScreen: PendingIntent? = null): Notification =
+        NotificationCompat.Builder(context, CH_ADHAN_SOUND)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(title)
+            .setContentText("اضغط «إيقاف الصوت» لإيقافه.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setOngoing(true)
+            .addAction(R.drawable.ic_notification, "⏹ إيقاف الصوت", stopIntent)
+            .setContentIntent(contentIntent())
+            .apply { if (fullScreen != null) setFullScreenIntent(fullScreen, true) }
             .build()
 
     fun serviceNotification(title: String, stopIntent: PendingIntent): Notification =
@@ -221,6 +249,7 @@ class NotificationHelper @Inject constructor(
         const val CH_ADHAN = "adhan"
         const val CH_PRENOTIFY = "prenotify"
         const val CH_SERVICE = "adhan_service"
+        const val CH_ADHAN_SOUND = "adhan_sound"
         const val CH_STATUS = "status"
         const val CH_REMINDERS = "reminders"
         const val ID_PRAYER = 2001

@@ -45,14 +45,13 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                         val stale = late > MAX_LATE_PRENOTIFY_MS
                         AlarmLog.add(context, "تنبيه اقتراب $prayerAr", scheduledAt, if (stale) "أُسقِط: فات موعده" else "")
                         if (!stale && s.enablePreNotify && !s.doNotDisturb) {
+                            // مستوى صوت الأذان يحكم كلّ التذكيرات كذلك. وإشعار الصوت هو المنبثق بزرّ الإيقاف.
+                            val sounding = s.enablePreNotifySound &&
+                                startAdhanService(context, prayerAr, AdhanService.SOUND_PRENOTIFY, volume = s.adhanVolume)
                             notifications.notify(
                                 NotificationHelper.ID_PRENOTIFY,
-                                notifications.preNotifyNotification(prayerAr, minutes),
+                                notifications.preNotifyNotification(prayerAr, minutes, silent = sounding),
                             )
-                            if (s.enablePreNotifySound) {
-                                // مستوى صوت الأذان يحكم كلّ التذكيرات كذلك.
-                                startAdhanService(context, prayerAr, AdhanService.SOUND_PRENOTIFY, volume = s.adhanVolume)
-                            }
                         }
                     }
                     ACTION_ADHAN -> {
@@ -86,16 +85,17 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                                 launchFullScreen(context, prayerAr, io.github.salehgnutux.gtsalat.util.Format.clock(now), isDhikr = false)
                                 notifications.fullScreenAdhanIntent(prayerAr, io.github.salehgnutux.gtsalat.util.Format.clock(now), isDhikr = false)
                             } else null
-                            notifications.notify(
-                                NotificationHelper.ID_PRAYER,
-                                notifications.prayerNotification(prayerAr, fs),
-                            )
                             // النمط الفعّال لهذه الصلاة (مخصّصٌ أو عامّ). الصامت: إشعارٌ بلا صوت.
                             val pid = runCatching { PrayerId.valueOf(intent.getStringExtra(EXTRA_PRAYER) ?: "") }.getOrNull()
                             val mode = pid?.let { s.alertFor(it) } ?: s.adhanAlertMode
-                            if (s.enableAdhanSound && mode != AdhanAlertMode.SILENT) {
-                                startAdhanService(context, prayerAr, AdhanService.SOUND_ADHAN, mode, s.adhanVolume)
-                            }
+                            val clock = io.github.salehgnutux.gtsalat.util.Format.clock(now)
+                            // مع الصوت: إشعاره هو المنبثق بزرّ الإيقاف ويحمل نافذة ملء الشاشة، ويبقى هذا سجلّاً هادئاً للوقت.
+                            val sounding = s.enableAdhanSound && mode != AdhanAlertMode.SILENT &&
+                                startAdhanService(context, prayerAr, AdhanService.SOUND_ADHAN, mode, s.adhanVolume, s.fullScreenAdhan, clock)
+                            notifications.notify(
+                                NotificationHelper.ID_PRAYER,
+                                notifications.prayerNotification(prayerAr, fs.takeUnless { sounding }, silent = sounding),
+                            )
                         }
                     }
                     ACTION_REFRESH_WIDGETS -> {
@@ -116,11 +116,11 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                                 launchFullScreen(context, prayerAr, "", isDhikr = true)
                                 notifications.fullScreenAdhanIntent(prayerAr, "", isDhikr = true)
                             } else null
+                            val sounding = startAdhanService(context, prayerAr, AdhanService.SOUND_POST_DHIKR, volume = s.adhanVolume, fullScreen = s.fullScreenAdhan)
                             notifications.notify(
                                 NotificationHelper.ID_PRAYER,
-                                notifications.dhikrNotification(prayerAr, fs),
+                                notifications.dhikrNotification(prayerAr, fs.takeUnless { sounding }, silent = sounding),
                             )
-                            startAdhanService(context, prayerAr, AdhanService.SOUND_POST_DHIKR, volume = s.adhanVolume)
                         }
                     }
                 }
@@ -143,22 +143,27 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
         runCatching { context.startActivity(AdhanAlarmActivity.intent(context, prayerAr, subtitle, isDhikr)) }
     }
 
-    /** إطلاق خدمة الأذان المقدّمة بنوع الصوت المطلوب (يعمل والشاشة مغلقة). */
+    /** إطلاق خدمة الأذان المقدّمة بنوع الصوت المطلوب (يعمل والشاشة مغلقة). يعيد نجاح الإطلاق. */
     private fun startAdhanService(
         context: Context,
         prayerAr: String,
         sound: String,
         mode: AdhanAlertMode = AdhanAlertMode.FULL,
         volume: Int = 100,
-    ) {
+        fullScreen: Boolean = false,
+        subtitle: String = "",
+    ): Boolean {
         val svc = Intent(context, AdhanService::class.java).apply {
             putExtra(AdhanService.EXTRA_PRAYER_AR, prayerAr)
             putExtra(AdhanService.EXTRA_SOUND, sound)
             putExtra(AdhanService.EXTRA_ALERT_MODE, mode.name)
             putExtra(AdhanService.EXTRA_VOLUME, volume)
+            putExtra(AdhanService.EXTRA_FULL_SCREEN, fullScreen)
+            putExtra(AdhanService.EXTRA_SUBTITLE, subtitle)
         }
-        runCatching { ContextCompat.startForegroundService(context, svc) }
+        return runCatching { ContextCompat.startForegroundService(context, svc) }
             .onFailure { AlarmLog.add(context, "تعذّر تشغيل الصوت", detail = it.toString()) }
+            .isSuccess
     }
 
     companion object {

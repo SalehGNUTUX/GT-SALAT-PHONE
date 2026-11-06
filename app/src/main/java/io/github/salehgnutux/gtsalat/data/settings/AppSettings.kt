@@ -25,7 +25,7 @@ data class AppSettings(
     val customAdhanName: String = "",
     val enableSalatNotify: Boolean = true,
     val enableAdhanSound: Boolean = true,
-    val enableDuaAfterAdhan: Boolean = false,
+    val enableDuaAfterAdhan: Boolean = true,
     val adhanAlertMode: AdhanAlertMode = AdhanAlertMode.FULL,
     val adhanVolume: Int = 100,                // مستوى صوت الأذان 0..100
     val perPrayerAlerts: Boolean = false,      // عند التفعيل تُخصَّص كلّ صلاة

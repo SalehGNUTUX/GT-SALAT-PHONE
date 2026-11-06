@@ -205,6 +205,18 @@ fun BlurredBackdrop(id: String, modifier: Modifier = Modifier) {
     }
 }
 
+/** تدرّج خلفيّة التطبيق حين لا تكون صورة: المخصّص إن عُيّن، وإلّا هادئٌ مشتقٌّ من السمة. */
+fun appGradient(gradientTop: Int, gradientBottom: Int, glass: Boolean, background: Color, primary: Color): Brush {
+    val dark = background.luminance() < 0.5f
+    return when {
+        gradientTop != 0 && gradientBottom != 0 -> Brush.verticalGradient(listOf(Color(gradientTop), Color(gradientBottom)))
+        glass -> Brush.verticalGradient(
+            if (dark) listOf(Color(0xFF0F1512), Color(0xFF14241C)) else listOf(Color(0xFFF4F8F5), Color(0xFFD6E6DC)),
+        )
+        else -> Brush.verticalGradient(listOf(background, lerp(background, primary, if (dark) 0.14f else 0.06f)))
+    }
+}
+
 /** طبقة الصورة وغشاوتها: أخفّ في الأعلى والوسط، وأكثف أسفلاً حيث تتراصّ البطاقات والشريط السفليّ. */
 @Composable
 fun HomeBackdrop(id: String, level: Int, modifier: Modifier = Modifier) {

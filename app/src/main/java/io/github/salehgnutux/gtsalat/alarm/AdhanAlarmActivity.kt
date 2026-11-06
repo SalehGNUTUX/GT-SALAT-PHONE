@@ -10,7 +10,6 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -18,12 +17,17 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -36,8 +40,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,6 +49,18 @@ import dagger.hilt.android.AndroidEntryPoint
 import io.github.salehgnutux.gtsalat.audio.AdhanPlayback
 import io.github.salehgnutux.gtsalat.audio.AdhanService
 import io.github.salehgnutux.gtsalat.data.settings.SettingsRepository
+import io.github.salehgnutux.gtsalat.data.settings.ThemeMode
+import io.github.salehgnutux.gtsalat.domain.HomeBackgrounds
+import io.github.salehgnutux.gtsalat.ui.animationsEnabled
+import io.github.salehgnutux.gtsalat.ui.screens.FrostedBackdrop
+import io.github.salehgnutux.gtsalat.ui.screens.HomeBackdrop
+import io.github.salehgnutux.gtsalat.ui.screens.LocalFrostedBackdrop
+import io.github.salehgnutux.gtsalat.ui.screens.appGradient
+import io.github.salehgnutux.gtsalat.ui.screens.frostedGlass
+import io.github.salehgnutux.gtsalat.ui.screens.glassStrongFill
+import io.github.salehgnutux.gtsalat.ui.screens.homeScrimTop
+import io.github.salehgnutux.gtsalat.ui.screens.rememberBlurredBitmap
+import io.github.salehgnutux.gtsalat.ui.theme.LocalGlassTheme
 import io.github.salehgnutux.gtsalat.ui.theme.AmiriQuran
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -74,8 +88,30 @@ class AdhanAlarmActivity : ComponentActivity() {
         val isDhikr = intent.getBooleanExtra(EXTRA_IS_DHIKR, false)
 
         setContent {
-            GtSalatTheme {
-                AdhanAlarmScreen(title = title, subtitle = subtitle, isDhikr = isDhikr, onStop = { closeWindow() })
+            // إعدادات المستخدم نفسها: وضعه وسمته وخلفيّته المختارة.
+            val settings by settingsRepo.settings.collectAsState(initial = null)
+            val st = settings
+            val dark = when (st?.themeMode) {
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+                else -> isSystemInDarkTheme()
+            }
+            GtSalatTheme(
+                darkTheme = dark,
+                dynamicColor = st?.dynamicColor ?: false,
+                seedColor = st?.seedColor ?: 0,
+                glass = st?.glassTheme ?: true,
+            ) {
+                AdhanAlarmScreen(
+                    title = title,
+                    subtitle = subtitle,
+                    isDhikr = isDhikr,
+                    backgroundId = st?.takeIf { it.homeBackgroundEnabled }?.let { HomeBackgrounds.resolve(it.homeBackgroundId, dark) },
+                    backgroundLevel = st?.homeBackgroundLevel ?: HomeBackgrounds.LEVEL_BALANCED,
+                    gradientTop = if (dark) st?.gradTopDark ?: 0 else st?.gradTopLight ?: 0,
+                    gradientBottom = if (dark) st?.gradBotDark ?: 0 else st?.gradBotLight ?: 0,
+                    onStop = { closeWindow() },
+                )
             }
         }
 
@@ -157,92 +193,103 @@ class AdhanAlarmActivity : ComponentActivity() {
 }
 
 @Composable
-private fun AdhanAlarmScreen(title: String, subtitle: String, isDhikr: Boolean, onStop: () -> Unit) {
-    // تنفّسٌ لطيفٌ وبطيء: تدرّجٌ يتحوّل بين لونين من ألوان السِمة (لا وميضٌ عنيف).
-    val transition = rememberInfiniteTransition(label = "breathe")
-    val t by transition.animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(2200, easing = LinearEasing), RepeatMode.Reverse),
-        label = "t",
-    )
-    // نبضةٌ خفيفةٌ للرمز.
-    val pulse by transition.animateFloat(
+private fun AdhanAlarmScreen(
+    title: String,
+    subtitle: String,
+    isDhikr: Boolean,
+    backgroundId: String?,
+    backgroundLevel: Int,
+    gradientTop: Int,
+    gradientBottom: Int,
+    onStop: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val glass = LocalGlassTheme.current
+    // نبضةٌ خفيفةٌ للرمز، تُحترم معها «تقليل الحركة».
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val motion = remember { animationsEnabled(context) }
+    val transition = rememberInfiniteTransition(label = "pulse")
+    val animatedPulse by transition.animateFloat(
         initialValue = 0.94f, targetValue = 1.06f,
         animationSpec = infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Reverse),
         label = "pulse",
     )
-    val c1 = MaterialTheme.colorScheme.primary
-    val c2 = MaterialTheme.colorScheme.tertiary
-    val top by animateColorAsState(lerp(c1, c2, t), label = "top")
-    val bottom by animateColorAsState(lerp(c2, c1, t * 0.6f), label = "bottom")
+    val pulse = if (motion) animatedPulse else 1f
+    val gradient = remember(gradientTop, gradientBottom, glass, cs.background, cs.primary) {
+        appGradient(gradientTop, gradientBottom, glass, cs.background, cs.primary)
+    }
+    val blurred = rememberBlurredBitmap(backgroundId.takeIf { glass })
+    val scrimTop = homeScrimTop(backgroundLevel)
+    val frosted = remember(blurred, cs.background, scrimTop) {
+        blurred?.let { FrostedBackdrop(it, cs.background.copy(alpha = scrimTop)) }
+    }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(top, bottom)))
-            .padding(28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            "GT-SALAT",
-            color = Color.White.copy(alpha = 0.92f),
-            fontWeight = FontWeight.Bold,
-            fontSize = 20.sp,
-            letterSpacing = 2.sp,
-            textAlign = TextAlign.Center,
-        )
-        // رمز الكعبة بنبضةٍ لطيفة.
-        Text(
-            if (isDhikr) "📿" else "🕋",
-            fontSize = 72.sp,
-            modifier = Modifier
-                .padding(top = 20.dp)
-                .graphicsLayer(scaleX = pulse, scaleY = pulse),
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            if (isDhikr) "أذكارٌ بعد الصلاة" else "حان الآن وقت الصلاة",
-            color = Color.White.copy(alpha = 0.9f),
-            fontSize = 17.sp,
-            modifier = Modifier.padding(top = 18.dp),
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            title,
-            color = Color.White,
-            fontFamily = AmiriQuran,
-            fontWeight = FontWeight.Bold,
-            fontSize = 46.sp,
-            modifier = Modifier.padding(top = 10.dp),
-            textAlign = TextAlign.Center,
-        )
-        if (subtitle.isNotBlank()) {
-            Text(
-                subtitle,
-                color = Color.White.copy(alpha = 0.95f),
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 6.dp),
-                textAlign = TextAlign.Center,
-            )
-        }
-        Button(
-            onClick = onStop,
-            modifier = Modifier.padding(top = 48.dp).size(width = 210.dp, height = 62.dp),
-            shape = RoundedCornerShape(31.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = c1),
-        ) {
-            Icon(Icons.Filled.Stop, contentDescription = null)
-            Text("إيقاف", fontWeight = FontWeight.Bold, fontSize = 19.sp, modifier = Modifier.padding(start = 8.dp))
+    Box(Modifier.fillMaxSize().background(gradient)) {
+        if (backgroundId != null) HomeBackdrop(backgroundId, backgroundLevel, Modifier.fillMaxSize())
+        androidx.compose.runtime.CompositionLocalProvider(LocalFrostedBackdrop provides frosted) {
+            val shape = RoundedCornerShape(28.dp)
+            // النصوص كلّها داخل بطاقة، فتبقى واضحةً فوق أيّ صورة.
+            Column(
+                Modifier
+                    .align(Alignment.Center)
+                    .safeDrawingPadding()
+                    .padding(24.dp)
+                    .fillMaxWidth()
+                    .frostedGlass(shape)
+                    .background(if (glass) glassStrongFill() else cs.surface.copy(alpha = 0.92f), shape)
+                    .padding(horizontal = 20.dp, vertical = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    "GT-SALAT",
+                    color = cs.primary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    letterSpacing = 2.sp,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    if (isDhikr) "📿" else "🕋",
+                    fontSize = 64.sp,
+                    modifier = Modifier.padding(top = 14.dp).graphicsLayer(scaleX = pulse, scaleY = pulse),
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    if (isDhikr) "أذكارٌ بعد الصلاة" else "حان الآن وقت الصلاة",
+                    color = cs.onSurface,
+                    fontSize = 17.sp,
+                    modifier = Modifier.padding(top = 14.dp),
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    title,
+                    color = cs.onSurface,
+                    fontFamily = AmiriQuran,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 46.sp,
+                    modifier = Modifier.padding(top = 8.dp),
+                    textAlign = TextAlign.Center,
+                )
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        subtitle,
+                        color = cs.tertiary,
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 4.dp),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                Button(
+                    onClick = onStop,
+                    modifier = Modifier.padding(top = 32.dp).fillMaxWidth().height(62.dp),
+                    shape = RoundedCornerShape(31.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = cs.primary, contentColor = cs.onPrimary),
+                ) {
+                    Icon(Icons.Filled.Stop, contentDescription = null)
+                    Text("إيقاف الصوت", fontWeight = FontWeight.Bold, fontSize = 19.sp, modifier = Modifier.padding(start = 8.dp))
+                }
+            }
         }
     }
 }
-
-/** مزجٌ خطّيٌّ بسيط بين لونين (بلا تبعيّاتٍ إضافيّة). */
-private fun lerp(a: Color, b: Color, t: Float): Color = Color(
-    red = a.red + (b.red - a.red) * t,
-    green = a.green + (b.green - a.green) * t,
-    blue = a.blue + (b.blue - a.blue) * t,
-    alpha = a.alpha + (b.alpha - a.alpha) * t,
-)

@@ -138,7 +138,7 @@ class SettingsRepository @Inject constructor(
             customAdhanName = this[Keys.CUSTOM_ADHAN_NAME] ?: "",
             enableSalatNotify = this[Keys.EN_SALAT] ?: true,
             enableAdhanSound = this[Keys.EN_ADHAN] ?: true,
-            enableDuaAfterAdhan = this[Keys.EN_DUA] ?: false,
+            enableDuaAfterAdhan = this[Keys.EN_DUA] ?: true,
             adhanAlertMode = parseAlert(this[Keys.ALERT_MODE]),
             adhanVolume = (this[Keys.ADHAN_VOLUME] ?: 100).coerceIn(0, 100),
             perPrayerAlerts = this[Keys.PER_PRAYER] ?: false,
