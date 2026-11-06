@@ -1,5 +1,12 @@
 package io.github.salehgnutux.gtsalat.domain
 
+/** نتيجة فحص التحديثات اليدويّ. */
+sealed interface UpdateCheckResult {
+    data object UpToDate : UpdateCheckResult
+    data class Available(val version: String) : UpdateCheckResult
+    data object Failed : UpdateCheckResult
+}
+
 /**
  * مقارنة إصدارات التطبيق بمراحلها: 2.0-alpha < 2.0-alpha2 < 2.0-beta < 2.0-rc < 2.0 < 2.1-alpha.
  * تُهمَل لاحقة النكهة (foss/full). فلا يفوت من ثبّت ألفا إشعارُ صدور المستقرّة من الرقم نفسه.

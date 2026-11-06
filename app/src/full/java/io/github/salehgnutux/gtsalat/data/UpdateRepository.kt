@@ -16,4 +16,6 @@ class UpdateRepository @Inject constructor(
     @Suppress("UNUSED_PARAMETER") notifications: NotificationHelper,
 ) {
     suspend fun checkForUpdate() { /* لا شيء في نكهة بلاي */ }
+    suspend fun checkNow(): io.github.salehgnutux.gtsalat.domain.UpdateCheckResult =
+        io.github.salehgnutux.gtsalat.domain.UpdateCheckResult.UpToDate
 }

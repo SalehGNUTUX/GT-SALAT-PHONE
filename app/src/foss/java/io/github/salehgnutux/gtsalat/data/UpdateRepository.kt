@@ -3,6 +3,7 @@ package io.github.salehgnutux.gtsalat.data
 import io.github.salehgnutux.gtsalat.BuildConfig
 import io.github.salehgnutux.gtsalat.data.settings.SettingsRepository
 import io.github.salehgnutux.gtsalat.domain.AppVersion
+import io.github.salehgnutux.gtsalat.domain.UpdateCheckResult
 import io.github.salehgnutux.gtsalat.notification.NotificationHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,10 +56,18 @@ class UpdateRepository @Inject constructor(
             UpdateInfo.set(null)
             return
         }
+        check(settings.allowPrereleaseUpdates, notify = true)
+    }
+
+    /** فحصٌ يطلبه المستخدم: يعمل ولو أُطفئ الإشعار، ويعيد نتيجته. وظهور شريط الرئيسيّة يغني عن الإشعار. */
+    suspend fun checkNow(): UpdateCheckResult =
+        check(settingsRepo.settings.first().allowPrereleaseUpdates, notify = false)
+
+    private suspend fun check(allowPrerelease: Boolean, notify: Boolean): UpdateCheckResult {
         // «/latest» يتجاهل الإصدارات الاختباريّة، فلا تصل إلّا لمن فعّل خيارها، من قائمة الإصدارات كلّها.
         val rel = withContext(Dispatchers.IO) {
             runCatching {
-                if (settings.allowPrereleaseUpdates) {
+                if (allowPrerelease) {
                     val body = fetch("$RELEASES?per_page=30") ?: return@runCatching null
                     json.decodeFromString<List<Release>>(body)
                         .filter { !it.draft && it.tag_name.isNotBlank() }
@@ -67,7 +76,7 @@ class UpdateRepository @Inject constructor(
                     fetch("$RELEASES/latest")?.let { json.decodeFromString<Release>(it) }
                 }
             }.getOrNull()
-        } ?: return
+        } ?: return UpdateCheckResult.Failed
         val latest = rel.tag_name.removePrefix("v").trim()
         if (latest.isNotBlank() && AppVersion.isNewer(latest, BuildConfig.VERSION_NAME)) {
             val url = rel.html_url.ifBlank { "https://github.com/SalehGNUTUX/GT-SALAT-PHONE/releases/latest" }
@@ -75,10 +84,11 @@ class UpdateRepository @Inject constructor(
             val suffix = if (BuildConfig.USES_GMS) "-full.apk" else "-foss.apk"
             val apkUrl = rel.assets.firstOrNull { it.name.endsWith(suffix, ignoreCase = true) }?.browser_download_url
             UpdateInfo.set(UpdateAvailable(latest, url, apkUrl))
-            notifications.showUpdate(latest, url)
-        } else {
-            UpdateInfo.set(null)
+            if (notify) notifications.showUpdate(latest, url)
+            return UpdateCheckResult.Available(latest)
         }
+        UpdateInfo.set(null)
+        return UpdateCheckResult.UpToDate
     }
 
     private fun fetch(url: String): String? {

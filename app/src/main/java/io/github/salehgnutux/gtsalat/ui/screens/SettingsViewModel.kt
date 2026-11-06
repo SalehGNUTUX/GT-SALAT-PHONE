@@ -113,6 +113,24 @@ class SettingsViewModel @Inject constructor(
     fun setWidgetProgressStyle(style: String) = viewModelScope.launch { settingsRepo.setWidgetProgressStyle(style); refreshWidgets() }
     private suspend fun refreshWidgets() = runCatching { io.github.salehgnutux.gtsalat.widget.updateAllPrayerWidgets(context) }
     fun setCheckUpdates(v: Boolean) = viewModelScope.launch { settingsRepo.setCheckUpdates(v) }
+    /** نتيجة الفحص اليدويّ: null خامل، و"" جارٍ، وغيرها رسالة النتيجة. */
+    private val _updateCheckStatus = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val updateCheckStatus: StateFlow<String?> = _updateCheckStatus
+
+    fun checkUpdatesNow() = viewModelScope.launch {
+        _updateCheckStatus.value = ""
+        val r = runCatching { updateRepo.checkNow() }
+            .getOrDefault(io.github.salehgnutux.gtsalat.domain.UpdateCheckResult.Failed)
+        _updateCheckStatus.value = when (r) {
+            is io.github.salehgnutux.gtsalat.domain.UpdateCheckResult.Available ->
+                "✓ تتوفّر النسخة ${r.version}. افتح الرئيسيّة لتنزيلها من الشريط أعلاها."
+            io.github.salehgnutux.gtsalat.domain.UpdateCheckResult.UpToDate ->
+                "لديك أحدث نسخة (${io.github.salehgnutux.gtsalat.BuildConfig.VERSION_NAME})."
+            io.github.salehgnutux.gtsalat.domain.UpdateCheckResult.Failed ->
+                "تعذّر الفحص. تأكّد من الاتصال بالإنترنت، أو حاول بعد قليل."
+        }
+    }
+
     /** يعيد الفحص فوراً ليظهر التحديث الاختباريّ أو يزول شريطه. */
     fun setAllowPrereleaseUpdates(v: Boolean) = viewModelScope.launch {
         settingsRepo.setAllowPrereleaseUpdates(v)

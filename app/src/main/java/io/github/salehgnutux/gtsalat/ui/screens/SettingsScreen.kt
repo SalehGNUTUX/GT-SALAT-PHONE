@@ -530,6 +530,16 @@ fun SettingsScreen(onShowTour: () -> Unit = {}, vm: SettingsViewModel = hiltView
                         color = MaterialTheme.colorScheme.outline,
                     )
                 }
+                // فحصٌ يدويّ يعمل ولو أُطفئت الإشعارات، ويتبع خيار التحديثات الاختباريّة.
+                val updateStatus by vm.updateCheckStatus.collectAsStateWithLifecycle()
+                FilledTonalButton(
+                    onClick = { vm.checkUpdatesNow() },
+                    enabled = updateStatus != "",
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                ) { Text(if (updateStatus == "") "جارٍ الفحص…" else "🔄 فحص التحديثات الآن") }
+                updateStatus?.takeIf { it.isNotEmpty() }?.let {
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                }
             }
             HorizontalDivider()
             LinkRow("المطوّر", io.github.salehgnutux.gtsalat.domain.Credits.DEVELOPER) { openUrl(context, io.github.salehgnutux.gtsalat.domain.Credits.GITHUB) }
