@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Stop
@@ -100,7 +101,7 @@ fun RadiosScreen(onBack: () -> Unit, vm: RadiosViewModel = hiltViewModel()) {
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             SubScreenHeader("الإذاعات", onBack, actions = {
-                IconButton(onClick = { confirmResetAll = true }) { Icon(Icons.Filled.Stop, "إعادة الافتراضيّ", tint = MaterialTheme.colorScheme.primary) }
+                IconButton(onClick = { confirmResetAll = true }) { Icon(Icons.Filled.Refresh, "إعادة الإذاعات الافتراضيّة", tint = MaterialTheme.colorScheme.primary) }
                 IconButton(onClick = { showAdd = true }) { Icon(Icons.Filled.Add, "إضافة إذاعة", tint = MaterialTheme.colorScheme.primary) }
             })
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
