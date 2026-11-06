@@ -117,15 +117,18 @@ class SettingsViewModel @Inject constructor(
     private val _updateCheckStatus = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val updateCheckStatus: StateFlow<String?> = _updateCheckStatus
 
+    /** يعزل رقم الإصدار باتّجاهه، وإلّا انقلب ترتيب مقاطعه داخل النصّ العربيّ. */
+    private fun ltr(text: String) = "\u2066$text\u2069"
+
     fun checkUpdatesNow() = viewModelScope.launch {
         _updateCheckStatus.value = ""
         val r = runCatching { updateRepo.checkNow() }
             .getOrDefault(io.github.salehgnutux.gtsalat.domain.UpdateCheckResult.Failed)
         _updateCheckStatus.value = when (r) {
             is io.github.salehgnutux.gtsalat.domain.UpdateCheckResult.Available ->
-                "✓ تتوفّر النسخة ${r.version}. افتح الرئيسيّة لتنزيلها من الشريط أعلاها."
-            io.github.salehgnutux.gtsalat.domain.UpdateCheckResult.UpToDate ->
-                "لديك أحدث نسخة (${io.github.salehgnutux.gtsalat.BuildConfig.VERSION_NAME})."
+                "✓ تتوفّر النسخة ${ltr(r.version)}. افتح الرئيسيّة لتنزيلها من الشريط أعلاها."
+            is io.github.salehgnutux.gtsalat.domain.UpdateCheckResult.UpToDate ->
+                "لديك أحدث نسخة: ${ltr(io.github.salehgnutux.gtsalat.BuildConfig.VERSION_NAME)}. وأحدث إصدارٍ منشور: ${ltr(r.latestPublished)}."
             io.github.salehgnutux.gtsalat.domain.UpdateCheckResult.Failed ->
                 "تعذّر الفحص. تأكّد من الاتصال بالإنترنت، أو حاول بعد قليل."
         }

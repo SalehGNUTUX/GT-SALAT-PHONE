@@ -88,7 +88,7 @@ class UpdateRepository @Inject constructor(
             return UpdateCheckResult.Available(latest)
         }
         UpdateInfo.set(null)
-        return UpdateCheckResult.UpToDate
+        return UpdateCheckResult.UpToDate(latest)
     }
 
     private fun fetch(url: String): String? {

@@ -17,5 +17,5 @@ class UpdateRepository @Inject constructor(
 ) {
     suspend fun checkForUpdate() { /* لا شيء في نكهة بلاي */ }
     suspend fun checkNow(): io.github.salehgnutux.gtsalat.domain.UpdateCheckResult =
-        io.github.salehgnutux.gtsalat.domain.UpdateCheckResult.UpToDate
+        io.github.salehgnutux.gtsalat.domain.UpdateCheckResult.UpToDate("")
 }

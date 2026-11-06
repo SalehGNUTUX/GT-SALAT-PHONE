@@ -5,7 +5,7 @@ package io.github.salehgnutux.gtsalat.domain
  * حدِّث [title] و[highlights] مع كلّ إصدارٍ (ضِمن طقس الإصدار).
  */
 object WhatsNew {
-    const val title = "ما الجديد في GT-SALAT v2.0 بيتا 4"
+    const val title = "ما الجديد في GT-SALAT v2.0"
 
     val highlights: List<String> = listOf(
         "🔔 إصلاحاتٌ في إطلاق الأذان: الإشعار والصوت أوّلاً، ولا أذان خارج موعده إن حبسه النظام.",

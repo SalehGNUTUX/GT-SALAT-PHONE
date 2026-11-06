@@ -2,7 +2,8 @@ package io.github.salehgnutux.gtsalat.domain
 
 /** نتيجة فحص التحديثات اليدويّ. */
 sealed interface UpdateCheckResult {
-    data object UpToDate : UpdateCheckResult
+    /** [latestPublished]: أحدث ما وجده الفحص، ليتبيّن المستخدم ما رآه. */
+    data class UpToDate(val latestPublished: String) : UpdateCheckResult
     data class Available(val version: String) : UpdateCheckResult
     data object Failed : UpdateCheckResult
 }
