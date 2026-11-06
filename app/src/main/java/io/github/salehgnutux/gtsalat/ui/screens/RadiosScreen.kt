@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Radio
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -95,12 +96,23 @@ fun RadiosScreen(onBack: () -> Unit, vm: RadiosViewModel = hiltViewModel()) {
 
     var showAdd by remember { mutableStateOf(false) }
     var confirmResetAll by remember { mutableStateOf(false) }
+    var showSleepTimer by remember { mutableStateOf(false) }
+    val sleepPlay by RadioPlayback.state.collectAsStateWithLifecycle()
     var editItem by remember { mutableStateOf<RadioItem?>(null) }
     var confirmDelete by remember { mutableStateOf<RadioItem?>(null) }
+
+    if (showSleepTimer) RadioSleepTimerDialog(sleepPlay) { showSleepTimer = false }
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             SubScreenHeader("الإذاعات", onBack, actions = {
+                IconButton(onClick = { showSleepTimer = true }) {
+                    Icon(
+                        Icons.Outlined.Timer,
+                        "مؤقّت إيقاف البثّ",
+                        tint = if (sleepPlay.sleepUntil > 0L) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+                    )
+                }
                 IconButton(onClick = { confirmResetAll = true }) { Icon(Icons.Filled.Refresh, "إعادة الإذاعات الافتراضيّة", tint = MaterialTheme.colorScheme.primary) }
                 IconButton(onClick = { showAdd = true }) { Icon(Icons.Filled.Add, "إضافة إذاعة", tint = MaterialTheme.colorScheme.primary) }
             })
@@ -202,6 +214,94 @@ private fun RadioRow(item: RadioItem, playing: Boolean, loading: Boolean, onPlay
  * مشغّلُ إذاعةٍ مصغّرٌ **عالميّ** (فوق الشريط السفليّ) — يبقى ظاهراً عبر كلّ الأقسام أثناء البثّ.
  * النقر على متنه يفتح قسم الإذاعات؛ وفيه السابقة/التالية للتنقّل بين الإذاعات.
  */
+/** الدقائق المتبقّية من مؤقّت الإيقاف، بالتقريب إلى الأعلى. */
+@Composable
+private fun rememberSleepMinutesLeft(sleepUntil: Long): Int {
+    var left by remember { mutableStateOf(0) }
+    androidx.compose.runtime.LaunchedEffect(sleepUntil) {
+        while (sleepUntil > 0L) {
+            val ms = sleepUntil - android.os.SystemClock.elapsedRealtime()
+            left = ((ms + 59_999L) / 60_000L).toInt().coerceAtLeast(0)
+            kotlinx.coroutines.delay(5_000L)
+        }
+        left = 0
+    }
+    return left
+}
+
+@Composable
+private fun RadioSleepRemaining(sleepUntil: Long) {
+    if (sleepUntil <= 0L) return
+    val left = rememberSleepMinutesLeft(sleepUntil)
+    Icon(Icons.Outlined.Timer, "مؤقّت الإيقاف", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+    Text("${left}د", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.padding(start = 2.dp))
+}
+
+/** مؤقّت إيقاف البثّ: 15 أو 30 أو 45 دقيقة، أو مدّةٌ تُكتب يدويّاً. */
+@Composable
+private fun RadioSleepTimerDialog(play: io.github.salehgnutux.gtsalat.audio.RadioState, onDismiss: () -> Unit) {
+    val ctx = LocalContext.current
+    var custom by remember { mutableStateOf("") }
+    val customMinutes = custom.toIntOrNull()?.takeIf { it in 1..MAX_SLEEP_MINUTES }
+    val left = rememberSleepMinutesLeft(play.sleepUntil)
+    fun apply(minutes: Int) {
+        RadioAudio.setSleepTimer(ctx, minutes)
+        onDismiss()
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("مؤقّت إيقاف البثّ") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (!play.active) {
+                    Text("شغّل إذاعةً أوّلاً، ثمّ اضبط المؤقّت.", style = MaterialTheme.typography.bodyMedium)
+                } else {
+                    Text(
+                        if (play.sleepUntil > 0L) "يتوقّف البثّ بعد $left دقيقة." else "يتوقّف البثّ تلقائيّاً بعد:",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(15, 30, 45).forEach { m ->
+                            androidx.compose.material3.FilledTonalButton(
+                                onClick = { apply(m) },
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                            ) { Text("$m د") }
+                        }
+                    }
+                    androidx.compose.material3.OutlinedTextField(
+                        value = custom,
+                        // أرقامٌ 0-9 حصراً، ولو أدخلتها لوحة المفاتيح بشكلٍ آخر.
+                        onValueChange = { v -> custom = v.filter { it.isDigit() }.map { it.digitToInt() }.joinToString("").take(3) },
+                        label = { Text("مدّةٌ أخرى بالدقائق") },
+                        singleLine = true,
+                        isError = custom.isNotEmpty() && customMinutes == null,
+                        supportingText = { Text("من 1 إلى $MAX_SLEEP_MINUTES دقيقة") },
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (play.active) {
+                Button(enabled = customMinutes != null, onClick = { customMinutes?.let(::apply) }) { Text("ضبط") }
+            } else {
+                Button(onClick = onDismiss) { Text("حسناً") }
+            }
+        },
+        dismissButton = {
+            if (play.sleepUntil > 0L) {
+                androidx.compose.material3.TextButton(onClick = { apply(0) }) { Text("إلغاء المؤقّت") }
+            } else if (play.active) {
+                androidx.compose.material3.TextButton(onClick = onDismiss) { Text("إغلاق") }
+            }
+        },
+    )
+}
+
+private const val MAX_SLEEP_MINUTES = 600
+
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun RadioMiniPlayer(onOpen: () -> Unit, vm: RadiosViewModel = hiltViewModel()) {
@@ -218,6 +318,7 @@ fun RadioMiniPlayer(onOpen: () -> Unit, vm: RadiosViewModel = hiltViewModel()) {
     Surface(color = MaterialTheme.colorScheme.secondaryContainer, shadowElevation = 8.dp) {
         Row(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Icon(Icons.Outlined.Radio, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+            RadioSleepRemaining(play.sleepUntil)
             Text(play.name, Modifier.weight(1f).padding(horizontal = 4.dp).basicMarquee(), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer, maxLines = 1)
             if (play.loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
             // في RTL: السابقة تشير يميناً (SkipNext)، التالية يساراً (SkipPrevious).

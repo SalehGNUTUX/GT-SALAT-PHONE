@@ -29,7 +29,7 @@ class PlatformLocationProvider @Inject constructor(
     private val ip: IpLocationClient,
 ) : LocationProvider {
 
-    override suspend fun detect(): DetectedLocation? {
+    override suspend fun detect(allowIpFallback: Boolean): DetectedLocation? {
         // آخر موقعٍ مخزّن أوّلاً (فوريّ)، وإلّا **تثبيتٌ حيٌّ من GPS** (يعمل دون إنترنت)، وإلّا كشف IP.
         val coords = lastKnown() ?: freshFix()
         if (coords != null) {
@@ -37,7 +37,7 @@ class PlatformLocationProvider @Inject constructor(
             val (city, country) = geocoder.reverse(coords.first, coords.second) ?: ("" to "")
             return DetectedLocation(coords.first, coords.second, city, country)
         }
-        return ip.detect()
+        return if (allowIpFallback) ip.detect() else null
     }
 
     /** يطلب تثبيتاً حيّاً واحداً من GPS/الشبكة (بمهلة)، يعمل دون إنترنت بإحداثيّات الأقمار. */

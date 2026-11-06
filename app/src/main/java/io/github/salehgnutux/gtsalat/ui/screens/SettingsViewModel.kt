@@ -219,16 +219,18 @@ class SettingsViewModel @Inject constructor(
 
     /** اختيارٌ يدويٌّ لموقعٍ من القائمة المُضمَّنة (دون GPS ولا إنترنت): يحفظ الإحداثيّات ويقترح طريقة الحساب. */
     fun pickPlace(place: io.github.salehgnutux.gtsalat.domain.Place) = viewModelScope.launch {
+        settingsRepo.setAutoUpdateLocation(false)   // اختيارٌ صريح: لا يستبدله التحديث التلقائيّ
         settingsRepo.setLocation(place.lat, place.lon, place.city, place.country)
         val method = io.github.salehgnutux.gtsalat.domain.CalculationMethods.suggestByCountry(place.country)
         settingsRepo.setMethod(method)
         repo.prefetchMonths(3); reschedule()
         val name = listOf(place.city, place.country).filter { it.isNotBlank() }.joinToString("، ")
-        _locationStatus.value = "✓ حُدّد الموقع يدويّاً: $name"
+        _locationStatus.value = "✓ حُدّد الموقع يدويّاً: $name (وأُطفئ التحديث التلقائيّ)"
     }
 
     /** استعادة موقعٍ من سجلّ آخر المواقع المكتشَفة. */
     fun restoreLocation(place: io.github.salehgnutux.gtsalat.domain.Place) = viewModelScope.launch {
+        settingsRepo.setAutoUpdateLocation(false)   // اختيارٌ صريح: لا يستبدله التحديث التلقائيّ
         settingsRepo.setLocation(place.lat, place.lon, place.city, place.country)
         if (place.country.isNotBlank()) settingsRepo.setMethod(io.github.salehgnutux.gtsalat.domain.CalculationMethods.suggestByCountry(place.country))
         repo.prefetchMonths(3); reschedule()
@@ -238,6 +240,7 @@ class SettingsViewModel @Inject constructor(
 
     /** إدخال الموقع يدويّاً بخطّي العرض/الطول (دون إنترنت). */
     fun setManualLocation(lat: Double, lon: Double) = viewModelScope.launch {
+        settingsRepo.setAutoUpdateLocation(false)   // اختيارٌ صريح: لا يستبدله التحديث التلقائيّ
         settingsRepo.setLocation(lat, lon, "", "")
         repo.prefetchMonths(3); reschedule()
         _locationStatus.value = "✓ حُدّد الموقع بالإحداثيّات: ${String.format(java.util.Locale.US, "%.4f، %.4f", lat, lon)}"

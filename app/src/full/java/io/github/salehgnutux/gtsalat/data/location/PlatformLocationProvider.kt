@@ -27,13 +27,13 @@ class PlatformLocationProvider @Inject constructor(
     private val ip: IpLocationClient,
 ) : LocationProvider {
 
-    override suspend fun detect(): DetectedLocation? {
+    override suspend fun detect(allowIpFallback: Boolean): DetectedLocation? {
         val coords = fused()
         if (coords != null) {
             val (city, country) = geocoder.reverse(coords.first, coords.second) ?: ("" to "")
             return DetectedLocation(coords.first, coords.second, city, country)
         }
-        return ip.detect()
+        return if (allowIpFallback) ip.detect() else null
     }
 
     private suspend fun fused(): Pair<Double, Double>? {

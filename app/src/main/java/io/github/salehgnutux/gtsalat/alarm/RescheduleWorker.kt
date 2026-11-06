@@ -29,7 +29,7 @@ class RescheduleWorker @AssistedInject constructor(
         if (runCatching { settingsRepo.current().autoUpdateLocation }.getOrDefault(false) &&
             Connectivity.canLocate(context)
         ) {
-            runCatching { repo.detectAndSaveLocation() }
+            runCatching { repo.detectAndSaveLocation(auto = true) }
         }
         repo.prefetchMonths(count = 6)
         scheduler.scheduleNext()

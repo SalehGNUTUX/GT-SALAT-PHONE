@@ -71,7 +71,7 @@ data class AppSettings(
     val lastWhatsNewCode: Int = -1,             // آخر versionCode عُرضت مستجدّاته («ما الجديد» بعد التحديث)
     val lastPermPromptCode: Int = -1,           // آخر versionCode عُرضت فيه رسالة الأذونات المطلوبة
     val exitMode: String = "",                    // طريقة الخروج: "" لم تُختَر بعد · "dialog" نافذة تأكيد · "double" نقرتان للرجوع
-    val autoUpdateLocation: Boolean = false,      // تحديث الموقع تلقائيّاً عند فتح التطبيق ودوريّاً (للمتنقّلين)
+    val autoUpdateLocation: Boolean = true,      // تحديث الموقع تلقائيّاً عند فتح التطبيق ودوريّاً (للمتنقّلين)
     val translateLocationNames: Boolean = false,  // ترجمة أسماء المواقع الأجنبيّة للعربيّة (الافتراضيّ: اسمُ الموقع بلغته)
     val locationHistory: List<io.github.salehgnutux.gtsalat.domain.Place> = emptyList(), // آخر 5 مواقع مكتشَفة (للعودة إليها)
     val settingsOpenSection: String = "الموقع وطريقة الحساب",  // آخر قسم إعداداتٍ مفتوح ("" = الكلّ مطويّ)

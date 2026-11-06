@@ -8,19 +8,18 @@ import android.content.Intent
 import android.os.SystemClock
 import android.view.View
 import android.widget.RemoteViews
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.ImageProvider
 import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.AndroidRemoteViews
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.updateAll
 import androidx.glance.background
@@ -40,11 +39,12 @@ import androidx.glance.unit.ColorProvider
 import io.github.salehgnutux.gtsalat.MainActivity
 import io.github.salehgnutux.gtsalat.R
 
-// ألوان الودجت: خلفيّةٌ شبه شفّافة (زجاجيّة) تُقرأ فوق أيّ خلفيّة، مع نصٍّ أبيض وذهبيّ.
-private val Scrim = Color(0x66000000)
-private val White = Color(0xFFFFFFFF)
-private val Gold = Color(0xFFF0CE7A)
-private val Faint = Color(0xFFE0E0E0)
+// ألوان السمة الزجاجيّة من الموارد، فتتبع وضع النظام الداكن والفاتح (widget_colors.xml).
+private val White = ColorProvider(R.color.widget_text)
+private val Gold = ColorProvider(R.color.widget_gold)
+private val Faint = ColorProvider(R.color.widget_muted)
+private val Glass = ImageProvider(R.drawable.widget_bg_scrim)
+private val Pill = ImageProvider(R.drawable.widget_pill)
 
 private fun openApp(context: Context) = actionStartActivity(Intent(context, MainActivity::class.java))
 
@@ -57,23 +57,25 @@ class NextPrayerWidget : GlanceAppWidget() {
         val snap = loadWidgetSnapshot(context)
         val open = openApp(context)
         provideContent {
-            Column(
-                GlanceModifier.fillMaxWidth().background(Scrim).cornerRadius(20.dp)
-                    .padding(horizontal = 14.dp, vertical = 10.dp).clickable(open),
+            Row(
+                GlanceModifier.fillMaxSize().background(Glass)
+                    .padding(horizontal = 16.dp, vertical = 10.dp).clickable(open),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (!snap.hasLocation) {
-                    Text("افتح التطبيق لتحديد موقعك", style = TextStyle(color = ColorProvider(White)))
-                    return@Column
+                    Text("افتح التطبيق لتحديد موقعك", style = TextStyle(color = White))
+                    return@Row
                 }
-                Text("الصلاة القادمة", style = TextStyle(color = ColorProvider(Faint), fontSize = 12.sp))
-                Row(GlanceModifier.fillMaxWidth().padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(snap.nextName, style = TextStyle(color = ColorProvider(Gold), fontSize = 22.sp, fontWeight = FontWeight.Bold))
-                    Spacer(GlanceModifier.width(10.dp))
-                    Text(snap.nextTime, style = TextStyle(color = ColorProvider(White), fontSize = 20.sp, fontWeight = FontWeight.Bold))
+                Column(GlanceModifier.defaultWeight()) {
+                    Text("الصلاة القادمة", style = TextStyle(color = Faint, fontSize = 12.sp))
+                    Text(snap.nextName, style = TextStyle(color = White, fontSize = 24.sp, fontWeight = FontWeight.Bold))
                 }
-                if (snap.remainingMillis > 0L) {
-                    // عدّادٌ تنازليٌّ حيّ (يتناقص كلّ ثانيةٍ دون إيقاظ التطبيق).
-                    AndroidRemoteViews(remoteViews = chronoRemoteViews(context, snap.remainingMillis))
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(snap.nextTime, style = TextStyle(color = Gold, fontSize = 22.sp, fontWeight = FontWeight.Bold))
+                    if (snap.remainingMillis > 0L) {
+                        // عدّادٌ تنازليٌّ حيّ (يتناقص كلّ ثانيةٍ دون إيقاظ التطبيق).
+                        AndroidRemoteViews(remoteViews = chronoRemoteViews(context, snap.remainingMillis))
+                    }
                 }
             }
         }
@@ -94,23 +96,23 @@ class TodayTimesWidget : GlanceAppWidget() {
         provideContent {
             val tall = LocalSize.current.height >= 90.dp
             Column(
-                GlanceModifier.fillMaxWidth().background(Scrim).cornerRadius(20.dp)
+                GlanceModifier.fillMaxSize().background(Glass)
                     .padding(horizontal = 12.dp, vertical = 10.dp).clickable(open),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (!snap.hasLocation) {
-                    Text("افتح التطبيق لتحديد موقعك", style = TextStyle(color = ColorProvider(White)))
+                    Text("افتح التطبيق لتحديد موقعك", style = TextStyle(color = White))
                     return@Column
                 }
                 if (tall) {
                     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             snap.city.ifBlank { "المواقيت" },
-                            style = TextStyle(color = ColorProvider(White), fontSize = 14.sp, fontWeight = FontWeight.Bold),
+                            style = TextStyle(color = White, fontSize = 14.sp, fontWeight = FontWeight.Bold),
                             modifier = GlanceModifier.defaultWeight(),
                         )
                         if (snap.hijri.isNotBlank()) {
-                            Text(snap.hijri, style = TextStyle(color = ColorProvider(Faint), fontSize = 11.sp))
+                            Text(snap.hijri, style = TextStyle(color = Faint, fontSize = 11.sp))
                         }
                     }
                     Spacer(GlanceModifier.height(8.dp))
@@ -127,16 +129,17 @@ private fun TimesRow(snap: WidgetSnapshot) {
         snap.prayers.forEach { (name, time, pid) ->
             val isNext = pid == snap.nextId
             Column(
-                GlanceModifier.defaultWeight(),
+                (if (isNext) GlanceModifier.defaultWeight().background(Pill) else GlanceModifier.defaultWeight())
+                    .padding(vertical = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
                     name,
-                    style = TextStyle(color = ColorProvider(if (isNext) Gold else Faint), fontSize = 12.sp, fontWeight = if (isNext) FontWeight.Bold else FontWeight.Normal),
+                    style = TextStyle(color = if (isNext) Gold else Faint, fontSize = 12.sp, fontWeight = if (isNext) FontWeight.Bold else FontWeight.Normal),
                 )
                 Text(
                     time,
-                    style = TextStyle(color = ColorProvider(if (isNext) Gold else White), fontSize = 15.sp, fontWeight = if (isNext) FontWeight.Bold else FontWeight.Normal),
+                    style = TextStyle(color = if (isNext) Gold else White, fontSize = 15.sp, fontWeight = if (isNext) FontWeight.Bold else FontWeight.Normal),
                 )
             }
         }
@@ -153,9 +156,9 @@ class PrayerProgressWidget : GlanceAppWidget() {
         provideContent {
             if (!snap.hasLocation) {
                 Column(
-                    GlanceModifier.fillMaxWidth().background(Scrim).cornerRadius(20.dp)
+                    GlanceModifier.fillMaxSize().background(Glass)
                         .padding(16.dp).clickable(openApp(context)),
-                ) { Text("افتح التطبيق لتحديد موقعك", style = TextStyle(color = ColorProvider(White))) }
+                ) { Text("افتح التطبيق لتحديد موقعك", style = TextStyle(color = White)) }
             } else {
                 // عناصرٌ أصليّة (RemoteViews) تتحدّث ذاتيّاً: الساعة والعدّاد حيّان دون إيقاظ التطبيق.
                 // fillMaxSize ضروريّ وإلّا انكمش المحتوى (match_parent يُقاس ضدّ حاوية Glance الملتفّة).

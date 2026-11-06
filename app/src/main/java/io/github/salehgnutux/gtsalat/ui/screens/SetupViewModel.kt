@@ -58,6 +58,7 @@ class SetupViewModel @Inject constructor(
     fun pickPlace(place: io.github.salehgnutux.gtsalat.domain.Place) {
         _ui.value = _ui.value.copy(error = null, info = null)
         viewModelScope.launch {
+            settingsRepo.setAutoUpdateLocation(false)   // اختيارٌ صريح: لا يستبدله التحديث التلقائيّ
             settingsRepo.setLocation(place.lat, place.lon, place.city, place.country)
             val method = io.github.salehgnutux.gtsalat.domain.CalculationMethods.suggestByCountry(place.country)
             settingsRepo.setMethod(method)
@@ -88,6 +89,7 @@ class SetupViewModel @Inject constructor(
     fun setManualLocation(lat: Double, lon: Double, city: String = "") {
         _ui.value = _ui.value.copy(error = null, info = null)
         viewModelScope.launch {
+            settingsRepo.setAutoUpdateLocation(false)   // اختيارٌ صريح: لا يستبدله التحديث التلقائيّ
             settingsRepo.setLocation(lat, lon, city, "")
             _ui.value = _ui.value.copy(hasLocation = true, lat = lat, lon = lon, city = city, country = "")
         }

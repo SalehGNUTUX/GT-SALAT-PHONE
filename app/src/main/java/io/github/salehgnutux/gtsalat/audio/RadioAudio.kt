@@ -18,6 +18,17 @@ object RadioAudio {
     fun toggle(ctx: Context) = command(ctx, RadioService.ACTION_TOGGLE)
     fun stop(ctx: Context) = command(ctx, RadioService.ACTION_STOP)
 
+    /** مؤقّت إيقاف البثّ بالدقائق؛ 0 يلغيه. لا يُستدعى إلّا والبثّ نشطٌ (الخدمة في المقدّمة). */
+    fun setSleepTimer(ctx: Context, minutes: Int) {
+        if (!RadioPlayback.state.value.active) return
+        ContextCompat.startForegroundService(
+            ctx,
+            Intent(ctx, RadioService::class.java)
+                .setAction(RadioService.ACTION_SLEEP)
+                .putExtra(RadioService.EXTRA_MINUTES, minutes),
+        )
+    }
+
     private fun command(ctx: Context, action: String) =
         ContextCompat.startForegroundService(ctx, Intent(ctx, RadioService::class.java).setAction(action))
 }

@@ -11,6 +11,7 @@ data class RadioState(
     val url: String = "",
     val isPlaying: Boolean = false,
     val loading: Boolean = false,
+    val sleepUntil: Long = 0L,   // لحظة التوقّف (elapsedRealtime)، و0 بلا مؤقّت
 )
 
 object RadioPlayback {

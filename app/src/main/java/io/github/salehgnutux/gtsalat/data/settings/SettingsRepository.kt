@@ -186,7 +186,7 @@ class SettingsRepository @Inject constructor(
             lastWhatsNewCode = this[Keys.LAST_WHATSNEW_CODE] ?: -1,
             lastPermPromptCode = this[Keys.LAST_PERM_PROMPT_CODE] ?: -1,
             exitMode = this[Keys.EXIT_MODE] ?: "",
-            autoUpdateLocation = this[Keys.AUTO_UPDATE_LOC] ?: false,
+            autoUpdateLocation = this[Keys.AUTO_UPDATE_LOC] ?: true,
             translateLocationNames = this[Keys.TRANSLATE_LOC] ?: false,
             locationHistory = this[Keys.LOCATION_HISTORY]?.let { runCatching { locJson.decodeFromString<List<io.github.salehgnutux.gtsalat.domain.Place>>(it) }.getOrNull() } ?: emptyList(),
             settingsOpenSection = this[Keys.SETTINGS_OPEN_SECTION] ?: "الموقع وطريقة الحساب",

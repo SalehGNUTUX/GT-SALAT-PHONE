@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ألوان الودجت الزجاجيّة، تتبع وضع النظام. الحشوة أكثف من بطاقات التطبيق لأنّ الودجت بلا تمويه، فيبقى النصّ واضحاً فوق أيّ خلفيّة. -->
+<resources>
+    <color name="widget_glass">#D9FFFFFF</color>
+    <color name="widget_edge">#BFFFFFFF</color>
+    <color name="widget_text">#FF12201A</color>
+    <color name="widget_muted">#FF3C4E44</color>
+    <color name="widget_gold">#FF6F5200</color>
+    <color name="widget_accent">#FF0B5039</color>
+    <color name="widget_track">#260B5039</color>
+    <color name="widget_pill">#210B5039</color>
+</resources>

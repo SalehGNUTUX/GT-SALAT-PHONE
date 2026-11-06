@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- شريط تقدّمٍ أفقيّ: مسارٌ باهت وتعبئةٌ ذهبيّة، بزوايا مستديرة. -->
+<!-- شريط تقدّمٍ أفقيّ: مسارٌ باهت وتعبئةٌ بلون التفاعل، بزوايا مستديرة. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:id="@android:id/background">
         <shape android:shape="rectangle">
-            <solid android:color="#55FFFFFF" />
+            <solid android:color="@color/widget_track" />
             <corners android:radius="5dp" />
         </shape>
     </item>
     <item android:id="@android:id/progress">
         <clip>
             <shape android:shape="rectangle">
-                <solid android:color="#F0CE7A" />
+                <solid android:color="@color/widget_accent" />
                 <corners android:radius="5dp" />
             </shape>
         </clip>

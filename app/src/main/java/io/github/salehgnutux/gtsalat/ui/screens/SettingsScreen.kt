@@ -201,7 +201,7 @@ fun SettingsScreen(onShowTour: () -> Unit = {}, vm: SettingsViewModel = hiltView
             }
             SwitchRow("تحديث الموقع تلقائيّاً", settings.autoUpdateLocation) { vm.setAutoUpdateLocation(it) }
             Text(
-                "يُحدِّث موقعك تلقائيّاً عند فتح التطبيق ودوريّاً (عبر الإنترنت أو GPS حسب المتاح) — مفيدٌ لكثير التنقّل.",
+                "يُحدَّث موقعك عند فتح التطبيق ودوريّاً من GPS أو الشبكة إن كانت خدمة الموقع مفعَّلة، فتتبعك المواقيت في تنقّلك. واختيار مدينةٍ يدويّاً يطفئه.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
             )
@@ -545,7 +545,7 @@ fun SettingsScreen(onShowTour: () -> Unit = {}, vm: SettingsViewModel = hiltView
     val sizes = backupSizes
     if (exportMode != null && sizes != null) {
         val items = listOf(
-            BackupPickItem("settings", "الإعدادات", "كلّ تفضيلاتك", available = true),
+            BackupPickItem("settings", "الإعدادات وحافظة القرآن", "تفضيلاتك، وموضعا القراءة والاستماع، والإشارات", available = true),
             BackupPickItem("prayers", "مواقيت الصلاة المخزّنة", "${sizes.prayersCount} يوماً", available = sizes.prayersCount > 0),
             BackupPickItem("audio", "القرآن الصوتيّ المُنزَّل", formatBytes(sizes.audioBytes), available = sizes.audioBytes > 0),
             BackupPickItem("mushaf", "المصحف المصوَّر المُنزَّل", formatBytes(sizes.mushafBytes), available = sizes.mushafBytes > 0),
@@ -585,7 +585,7 @@ fun SettingsScreen(onShowTour: () -> Unit = {}, vm: SettingsViewModel = hiltView
     val uri = importUri
     if (contents != null && uri != null) {
         val items = listOf(
-            BackupPickItem("settings", "الإعدادات", "", available = contents.hasSettings),
+            BackupPickItem("settings", "الإعدادات وحافظة القرآن", "تفضيلاتك، وموضعا القراءة والاستماع، والإشارات", available = contents.hasSettings),
             BackupPickItem("prayers", "مواقيت الصلاة المخزّنة", "${contents.prayersCount} يوماً", available = contents.hasPrayers),
             BackupPickItem("audio", "القرآن الصوتيّ", formatBytes(contents.audioBytes), available = contents.hasAudio),
             BackupPickItem("mushaf", "المصحف المصوَّر", formatBytes(contents.mushafBytes), available = contents.hasMushaf),

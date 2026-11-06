@@ -62,7 +62,7 @@ class RootViewModel @Inject constructor(
                     io.github.salehgnutux.gtsalat.util.Connectivity.canLocate(appContext)
                 ) {
                     runCatching {
-                        val loc = repo.detectAndSaveLocation()
+                        val loc = repo.detectAndSaveLocation(auto = true)
                         if (loc != null) { repo.prefetchMonths(3); scheduler.scheduleNext() }
                     }
                 }

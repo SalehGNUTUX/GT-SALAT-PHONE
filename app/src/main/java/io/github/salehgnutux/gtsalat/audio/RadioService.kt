@@ -29,6 +29,8 @@ class RadioService : Service() {
     private var wifiLock: android.net.wifi.WifiManager.WifiLock? = null
     private var name = ""
     private var url = ""
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val sleepRunnable = Runnable { stopEverything() }
 
     private val attrs = AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -49,6 +51,7 @@ class RadioService : Service() {
         when (intent?.action) {
             ACTION_STOP -> { stopEverything(); return START_NOT_STICKY }
             ACTION_TOGGLE -> { toggle(); return START_STICKY }
+            ACTION_SLEEP -> { setSleepTimer(intent.getIntExtra(EXTRA_MINUTES, 0)); return START_STICKY }
         }
         name = intent?.getStringExtra(EXTRA_NAME) ?: "إذاعة"
         url = intent?.getStringExtra(EXTRA_URL) ?: ""
@@ -56,7 +59,8 @@ class RadioService : Service() {
         startForeground(NotificationHelper.ID_RADIO, buildNotification())
         requestFocus()
         acquireWifiLock()   // يبقي الواي‑فاي حيّاً للبثّ والشاشة مغلقة
-        RadioPlayback.update { RadioState(active = true, name = name, url = url, isPlaying = true, loading = true) }
+        // المؤقّت يبقى عند الانتقال بين الإذاعات.
+        RadioPlayback.update { RadioState(active = true, name = name, url = url, isPlaying = true, loading = true, sleepUntil = it.sleepUntil) }
         play()
         return START_STICKY
     }
@@ -74,9 +78,23 @@ class RadioService : Service() {
         }
     }
 
+    private fun setSleepTimer(minutes: Int) {
+        handler.removeCallbacks(sleepRunnable)
+        if (minutes <= 0) {
+            RadioPlayback.update { it.copy(sleepUntil = 0L) }
+            return
+        }
+        val delay = minutes * 60_000L
+        handler.postDelayed(sleepRunnable, delay)
+        RadioPlayback.update { it.copy(sleepUntil = android.os.SystemClock.elapsedRealtime() + delay) }
+    }
+
     private fun toggle() { if (isPlaying()) pause() else resume() }
     private fun pause() { runCatching { player?.pause() }; RadioPlayback.update { it.copy(isPlaying = false) }; updateNotification() }
     private fun resume() {
+        // أثناء الإيقاف المؤقّت قد ينام الجهاز فيتأخّر المؤقّت، فلا نستأنف بعد انقضائه.
+        val until = RadioPlayback.state.value.sleepUntil
+        if (until > 0L && android.os.SystemClock.elapsedRealtime() >= until) { stopEverything(); return }
         // البثّ الحيّ لا يُستأنَف بدقّة؛ نعيد الاتّصال من جديد.
         if (player == null) play() else { runCatching { player?.start() }; RadioPlayback.update { it.copy(isPlaying = true) }; updateNotification() }
     }
@@ -113,11 +131,12 @@ class RadioService : Service() {
     private fun releasePlayer() { player?.run { runCatching { if (isPlaying) stop() }; release() }; player = null }
 
     private fun stopEverything() {
+        handler.removeCallbacks(sleepRunnable)
         releasePlayer(); abandonFocus(); releaseWifiLock(); RadioPlayback.reset()
         stopForeground(STOP_FOREGROUND_REMOVE); stopSelf()
     }
 
-    override fun onDestroy() { releasePlayer(); abandonFocus(); releaseWifiLock(); super.onDestroy() }
+    override fun onDestroy() { handler.removeCallbacks(sleepRunnable); releasePlayer(); abandonFocus(); releaseWifiLock(); super.onDestroy() }
 
     private fun stopPendingIntent(): PendingIntent {
         val i = Intent(this, RadioService::class.java).setAction(ACTION_STOP)
@@ -128,6 +147,8 @@ class RadioService : Service() {
         const val ACTION_START = "io.github.salehgnutux.gtsalat.RADIO_START"
         const val ACTION_STOP = "io.github.salehgnutux.gtsalat.RADIO_STOP"
         const val ACTION_TOGGLE = "io.github.salehgnutux.gtsalat.RADIO_TOGGLE"
+        const val ACTION_SLEEP = "io.github.salehgnutux.gtsalat.RADIO_SLEEP"
+        const val EXTRA_MINUTES = "minutes"
         const val EXTRA_NAME = "name"
         const val EXTRA_URL = "url"
     }

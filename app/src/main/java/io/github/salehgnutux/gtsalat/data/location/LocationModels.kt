@@ -13,5 +13,6 @@ data class DetectedLocation(
  * foss (LocationManager + OSM) و full (Fused Location). كلاهما يعود إلى كشف IP.
  */
 interface LocationProvider {
-    suspend fun detect(): DetectedLocation?
+    /** [allowIpFallback]=false لمسار الخلفيّة: موقع IP تقريبيٌّ فلا يحلّ بصمتٍ محلّ موقعٍ دقيق. */
+    suspend fun detect(allowIpFallback: Boolean = true): DetectedLocation?
 }

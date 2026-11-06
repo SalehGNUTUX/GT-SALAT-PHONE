@@ -144,8 +144,13 @@ class PrayerRepository @Inject constructor(
     }
 
     /** اكتشاف الموقع وحفظه (يقترح طريقة الحساب حسب البلد). يعيد الموقع المكتشَف. */
-    suspend fun detectAndSaveLocation(): DetectedLocation? {
-        var loc = locationProvider.detect() ?: return null
+    suspend fun detectAndSaveLocation(auto: Boolean = false): DetectedLocation? {
+        // التحديث التلقائيّ محافظ: لا موقع IP، ولا كتابة إن بقي في المكان نفسه، ولا مساس بطريقة الحساب إلّا بتغيّر البلد.
+        val before = settingsRepo.current()
+        var loc = locationProvider.detect(allowIpFallback = !auto) ?: return null
+        if (auto && before.lat != null && before.lon != null &&
+            locKey(loc.lat, loc.lon) == locKey(before.lat, before.lon)
+        ) return null
         // دون إنترنت قد يفشل الترميز العكسيّ (المدينة/البلد فارغة) بينما تبقى الإحداثيّات صحيحة.
         // نستدلّ حينئذٍ على أقرب مدينةٍ من القاعدة المُضمَّنة (ضمن نطاقٍ) — فتظهر المدينة وتُقترح الطريقة دون إنترنت.
         if (loc.city.isBlank() || loc.country.isBlank()) {
@@ -161,7 +166,7 @@ class PrayerRepository @Inject constructor(
         }
         // نحفظ الإحداثيّات الحقيقيّة من GPS (لا إحداثيّات المدينة) فتبقى المواقيت دقيقة؛ والاسم للعرض والاقتراح فقط.
         settingsRepo.setLocation(loc.lat, loc.lon, loc.city, loc.country)
-        if (loc.country.isNotBlank()) {
+        if (loc.country.isNotBlank() && (!auto || !loc.country.equals(before.country, ignoreCase = true))) {
             settingsRepo.setMethod(CalculationMethods.suggestByCountry(loc.country))
         }
         // سجلّ آخر 5 مواقع مكتشَفة (للعودة إليها إن تعذّر الكشف لاحقاً).
