@@ -93,6 +93,21 @@
   .screen{position:relative;height:100%;border-radius:32px;overflow:hidden;padding:14px 12px;display:flex;flex-direction:column;gap:9px;
     background:linear-gradient(180deg,#0d2b24 0%,#17402f 45%,#3b3216 100%)}
   :root[data-theme="light"] .screen{background:linear-gradient(180deg,#cfe8da 0%,#e9f3ec 50%,#f3e7be 100%)}
+  /* خلفيّات التطبيق نفسها تتبدّل في النموذج، تحت غشاوةٍ كما في الرئيسيّة */
+  .bgs{position:absolute;inset:0;z-index:0}
+  .bgs img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 1.4s ease}
+  .bgs img.on{opacity:1}
+  .bgs::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,14,11,.30),rgba(8,14,11,.52))}
+  :root[data-theme="light"] .bgs::after{background:linear-gradient(180deg,rgba(244,248,245,.40),rgba(244,248,245,.62))}
+  .screen > :not(.bgs){position:relative;z-index:1}
+  /* نسخة الحاسوب في أعلى الصفحة */
+  .desk{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-top:22px;padding:14px 16px;border-radius:18px}
+  .desk b{color:var(--accent)}
+  .desk .lbl{flex:1 1 220px;font-size:.95rem}
+  .desk .btn{padding:10px 16px;font-size:.92rem}
+  .nav-desk{padding:8px 12px;border-radius:12px;border:1px solid var(--edge);background:var(--chip);font-weight:700;font-size:.9rem;white-space:nowrap}
+  @media(max-width:640px){.desk .btn{flex:1 1 45%}}
+  .bg-cap{margin:12px 0 0;text-align:center;font-size:.86rem;color:var(--muted);min-height:1.6em;transition:opacity .4s}
   .screen .g{background:var(--glass);border:1px solid var(--edge);border-radius:16px;
     -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
   .s-top{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;font-weight:800;color:var(--accent);font-size:.8rem}
@@ -204,6 +219,7 @@
       <a class="hide-sm" href="#features">المميزات</a>
       <a class="hide-sm" href="#download">التنزيل</a>
       <a class="hide-sm" href="#sources">المصادر</a>
+      <a class="nav-desk" target="_blank" rel="noopener noreferrer" href="https://salehgnutux.github.io/GT-SALAT/">💻 نسخة الحاسوب</a>
       <button class="icon-btn" id="themeBtn" aria-label="تبديل الوضع الداكن والفاتح">🌙</button>
     </nav>
   </div>
@@ -227,10 +243,25 @@
         <a class="btn ghost" href="#news">✨ ما الجديد</a>
       </div>
       <span class="ver"><i></i>الإصدار المستقرّ <span class="num">v2.1</span> · نونبر 2026</span>
+      <div class="desk glass">
+        <span class="lbl">💻 <b>متوفّرٌ أيضاً للحاسوب</b>: نسخة غنو/لينكس بالمزايا نفسها.</span>
+        <a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://salehgnutux.github.io/GT-SALAT/">🌐 موقع نسخة الحاسوب</a>
+        <a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://github.com/SalehGNUTUX/GT-SALAT">📦 مستودعها على GitHub</a>
+      </div>
     </div>
-    <div class="reveal" aria-hidden="true">
-      <div class="phone">
+    <div class="reveal">
+      <div class="phone" aria-hidden="true">
         <div class="screen">
+          <div class="bgs">
+            <img src="backgrounds/hassan_night.webp" alt="" data-title="مسجد حسّان ليلاً · الرباط" class="on" />
+            <img src="backgrounds/haram.webp" alt="" data-title="المسجد الحرام · مكّة المكرّمة" loading="lazy" />
+            <img src="backgrounds/nabawi.webp" alt="" data-title="المسجد النبويّ · المدينة المنوّرة" loading="lazy" />
+            <img src="backgrounds/aqsa.webp" alt="" data-title="قبّة الصخرة · المسجد الأقصى المبارك" loading="lazy" />
+            <img src="backgrounds/hassan2_sea.webp" alt="" data-title="مسجد الحسن الثاني · الدار البيضاء" loading="lazy" />
+            <img src="backgrounds/qarawiyyin.webp" alt="" data-title="جامع القرويّين · فاس" loading="lazy" />
+            <img src="backgrounds/hassan2_sunset.webp" alt="" data-title="مسجد الحسن الثاني عند الغروب · الدار البيضاء" loading="lazy" />
+            <img src="backgrounds/hassan_day.webp" alt="" data-title="مسجد حسّان نهاراً · الرباط" loading="lazy" />
+          </div>
           <div class="g s-top"><span>☀</span><span>GT‑SALAT</span><span>⚙</span></div>
           <div class="g s-hero">
             <div><small>الصلاة القادمة</small><b>الظهر</b><em class="num">12:16</em></div>
@@ -247,6 +278,7 @@
           <div class="g s-bar"><span class="on">الرئيسيّة</span><span>المواقيت</span><span>القبلة</span><span>المزيد</span><span>الإعدادات</span></div>
         </div>
       </div>
+      <p class="bg-cap" id="bgCap" aria-live="polite">مسجد حسّان ليلاً · الرباط</p>
     </div>
   </section>
 
@@ -347,6 +379,7 @@
           <div class="cta" style="margin-top:0;justify-content:flex-start">
             <a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://salehgnutux.github.io/GT-SALAT/">🌐 موقعها</a>
             <a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://github.com/SalehGNUTUX/GT-SALAT/releases/latest">⬇️ تنزيل</a>
+            <a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://github.com/SalehGNUTUX/GT-SALAT">📦 المستودع</a>
           </div>
         </div>
       </div>
@@ -444,6 +477,18 @@
       var next=root.getAttribute('data-theme')==='light'?'dark':'light';
       root.setAttribute('data-theme',next); try{ localStorage.setItem('gt-theme',next); }catch(e){} sync();
     });
+    // تبديل خلفيّات النموذج كلّ بضع ثوانٍ، إلّا مع «تقليل الحركة».
+    (function(){
+      var imgs=document.querySelectorAll('.bgs img'), cap=document.getElementById('bgCap'), i=0;
+      if(root.getAttribute('data-theme')==='light'){
+        imgs[0].classList.remove('on'); i=imgs.length-1; imgs[i].classList.add('on'); cap.textContent=imgs[i].getAttribute('data-title');
+      }
+      if(imgs.length<2||(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+      setInterval(function(){
+        imgs[i].classList.remove('on'); i=(i+1)%imgs.length; imgs[i].classList.add('on');
+        cap.style.opacity=0; setTimeout(function(){ cap.textContent=imgs[i].getAttribute('data-title'); cap.style.opacity=1; },400);
+      },4500);
+    })();
     try{
       var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}})},{threshold:.1});
       document.querySelectorAll('.reveal').forEach(function(el){io.observe(el)});
