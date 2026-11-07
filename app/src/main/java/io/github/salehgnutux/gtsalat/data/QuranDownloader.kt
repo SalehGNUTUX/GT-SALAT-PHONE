@@ -4,6 +4,8 @@ import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.salehgnutux.gtsalat.domain.Quran
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +17,9 @@ import okhttp3.Request
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/** ملخّص التنزيلات الجارية لإشعار الخدمة. [percent] null = غير محدَّد. */
+data class DownloadActivity(val isIdle: Boolean = true, val summary: String = "", val percent: Int? = null)
 
 /** حالة تنزيلٍ جارٍ (المصحف) — مع الرواية الجاريّ تنزيلها. */
 data class MushafDownloadState(val running: Boolean = false, val riwaya: String = "", val done: Int = 0, val total: Int = 604)
@@ -32,6 +37,77 @@ class QuranDownloader @Inject constructor(
 
     private val _mushaf = MutableStateFlow(MushafDownloadState())
     val mushaf: StateFlow<MushafDownloadState> = _mushaf.asStateFlow()
+
+    // ---- تنزيلاتٌ على نطاق التطبيق: لا تُلغى بمغادرة القسم، وتحميها QuranDownloadService بعد الخروج.
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
+    private val jobs = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Job>()
+
+    private val _progress = MutableStateFlow<Map<String, Int>>(emptyMap())
+    /** تقدّم كلّ تنزيلٍ جارٍ بمفتاحه (انظر [surahKey] و[ayatKey]). */
+    val progress: StateFlow<Map<String, Int>> = _progress.asStateFlow()
+
+    private val _finished = kotlinx.coroutines.flow.MutableSharedFlow<Pair<String, Boolean>>(extraBufferCapacity = 32)
+    /** (المفتاح، النجاح) عند انتهاء تنزيل. */
+    val finished: kotlinx.coroutines.flow.SharedFlow<Pair<String, Boolean>> = _finished
+
+    /** ملخّصٌ لإشعار الخدمة. */
+    val activity: StateFlow<DownloadActivity> = kotlinx.coroutines.flow.combine(_progress, _mushaf) { p, m ->
+        val parts = buildList {
+            if (m.running) add("المصحف ${m.done * 100 / m.total.coerceAtLeast(1)}٪")
+            if (p.isNotEmpty()) add(if (p.size == 1) "سورة ${p.values.first()}٪" else "${p.size} سور")
+        }
+        val percent = when {
+            m.running && p.isEmpty() -> m.done * 100 / m.total.coerceAtLeast(1)
+            !m.running && p.size == 1 -> p.values.first()
+            else -> null
+        }
+        DownloadActivity(isIdle = !m.running && p.isEmpty(), summary = parts.joinToString(" · "), percent = percent)
+    }.stateIn(scope, kotlinx.coroutines.flow.SharingStarted.Eagerly, DownloadActivity())
+
+    fun surahKey(reciterId: String, surah: Int) = "surah:$reciterId:$surah"
+    fun ayatKey(reciterId: String, surah: Int) = "ayat:$reciterId:$surah"
+
+    private fun setProgress(key: String, p: Int) { _progress.value = _progress.value + (key to p) }
+
+    /** يبدأ تنزيلاً على نطاق التطبيق، ويتجاهل تكراره ما دام جارياً. */
+    private fun start(key: String, block: suspend ((Int) -> Unit) -> Boolean) {
+        if (jobs.containsKey(key)) return
+        setProgress(key, 0)
+        ensureService()
+        jobs[key] = scope.launch {
+            var ok = false
+            try {
+                ok = block { setProgress(key, it) }
+            } finally {
+                jobs.remove(key)
+                _progress.value = _progress.value - key
+                _finished.tryEmit(key to ok)
+            }
+        }
+    }
+
+    fun startSurah(reciterId: String, server: String, surah: Int) =
+        start(surahKey(reciterId, surah)) { onP -> downloadSurah(reciterId, server, surah, onP) }
+
+    fun startAyat(reciterId: String, folder: String, surah: Int, verses: Int) =
+        start(ayatKey(reciterId, surah)) { onP -> downloadSurahAyat(reciterId, folder, surah, verses, onP) }
+
+    fun startMushaf(riwaya: String) {
+        if (_mushaf.value.running || jobs.containsKey(MUSHAF_KEY)) return
+        ensureService()
+        jobs[MUSHAF_KEY] = scope.launch { try { downloadMushaf(riwaya) } finally { jobs.remove(MUSHAF_KEY) } }
+    }
+
+    /** يوقف كلّ التنزيلات (زرّ الإشعار). الملفّات المكتملة تبقى، والناقصة تُستأنف لاحقاً. */
+    fun cancelAll() { jobs.values.forEach { it.cancel() } }
+
+    private fun ensureService() {
+        runCatching {
+            androidx.core.content.ContextCompat.startForegroundService(
+                context, android.content.Intent(context, QuranDownloadService::class.java),
+            )
+        }
+    }
 
     // حفص في المسار القديم (توافقٌ مع تنزيلاتٍ سابقة)، وباقي الروايات في مجلّدٍ خاصّ.
     private fun mushafDir(riwaya: String): File =
@@ -135,9 +211,10 @@ class QuranDownloader @Inject constructor(
         _mushaf.value = MushafDownloadState(running = true, riwaya = riwaya, done = mushafDownloadedCount(riwaya))
         try {
             for (page in 1..Quran.TOTAL_PAGES) {
+                kotlinx.coroutines.currentCoroutineContext().let { ctx -> if (ctx[kotlinx.coroutines.Job]?.isActive == false) throw kotlinx.coroutines.CancellationException() }
                 if (localPage(page, riwaya) == null) {
                     val urls = listOf(Quran.pageImageUrl(page, riwaya)) + Quran.pageImageFallbacks(page, riwaya)
-                    downloadFirst(urls, pageFile(page, riwaya))
+                    kotlinx.coroutines.runInterruptible { downloadFirst(urls, pageFile(page, riwaya)) }
                 }
                 _mushaf.value = _mushaf.value.copy(done = page)
             }
@@ -150,7 +227,7 @@ class QuranDownloader @Inject constructor(
     suspend fun downloadSurah(reciterId: String, server: String, surah: Int, onProgress: (Int) -> Unit = {}): Boolean =
         withContext(Dispatchers.IO) {
             if (localSurah(reciterId, surah) != null) { onProgress(100); return@withContext true }
-            downloadStreaming(Quran.surahAudioUrl(server, surah), surahFile(reciterId, surah), onProgress)
+            kotlinx.coroutines.runInterruptible { downloadStreaming(Quran.surahAudioUrl(server, surah), surahFile(reciterId, surah), onProgress) }
         }
 
     /**
@@ -166,12 +243,13 @@ class QuranDownloader @Inject constructor(
             var okAll = true
             if (needBasmala && localAyah(reciterId, surah, 0) == null) {
                 // نخزّن البسملة كآيةٍ رقمها 0
-                okAll = downloadStreaming(Quran.basmalaUrl(folder), ayahFile(reciterId, surah, 0)) {}
+                okAll = kotlinx.coroutines.runInterruptible { downloadStreaming(Quran.basmalaUrl(folder), ayahFile(reciterId, surah, 0)) {} }
             }
             done++; onProgress((done * 100 / total))
             for (a in 1..verses) {
+                kotlinx.coroutines.currentCoroutineContext().let { ctx -> if (ctx[kotlinx.coroutines.Job]?.isActive == false) throw kotlinx.coroutines.CancellationException() }
                 if (localAyah(reciterId, surah, a) == null) {
-                    if (!downloadStreaming(Quran.ayahAudioUrl(folder, surah, a), ayahFile(reciterId, surah, a)) {}) okAll = false
+                    if (!kotlinx.coroutines.runInterruptible { downloadStreaming(Quran.ayahAudioUrl(folder, surah, a), ayahFile(reciterId, surah, a)) {} }) okAll = false
                 }
                 done++; onProgress((done * 100 / total).coerceIn(0, 100))
             }
@@ -190,6 +268,7 @@ class QuranDownloader @Inject constructor(
                 tmp.outputStream().use { out ->
                     val buf = ByteArray(16 * 1024); var read: Int; var sum = 0L
                     while (input.read(buf).also { read = it } != -1) {
+                        if (Thread.currentThread().isInterrupted) { out.close(); tmp.delete(); return false }
                         out.write(buf, 0, read); sum += read
                         if (total > 0) {
                             val p = ((sum * 100) / total).toInt().coerceIn(0, 100)
@@ -208,5 +287,9 @@ class QuranDownloader @Inject constructor(
     private fun downloadFirst(urls: List<String>, dest: File): Boolean {
         for (url in urls) if (downloadStreaming(url, dest) {}) return true
         return false
+    }
+
+    private companion object {
+        const val MUSHAF_KEY = "mushaf"
     }
 }

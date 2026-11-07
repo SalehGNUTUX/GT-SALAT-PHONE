@@ -74,6 +74,13 @@ class SettingsRepository @Inject constructor(
         val HOME_BG_ID = stringPreferencesKey("home_bg_id")
         val HOME_BG_LEVEL = intPreferencesKey("home_bg_level")
         val GLASS_THEME = booleanPreferencesKey("glass_theme")
+        val GLASS_INTRO_SHOWN = booleanPreferencesKey("glass_intro_shown")
+        val GLASS_BLUR = intPreferencesKey("glass_blur")
+        val LOCATION_TZ = stringPreferencesKey("location_tz")
+        val LOCATION_TZ_KEY = stringPreferencesKey("location_tz_key")
+        val LOCATION_TZ_OFFSET = intPreferencesKey("location_tz_offset")
+        val LOCATION_TZ_DATE = stringPreferencesKey("location_tz_date")
+        val TIMETABLE_CACHE_VERSION = intPreferencesKey("timetable_cache_version")
         val HOME_SHORTCUT = stringPreferencesKey("home_shortcut")
         val TOUR_SHOWN = booleanPreferencesKey("tour_shown")
         val GRAD_BOT_L = intPreferencesKey("grad_bot_light")
@@ -174,6 +181,13 @@ class SettingsRepository @Inject constructor(
             homeBackgroundId = this[Keys.HOME_BG_ID] ?: io.github.salehgnutux.gtsalat.domain.HomeBackgrounds.DEFAULT_ID,
             homeBackgroundLevel = this[Keys.HOME_BG_LEVEL] ?: 1,
             glassTheme = this[Keys.GLASS_THEME] ?: true,
+            glassIntroShown = this[Keys.GLASS_INTRO_SHOWN] ?: false,
+            glassBlur = (this[Keys.GLASS_BLUR] ?: 30).coerceIn(0, 100),
+            locationTimeZone = this[Keys.LOCATION_TZ] ?: "",
+            locationTimeZoneKey = this[Keys.LOCATION_TZ_KEY] ?: "",
+            locationTzOffsetMin = this[Keys.LOCATION_TZ_OFFSET] ?: 0,
+            locationTzDate = this[Keys.LOCATION_TZ_DATE] ?: "",
+            timetableCacheVersion = this[Keys.TIMETABLE_CACHE_VERSION] ?: 0,
             homeShortcutRoute = this[Keys.HOME_SHORTCUT] ?: "radios",
             tourShown = this[Keys.TOUR_SHOWN] ?: false,
             gradBotLight = this[Keys.GRAD_BOT_L] ?: 0,
@@ -427,6 +441,15 @@ class SettingsRepository @Inject constructor(
         it[Keys.HOME_BG_ENABLED] = true
     }
     suspend fun setHomeBackgroundLevel(v: Int) = context.dataStore.edit { it[Keys.HOME_BG_LEVEL] = v }
+    suspend fun setLocationTimeZone(zone: String, offsetMinutes: Int, date: String, locKey: String) = context.dataStore.edit {
+        it[Keys.LOCATION_TZ] = zone
+        it[Keys.LOCATION_TZ_OFFSET] = offsetMinutes
+        it[Keys.LOCATION_TZ_DATE] = date
+        it[Keys.LOCATION_TZ_KEY] = locKey
+    }
+    suspend fun setTimetableCacheVersion(v: Int) = context.dataStore.edit { it[Keys.TIMETABLE_CACHE_VERSION] = v }
+    suspend fun setGlassBlur(v: Int) = context.dataStore.edit { it[Keys.GLASS_BLUR] = v.coerceIn(0, 100) }
+    suspend fun setGlassIntroShown(v: Boolean) = context.dataStore.edit { it[Keys.GLASS_INTRO_SHOWN] = v }
     suspend fun setGlassTheme(v: Boolean) = context.dataStore.edit { it[Keys.GLASS_THEME] = v }
     suspend fun setHomeShortcut(route: String) = context.dataStore.edit { it[Keys.HOME_SHORTCUT] = route }
     suspend fun setTourShown(v: Boolean) = context.dataStore.edit { it[Keys.TOUR_SHOWN] = v }

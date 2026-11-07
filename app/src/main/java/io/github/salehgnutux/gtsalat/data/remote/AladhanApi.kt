@@ -54,6 +54,37 @@ class AladhanApi @Inject constructor(
         }
     }
 
+    /**
+     * إزاحة الموقع عن التوقيت العالميّ اليوم كما يعتمدها الخادم (طلبٌ خفيف ليومٍ واحد)، مع اسم منطقته.
+     * null عند أيّ فشل.
+     */
+    suspend fun locationOffsetToday(lat: Double, lon: Double): Pair<Int, String>? = withContext(Dispatchers.IO) {
+        runCatching {
+            val today = LocalDate.now()
+            val date = String.format(java.util.Locale.US, "%02d-%02d-%04d", today.dayOfMonth, today.monthValue, today.year)
+            val url = "https://api.aladhan.com/v1/timings/$date?latitude=$lat&longitude=$lon&iso8601=true"
+            http.newCall(Request.Builder().url(url).build()).execute().use { res ->
+                if (!res.isSuccessful) return@use null
+                val data = json.decodeFromString<AladhanSingleResponse>(res.body?.string() ?: return@use null).data
+                val offset = java.time.OffsetDateTime.parse(data.timings?.get("Dhuhr") ?: return@use null).offset
+                offset.totalSeconds / 60 to data.meta?.timezone.orEmpty()
+            }
+        }.getOrNull()
+    }
+
+    companion object {
+        private val offsetPattern = Regex("""\((?:GMT|UTC)?([+-])(\d{1,2})(?::?(\d{2}))?\)""")
+
+        /** «05:12 (+01)» ← +01:00؛ null إن غابت الإزاحة. */
+        fun parseOffset(raw: String): java.time.ZoneOffset? {
+            val m = offsetPattern.find(raw) ?: return null
+            val sign = if (m.groupValues[1] == "-") -1 else 1
+            val h = m.groupValues[2].toIntOrNull() ?: return null
+            val min = m.groupValues[3].toIntOrNull() ?: 0
+            return runCatching { java.time.ZoneOffset.ofHoursMinutes(sign * h, sign * min) }.getOrNull()
+        }
+    }
+
     private fun AladhanDay.toDayTimetable(zone: ZoneId): DayTimetable {
         // gregorian.date = "DD-MM-YYYY"
         val g = date.gregorian.date.split("-")
@@ -62,9 +93,12 @@ class AladhanApi @Inject constructor(
         val hijri = "$hijriWeekday${date.hijri.day} ${date.hijri.month.ar} ${date.hijri.year} هـ".trim()
 
         fun t(id: PrayerId, raw: String): PrayerTime {
-            val hhmm = raw.trim().split(" ")[0] // "05:12 (GMT+1)" -> "05:12"
+            val hhmm = raw.trim().split(" ")[0] // "05:12 (+01)" -> "05:12"
             val lt = LocalTime.parse(hhmm)
-            val millis = d.atTime(lt).atZone(zone).toInstant().toEpochMilli()
+            // الإزاحة التي يرسلها الخادم مع الوقت أولى من قاعدة مناطق الجهاز، فقد تكون قديمة
+            // (غيّر المغرب توقيته إلى GMT+0 في 20 شتنبر 2026، فأخطأت الهواتف غير المحدَّثة بساعة).
+            val instant = parseOffset(raw)?.let { d.atTime(lt).toInstant(it) } ?: d.atTime(lt).atZone(zone).toInstant()
+            val millis = instant.toEpochMilli()
             return PrayerTime(id, millis)
         }
         return DayTimetable(
@@ -83,6 +117,8 @@ class AladhanApi @Inject constructor(
 }
 
 @Serializable private data class AladhanResponse(val data: List<AladhanDay>)
+@Serializable private data class AladhanSingleResponse(val data: AladhanDayMeta)
+@Serializable private data class AladhanDayMeta(val timings: Map<String, String>? = null, val meta: AladhanMeta? = null)
 @Serializable private data class AladhanDay(
     val timings: AladhanTimings,
     val date: AladhanDate,

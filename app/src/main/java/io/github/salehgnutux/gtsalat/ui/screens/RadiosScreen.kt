@@ -234,7 +234,7 @@ private fun RadioSleepRemaining(sleepUntil: Long) {
     if (sleepUntil <= 0L) return
     val left = rememberSleepMinutesLeft(sleepUntil)
     Icon(Icons.Outlined.Timer, "مؤقّت الإيقاف", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
-    Text("${left}د", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.padding(start = 2.dp))
+    Text("$left دقيقة", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.padding(start = 3.dp))
 }
 
 /** مؤقّت إيقاف البثّ: 15 أو 30 أو 45 دقيقة، أو مدّةٌ تُكتب يدويّاً. */
@@ -315,17 +315,37 @@ fun RadioMiniPlayer(onOpen: () -> Unit, vm: RadiosViewModel = hiltViewModel()) {
         val next = radios[((idx + delta) % radios.size + radios.size) % radios.size]
         RadioAudio.play(ctx, next.name, next.url)
     }
+    val onC = MaterialTheme.colorScheme.onSecondaryContainer
     Surface(color = MaterialTheme.colorScheme.secondaryContainer, shadowElevation = 8.dp) {
-        Row(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Icon(Icons.Outlined.Radio, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
-            RadioSleepRemaining(play.sleepUntil)
-            Text(play.name, Modifier.weight(1f).padding(horizontal = 4.dp).basicMarquee(), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer, maxLines = 1)
-            if (play.loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-            // في RTL: السابقة تشير يميناً (SkipNext)، التالية يساراً (SkipPrevious).
-            FilledIconButton(onClick = { jump(-1) }) { Icon(Icons.Filled.SkipNext, "السابقة") }
-            FilledIconButton(onClick = { RadioAudio.toggle(ctx) }) { Icon(if (play.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, "تشغيل") }
-            FilledIconButton(onClick = { jump(1) }) { Icon(Icons.Filled.SkipPrevious, "التالية") }
-            FilledIconButton(onClick = { RadioAudio.stop(ctx) }) { Icon(Icons.Filled.Stop, "إيقاف") }
+        Column(Modifier.fillMaxWidth().clickable(onClick = onOpen)) {
+            // شريطٌ رفيعٌ باسم الإذاعة كاملاً فوق الأدوات، فلا يزاحمه شيء.
+            Row(
+                Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Outlined.Radio, null, Modifier.size(16.dp), tint = onC)
+                Text(
+                    play.name,
+                    Modifier.weight(1f).padding(horizontal = 6.dp).basicMarquee(),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = onC,
+                    maxLines = 1,
+                )
+                RadioSleepRemaining(play.sleepUntil)
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (play.loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                // في RTL: السابقة تشير يميناً (SkipNext)، التالية يساراً (SkipPrevious).
+                FilledIconButton(onClick = { jump(-1) }) { Icon(Icons.Filled.SkipNext, "السابقة") }
+                FilledIconButton(onClick = { RadioAudio.toggle(ctx) }) { Icon(if (play.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, if (play.isPlaying) "إيقاف مؤقّت" else "تشغيل") }
+                FilledIconButton(onClick = { jump(1) }) { Icon(Icons.Filled.SkipPrevious, "التالية") }
+                FilledIconButton(onClick = { RadioAudio.stop(ctx) }) { Icon(Icons.Filled.Stop, "إيقاف") }
+            }
         }
     }
 }

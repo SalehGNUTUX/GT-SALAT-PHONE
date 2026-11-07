@@ -106,8 +106,9 @@ class AdhanAlarmActivity : ComponentActivity() {
                     title = title,
                     subtitle = subtitle,
                     isDhikr = isDhikr,
-                    backgroundId = st?.takeIf { it.homeBackgroundEnabled }?.let { HomeBackgrounds.resolve(it.homeBackgroundId, dark) },
+                    backgroundId = st?.takeIf { it.homeBackgroundEnabled }?.let { io.github.salehgnutux.gtsalat.ui.screens.resolveBackgroundId(this@AdhanAlarmActivity, it.homeBackgroundId, dark) },
                     backgroundLevel = st?.homeBackgroundLevel ?: HomeBackgrounds.LEVEL_BALANCED,
+                    glassBlur = st?.glassBlur ?: 30,
                     gradientTop = if (dark) st?.gradTopDark ?: 0 else st?.gradTopLight ?: 0,
                     gradientBottom = if (dark) st?.gradBotDark ?: 0 else st?.gradBotLight ?: 0,
                     onStop = { closeWindow() },
@@ -199,6 +200,7 @@ private fun AdhanAlarmScreen(
     isDhikr: Boolean,
     backgroundId: String?,
     backgroundLevel: Int,
+    glassBlur: Int,
     gradientTop: Int,
     gradientBottom: Int,
     onStop: () -> Unit,
@@ -220,8 +222,8 @@ private fun AdhanAlarmScreen(
     }
     val blurred = rememberBlurredBitmap(backgroundId.takeIf { glass })
     val scrimTop = homeScrimTop(backgroundLevel)
-    val frosted = remember(blurred, cs.background, scrimTop) {
-        blurred?.let { FrostedBackdrop(it, cs.background.copy(alpha = scrimTop)) }
+    val frosted = remember(blurred, cs.background, scrimTop, glassBlur) {
+        blurred?.let { FrostedBackdrop(it, cs.background.copy(alpha = scrimTop), glassBlur / 100f) }
     }
 
     Box(Modifier.fillMaxSize().background(gradient)) {

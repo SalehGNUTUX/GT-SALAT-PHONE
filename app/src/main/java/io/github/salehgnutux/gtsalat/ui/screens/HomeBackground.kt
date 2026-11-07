@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Fullscreen
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -70,6 +71,24 @@ import io.github.salehgnutux.gtsalat.ui.theme.GlassStrongDark
 import io.github.salehgnutux.gtsalat.ui.theme.GlassStrongLight
 import io.github.salehgnutux.gtsalat.ui.theme.LocalGlassTheme
 
+/**
+ * معرّف الصورة الفعليّ للعرض: الافتراضيّ بحسب الوضع، وصورة المستخدم بوقت تعديلها (فيتجدّد الكاش عند استبدالها)،
+ * والسقوط إلى الافتراضيّ إن حُذفت صورته.
+ */
+fun resolveBackgroundId(context: android.content.Context, savedId: String, dark: Boolean): String =
+    if (HomeBackgrounds.isCustom(savedId)) {
+        val f = io.github.salehgnutux.gtsalat.data.CustomBackgroundStore.sharp(context)
+        if (f.exists() && f.length() > 0) "${HomeBackgrounds.CUSTOM_ID}:${f.lastModified()}"
+        else HomeBackgrounds.resolve(HomeBackgrounds.DEFAULT_ID, dark)
+    } else HomeBackgrounds.resolve(savedId, dark)
+
+/** مصدر الصورة لِـCoil: ملفّ المستخدم أو أصلٌ مضمَّن. [variant]: "" حادّة · "blur" · "thumb". */
+private fun backgroundModel(context: android.content.Context, id: String, variant: String): Any =
+    if (HomeBackgrounds.isCustom(id)) {
+        val s = io.github.salehgnutux.gtsalat.data.CustomBackgroundStore
+        when (variant) { "blur" -> s.blur(context); "thumb" -> s.thumb(context); else -> s.sharp(context) }
+    } else "file:///android_asset/backgrounds/" + (if (variant.isEmpty()) "" else "$variant/") + "$id.webp"
+
 /** هل تعرض الرئيسيّة صورةً خلفها؟ تقرؤه بطاقاتها لتصير شبه شفّافة. */
 val LocalHomeBackdropOn = compositionLocalOf { false }
 
@@ -86,7 +105,12 @@ private const val BLURRED_SCRIM_DARK = 0.62f
 private const val BLURRED_SCRIM_LIGHT = 0.72f
 
 /** نسخةٌ مموَّهةٌ محضَّرةٌ من الصورة ترسمها بطاقات الرئيسيّة خلفها، وغشاوتها. */
-class FrostedBackdrop(val bitmap: androidx.compose.ui.graphics.ImageBitmap, val scrim: Color)
+class FrostedBackdrop(
+    val bitmap: androidx.compose.ui.graphics.ImageBitmap,
+    val scrim: Color,
+    /** 0 تظهر الصورة الحادّة من خلف الزجاج، و1 التمويه الكامل (إعداد «شدّة التغبيش»). */
+    val strength: Float = 1f,
+)
 
 val LocalFrostedBackdrop = compositionLocalOf<FrostedBackdrop?> { null }
 
@@ -97,9 +121,10 @@ fun rememberBlurredBitmap(id: String?): androidx.compose.ui.graphics.ImageBitmap
     val state = androidx.compose.runtime.produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, id) {
         value = if (id == null) null else kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             runCatching {
-                context.assets.open("backgrounds/blur/$id.webp").use {
-                    android.graphics.BitmapFactory.decodeStream(it)?.asImageBitmap()
-                }
+                val stream = if (HomeBackgrounds.isCustom(id)) {
+                    io.github.salehgnutux.gtsalat.data.CustomBackgroundStore.blur(context).inputStream()
+                } else context.assets.open("backgrounds/blur/$id.webp")
+                stream.use { android.graphics.BitmapFactory.decodeStream(it)?.asImageBitmap() }
             }.getOrNull()
         }
     }
@@ -126,7 +151,7 @@ fun Modifier.frostedGlass(shape: androidx.compose.ui.graphics.Shape): Modifier {
             }
             onDrawBehind {
                 val root = rootSize.value
-                if (root.width == 0 || root.height == 0) return@onDrawBehind
+                if (root.width == 0 || root.height == 0 || backdrop.strength <= 0f) return@onDrawBehind
                 val bw = backdrop.bitmap.width
                 val bh = backdrop.bitmap.height
                 // القصّ نفسه الذي تعرض به الصورة الحادّة (Crop في الوسط)، ليتطابق ما خلف الزجاج مع ما حوله.
@@ -140,10 +165,11 @@ fun Modifier.frostedGlass(shape: androidx.compose.ui.graphics.Shape): Modifier {
                             srcOffset = androidx.compose.ui.unit.IntOffset((bw - cw) / 2, (bh - ch) / 2),
                             srcSize = androidx.compose.ui.unit.IntSize(cw, ch),
                             dstSize = root,
+                            alpha = backdrop.strength,
                             filterQuality = androidx.compose.ui.graphics.FilterQuality.Low,
                         )
                     }
-                    drawRect(backdrop.scrim)
+                    drawRect(backdrop.scrim.copy(alpha = backdrop.scrim.alpha * backdrop.strength))
                 }
             }
         }
@@ -188,19 +214,30 @@ fun homeScrimTop(level: Int): Float {
     }
 }
 
-/** خلفيّة الشاشات غير الرئيسيّة في السمة الزجاجيّة: الصورة نفسها مموَّهةً بشدّة. */
+/** خلفيّة الشاشات غير الرئيسيّة في السمة الزجاجيّة: الصورة نفسها، حادّةً أو مموَّهةً بقدر [strength]. */
 @Composable
-fun BlurredBackdrop(id: String, modifier: Modifier = Modifier) {
+fun BlurredBackdrop(id: String, strength: Float, modifier: Modifier = Modifier) {
     val base = MaterialTheme.colorScheme.background
     val alpha = if (isDarkScheme()) BLURRED_SCRIM_DARK else BLURRED_SCRIM_LIGHT
     Box(modifier.background(base)) {
-        AsyncImage(
-            model = "file:///android_asset/backgrounds/blur/$id.webp",
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            filterQuality = androidx.compose.ui.graphics.FilterQuality.Low,
-            modifier = Modifier.fillMaxSize(),
-        )
+        if (strength < 1f) {
+            AsyncImage(
+                model = backgroundModel(LocalContext.current, id, ""),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        if (strength > 0f) {
+            AsyncImage(
+                model = backgroundModel(LocalContext.current, id, "blur"),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                alpha = strength,
+                filterQuality = androidx.compose.ui.graphics.FilterQuality.Low,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
         Box(Modifier.fillMaxSize().background(base.copy(alpha = alpha)))
     }
 }
@@ -233,7 +270,7 @@ fun HomeBackdrop(id: String, level: Int, modifier: Modifier = Modifier) {
     Box(modifier.background(base)) {
         val request = remember(id) {
             ImageRequest.Builder(context)
-                .data("file:///android_asset/backgrounds/$id.webp")
+                .data(backgroundModel(context, id, ""))
                 .crossfade(350)
                 .build()
         }
@@ -256,12 +293,18 @@ fun HomeBackgroundSettings(
     onEnabled: (Boolean) -> Unit,
     onSelect: (String) -> Unit,
     onLevel: (Int) -> Unit,
+    blur: Int = 30,
+    blurSlider: @Composable () -> Unit = {},
+    customAvailable: Boolean = false,
+    importing: Boolean = false,
+    onPickCustom: () -> Unit = {},
     switchRow: @Composable (label: String, checked: Boolean, onChange: (Boolean) -> Unit) -> Unit,
 ) {
     var fullPreview by remember { mutableStateOf(false) }
     val selected = HomeBackgrounds.byId(selectedId)
     val dark = isDarkScheme()
-    val shownId = HomeBackgrounds.resolve(selected.id, dark)
+    val context = LocalContext.current
+    val shownId = resolveBackgroundId(context, selected.id, dark)
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         switchRow("عرض صورة خلف الرئيسيّة", enabled, onEnabled)
@@ -296,11 +339,14 @@ fun HomeBackgroundSettings(
             style = MaterialTheme.typography.bodyLarge,
         )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 2.dp)) {
-            items(HomeBackgrounds.all, key = { it.id }) { bg ->
+            // صورةٌ من الهاتف: اختيارها أو استبدالها.
+            item(key = "pick") { AddPhotoTile(customAvailable, importing, onPickCustom) }
+            val list = if (customAvailable) listOf(HomeBackgrounds.CUSTOM) + HomeBackgrounds.all else HomeBackgrounds.all
+            items(list, key = { it.id }) { bg ->
                 BackgroundThumb(
-                    id = HomeBackgrounds.resolve(bg.id, dark),
+                    id = resolveBackgroundId(context, bg.id, dark),
                     title = bg.title,
-                    selected = enabled && bg.id == selectedId,
+                    selected = enabled && (bg.id == selectedId || (HomeBackgrounds.isCustom(bg.id) && HomeBackgrounds.isCustom(selectedId))),
                     dimmed = !enabled,
                 ) { onSelect(bg.id) }
             }
@@ -313,6 +359,14 @@ fun HomeBackgroundSettings(
                 FilterChip(level == HomeBackgrounds.LEVEL_BALANCED, { onLevel(HomeBackgrounds.LEVEL_BALANCED) }, { Text("متوازنة") })
                 FilterChip(level == HomeBackgrounds.LEVEL_VIVID, { onLevel(HomeBackgrounds.LEVEL_VIVID) }, { Text("واضحة") })
             }
+            if (LocalGlassTheme.current) {
+                blurSlider()
+                Text(
+                    "0 تظهر الصورة حادّةً من خلف الزجاج، و100 تمويهٌ كامل. يسري على كلّ الأقسام ونافذة الأذان. ولرؤية أثره بدقّةٍ افتح «معاينة بملء الشاشة».",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
         }
     }
 
@@ -322,7 +376,14 @@ fun HomeBackgroundSettings(
             properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         ) {
             Box(Modifier.fillMaxSize()) {
-                HomePreviewMock(enabled, shownId, level, compact = false)
+                // الزجاج الفعليّ بشدّة التغبيش المختارة، كما في الرئيسيّة.
+                val glassOn = LocalGlassTheme.current
+                val bitmap = rememberBlurredBitmap(shownId.takeIf { enabled && glassOn })
+                val scrim = MaterialTheme.colorScheme.background.copy(alpha = homeScrimTop(level))
+                val frost = remember(bitmap, scrim, blur) { bitmap?.let { FrostedBackdrop(it, scrim, blur / 100f) } }
+                androidx.compose.runtime.CompositionLocalProvider(LocalFrostedBackdrop provides frost) {
+                    HomePreviewMock(enabled, shownId, level, compact = false)
+                }
                 IconButton(
                     onClick = { fullPreview = false },
                     modifier = Modifier
@@ -333,6 +394,32 @@ fun HomeBackgroundSettings(
                 ) { Icon(Icons.Outlined.Close, contentDescription = "إغلاق المعاينة") }
             }
         }
+    }
+}
+
+@Composable
+private fun AddPhotoTile(replace: Boolean, busy: Boolean, onClick: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    Column(Modifier.width(84.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(
+            Modifier
+                .width(84.dp)
+                .height(160.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .border(BorderStroke(1.dp, cs.outline), RoundedCornerShape(12.dp))
+                .background(cs.surfaceContainerHigh)
+                .clickable(enabled = !busy, onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (busy) androidx.compose.material3.CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+            else Icon(Icons.Outlined.AddPhotoAlternate, contentDescription = null, tint = cs.primary, modifier = Modifier.size(32.dp))
+        }
+        Text(
+            if (replace) "استبدال صورتك" else "صورة من هاتفك",
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 2,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -352,7 +439,7 @@ private fun BackgroundThumb(id: String, title: String, selected: Boolean, dimmed
                 .clickable(onClick = onClick),
         ) {
             AsyncImage(
-                model = "file:///android_asset/backgrounds/thumb/$id.webp",
+                model = backgroundModel(LocalContext.current, id, "thumb"),
                 contentDescription = title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().alpha(if (dimmed) 0.55f else 1f),
@@ -403,9 +490,10 @@ private fun BoxScope.HomePreviewMock(enabled: Boolean, id: String, level: Int, c
             verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 14.dp),
         ) {
             if (!compact) Box(Modifier.height(52.dp))
+            val heroShape = RoundedCornerShape(if (compact) 12.dp else 22.dp)
             Card(
-                Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(if (compact) 12.dp else 22.dp),
+                if (compact) Modifier.fillMaxWidth() else Modifier.fillMaxWidth().frostedGlass(heroShape),
+                shape = heroShape,
                 colors = CardDefaults.cardColors(
                     containerColor = if (LocalGlassTheme.current) glassStrongFill() else cs.primaryContainer.copy(alpha = heroAlpha),
                 ),
@@ -429,7 +517,12 @@ private fun BoxScope.HomePreviewMock(enabled: Boolean, id: String, level: Int, c
                     )
                 }
             }
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = cardColor)) {
+            val listShape = MaterialTheme.shapes.medium
+            Card(
+                if (compact) Modifier.fillMaxWidth() else Modifier.fillMaxWidth().frostedGlass(listShape),
+                shape = listShape,
+                colors = CardDefaults.cardColors(containerColor = cardColor),
+            ) {
                 Column(Modifier.padding(if (compact) 8.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 8.dp)) {
                     Text(
                         "مواقيت اليوم والليلة",

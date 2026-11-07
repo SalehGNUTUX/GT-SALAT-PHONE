@@ -93,6 +93,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.flow.mapNotNull
 import javax.inject.Inject
 
 /* ============================ بيانات القرآن ============================ */
@@ -114,19 +116,26 @@ class QuranMetaViewModel @Inject constructor(
 
     /** تنزيل صور المصحف داخل قسم المصحف. الحذف حصراً من الإعدادات ← تنزيل المحتوى (بتأكيدٍ ومهلة تراجع). */
     val mushafDownload = downloader.mushaf
-    fun downloadMushaf(riwaya: String) = viewModelScope.launch { downloader.downloadMushaf(riwaya) }
+    fun downloadMushaf(riwaya: String) = downloader.startMushaf(riwaya)
     fun mushafCount(riwaya: String): Int = downloader.mushafDownloadedCount(riwaya)
     fun mushafSize(riwaya: String): Long = downloader.mushafSizeBytes(riwaya)
 
     /** هل نُزِّلت سورةٌ لقارئٍ محليّاً؟ */
     fun surahDownloaded(reciterId: String, surah: Int): Boolean = downloader.localSurah(reciterId, surah) != null
 
-    /** تنزيل سورةٍ صوتيّاً؛ يُبلِّغ [onProgress] بالنسبة و[done] بالنتيجة. */
-    fun downloadSurah(reciterId: String, server: String, surah: Int, onProgress: (Int) -> Unit, done: (Boolean) -> Unit) {
-        viewModelScope.launch {
-            val ok = downloader.downloadSurah(reciterId, server, surah) { p -> viewModelScope.launch { onProgress(p) } }
-            done(ok)
-        }
+    /** تنزيل سورةٍ صوتيّاً على نطاق التطبيق: يستمرّ بعد مغادرة القسم أو الخروج. */
+    fun downloadSurah(reciterId: String, server: String, surah: Int) = downloader.startSurah(reciterId, server, surah)
+
+    /** نِسب تنزيل سور القارئ الجارية (سورة ← نسبة)، باقيةٌ عند العودة إلى القسم. */
+    fun surahProgress(reciterId: String): kotlinx.coroutines.flow.Flow<Map<Int, Int>> = downloader.progress.map { all ->
+        val prefix = "surah:$reciterId:"
+        all.filterKeys { it.startsWith(prefix) }.mapKeys { it.key.removePrefix(prefix).toInt() }
+    }
+
+    /** السور التي انتهى تنزيلها بنجاحٍ لهذا القارئ. */
+    fun surahFinished(reciterId: String): kotlinx.coroutines.flow.Flow<Int> = downloader.finished.mapNotNull { (key, ok) ->
+        val prefix = "surah:$reciterId:"
+        if (ok && key.startsWith(prefix)) key.removePrefix(prefix).toIntOrNull() else null
     }
 
     /** حذف سورةٍ منزَّلة. */
@@ -657,12 +666,16 @@ class TextReaderViewModel @Inject constructor(
     /** هل نُزِّل صوت آيات هذه السورة للقارئ؟ */
     fun ayatDownloaded(reciterId: String): Boolean = downloader.ayatDownloaded(reciterId, n, _ayat.value.size)
 
-    /** تنزيل صوت آيات السورة الحاليّة لقارئٍ (بنسبة). */
-    fun downloadAyat(reciter: Reciter, onProgress: (Int) -> Unit, done: (Boolean) -> Unit) {
-        viewModelScope.launch {
-            val ok = downloader.downloadSurahAyat(reciter.id, reciter.everyayah, n, _ayat.value.size) { p -> viewModelScope.launch { onProgress(p) } }
-            done(ok)
-        }
+    /** تنزيل صوت آيات السورة الحاليّة على نطاق التطبيق: يستمرّ بعد مغادرة القسم أو الخروج. */
+    fun downloadAyat(reciter: Reciter) = downloader.startAyat(reciter.id, reciter.everyayah, n, _ayat.value.size)
+
+    /** نسبة تنزيل صوت آيات هذه السورة للقارئ، أو null إن لم يكن جارياً. */
+    fun ayatProgress(reciterId: String): kotlinx.coroutines.flow.Flow<Int?> =
+        downloader.progress.map { it[downloader.ayatKey(reciterId, n)] }
+
+    /** انتهى تنزيل صوت آيات هذه السورة بنجاح لهذا القارئ. */
+    fun ayatFinished(reciterId: String): kotlinx.coroutines.flow.Flow<Unit> = downloader.finished.mapNotNull { (key, ok) ->
+        if (ok && key == downloader.ayatKey(reciterId, n)) Unit else null
     }
 
     /** حذف صوت آيات السورة الحاليّة لقارئ. */
@@ -738,8 +751,11 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
     // وضع التمرير الانسيابيّ: تنزلق الصفحة مرورًا بالآيات بوتيرةٍ يضبطها المستخدم (كالتلقين).
     var smoothScroll by remember { mutableStateOf(false) }
     // تنزيل صوت آيات السورة الحاليّة للقارئ (للاستماع دون إنترنت).
-    var ayatProgress by remember { mutableStateOf<Int?>(null) }
+    // التقدّم من المُنزِّل نفسه، فيظهر كما هو عند العودة إلى السورة.
+    val ayatProgressFlow = remember(reciter?.id) { reciter?.let { vm.ayatProgress(it.id) } ?: kotlinx.coroutines.flow.flowOf(null) }
+    val ayatProgress by ayatProgressFlow.collectAsState(initial = null)
     var ayatDownloaded by remember(reciter?.id, ayat) { mutableStateOf(reciter?.let { vm.ayatDownloaded(it.id) } ?: false) }
+    LaunchedEffect(reciter?.id) { reciter?.let { r -> vm.ayatFinished(r.id).collect { ayatDownloaded = true } } }
     var confirmDeleteAyat by remember { mutableStateOf(false) }
     val readerSnackbar = remember { androidx.compose.material3.SnackbarHostState() }
     val readerScope = androidx.compose.runtime.rememberCoroutineScope()
@@ -824,8 +840,7 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
                         }
                         ayatDownloaded -> IconButton(onClick = { confirmDeleteAyat = true }) { Icon(Icons.Filled.Delete, "حذف الصوت المُنزَّل", tint = MaterialTheme.colorScheme.error) }
                         else -> IconButton(onClick = {
-                            ayatProgress = 0
-                            vm.downloadAyat(r, onProgress = { p -> ayatProgress = p }) { ok -> ayatProgress = null; if (ok) ayatDownloaded = true }
+                            vm.downloadAyat(r)
                         }) { Icon(Icons.Filled.Download, "تنزيل صوت السورة", tint = MaterialTheme.colorScheme.outline) }
                     }
                 }
@@ -1121,7 +1136,9 @@ fun ReciterSurahsScreen(reciterId: String, vm: QuranMetaViewModel = hiltViewMode
     val shownSurahs = remember(surahs, q) { filterSurahs(surahs, q) }
 
     var downloaded by remember { mutableStateOf<Set<Int>>(emptySet()) }
-    var progress by remember { mutableStateOf<Map<Int, Int>>(emptyMap()) }   // surah → نسبة التنزيل
+    // التقدّم من المُنزِّل نفسه، فيبقى عند مغادرة القسم والعودة إليه.
+    val progress by remember(reciterId) { vm.surahProgress(reciterId) }.collectAsState(initial = emptyMap())
+    LaunchedEffect(reciterId) { vm.surahFinished(reciterId).collect { n -> downloaded = downloaded + n } }
     LaunchedEffect(reciterId) { downloaded = vm.downloadedSurahs(reciterId) }
 
     val snackbar = remember { androidx.compose.material3.SnackbarHostState() }
@@ -1156,11 +1173,7 @@ fun ReciterSurahsScreen(reciterId: String, vm: QuranMetaViewModel = hiltViewMode
                         onDownload = {
                             reciter?.let { r ->
                                 vm.saveReciterMeta(r)   // نحفظ اسم القارئ ليظهر لاحقاً دون شبكة
-                                progress = progress + (s.n to 0)
-                                vm.downloadSurah(r.id, r.server, s.n, onProgress = { p -> progress = progress + (s.n to p) }) { ok ->
-                                    progress = progress - s.n
-                                    if (ok) downloaded = downloaded + s.n
-                                }
+                                vm.downloadSurah(r.id, r.server, s.n)
                             }
                         },
                         onDelete = { pendingDelete = s.n },

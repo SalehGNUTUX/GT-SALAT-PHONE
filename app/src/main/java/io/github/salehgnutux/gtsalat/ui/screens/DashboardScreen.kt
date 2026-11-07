@@ -168,6 +168,7 @@ fun DashboardScreen(onOpenSettings: () -> Unit = {}, onOpenShortcut: (String) ->
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     AdhanStopBanner()
                     NotificationPermissionBanner()
+                    TimeZoneMismatchBanner(vm)
                     UpdateBanner()
                     val locating by vm.locating.collectAsStateWithLifecycle()
                     val locationGate = io.github.salehgnutux.gtsalat.ui.location.rememberLocationGate()
@@ -371,6 +372,57 @@ private fun HeroCard(ui: DashboardUi, tick: DashboardTick, locating: Boolean = f
 }
 
 /** بطاقةٌ تظهر ما دامت إشعارات التطبيق مُعطَّلة (بعد أوّل تثبيت غالباً)، بزرٍّ يفتح إعدادات الإشعارات. */
+/** تنبيهٌ حين تخالف منطقة الهاتف الزمنيّة منطقة الموقع فتظهر المواقيت مزاحة. */
+@Composable
+private fun TimeZoneMismatchBanner(vm: DashboardViewModel) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) vm.recheckTimeZone()
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
+    val m by vm.timeZoneMismatch.collectAsStateWithLifecycle()
+    val mismatch = m ?: return
+    val minutes = kotlin.math.abs(mismatch.diffMinutes)
+    val amount = when {
+        minutes % 60 != 0 -> "$minutes دقيقة"
+        minutes == 60 -> "ساعة"
+        minutes == 120 -> "ساعتين"
+        else -> "${minutes / 60} ساعات"
+    }
+    // الأرقام والإزاحات بعزلٍ اتّجاهيّ، فلا تنقلب داخل النصّ العربيّ.
+    fun ltr(t: String) = "\u2066$t\u2069"
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                "⏰ منطقة هاتفك الزمنيّة لا تطابق موقعك",
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+            Text(
+                "هاتفك على ${ltr(mismatch.device)} وموقعك على ${ltr(mismatch.location)}، فتظهر المواقيت مزاحةً بـ$amount. " +
+                    "فعّل ضبط المنطقة الزمنيّة تلقائيّاً في إعدادات الهاتف، أو حدّث موقعك إن كنت مسافراً.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+            androidx.compose.material3.Button(onClick = {
+                runCatching {
+                    ctx.startActivity(
+                        android.content.Intent(android.provider.Settings.ACTION_DATE_SETTINGS)
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                }
+            }) { Text("إعدادات التاريخ والوقت") }
+        }
+    }
+}
+
 @Composable
 private fun NotificationPermissionBanner() {
     val ctx = androidx.compose.ui.platform.LocalContext.current

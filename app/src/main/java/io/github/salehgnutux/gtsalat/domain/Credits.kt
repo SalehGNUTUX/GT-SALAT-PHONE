@@ -27,7 +27,8 @@ object Credits {
         Source("alquran.cloud (روايات)", "نصّ القرآن بالروايات (ورش/قالون/الدوري)", "https://alquran.cloud"),
         Source("AlAdhan API", "المواقيت والتاريخ الهجريّ", "https://aladhan.com"),
         Source("Adhan (Batoul Apps)", "حساب المواقيت والقبلة محلّيّاً", "https://github.com/batoulapps/adhan-java"),
-        Source("OpenStreetMap · Nominatim", "الموقع بلا خدمات Google", "https://www.openstreetmap.org"),
+        Source("GeoNames", "إحداثيّات المدن والبلدات المغربيّة لتحديد الموقع دون إنترنت (CC BY 4.0)", "https://www.geonames.org"),
+        Source("OpenStreetMap · Nominatim", "الموقع بلا خدمات Google، والأسماء العربيّة للبلدات المغربيّة (ODbL)", "https://www.openstreetmap.org/copyright"),
         Source("خطّ أميري", "الخطّ القرآنيّ للنصوص", "https://www.amirifont.org"),
         Source("خطّ Ubuntu Arabic", "خطّ الواجهة", "https://design.ubuntu.com/font"),
     )

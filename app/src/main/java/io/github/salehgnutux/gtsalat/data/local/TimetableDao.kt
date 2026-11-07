@@ -24,6 +24,9 @@ interface TimetableDao {
     suspend fun deleteOlderThan(beforeIso: String)
 
     /** كلّ الأيّام المخزّنة (للتصدير/النسخ الاحتياطيّ). */
+    @Query("DELETE FROM timetable WHERE source = :source")
+    suspend fun deleteBySource(source: String)
+
     @Query("SELECT * FROM timetable")
     suspend fun all(): List<TimetableEntity>
 

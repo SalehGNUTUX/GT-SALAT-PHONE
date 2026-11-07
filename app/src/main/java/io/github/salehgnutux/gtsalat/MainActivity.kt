@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -95,14 +96,19 @@ class MainActivity : ComponentActivity() {
                 }
                 // نظام عرض الوقت (24/12) — يُضبَط عالميّاً في Format.
                 LaunchedEffect(s.clock24h) { io.github.salehgnutux.gtsalat.util.Format.use24 = s.clock24h }
-                GtSalatTheme(darkTheme = dark, dynamicColor = s.dynamicColor, seedColor = s.seedColor, glass = s.glassTheme) {
+                // معاينة السمة الزجاجيّة من نافذة التعريف تسبق المحفوظ حتى يؤكّد المستخدم.
+                val glassPreview by io.github.salehgnutux.gtsalat.ui.GlassPreview.override.collectAsState()
+                GtSalatTheme(darkTheme = dark, dynamicColor = s.dynamicColor, seedColor = s.seedColor, glass = glassPreview ?: s.glassTheme) {
                     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                         AppRoot(
                             setupCompleted = s.setupCompleted,
                             gradientTop = gradTop,
                             gradientBottom = gradBot,
-                            homeBackgroundId = io.github.salehgnutux.gtsalat.domain.HomeBackgrounds.resolve(s.homeBackgroundId, dark).takeIf { s.homeBackgroundEnabled },
+                            homeBackgroundId = io.github.salehgnutux.gtsalat.ui.screens.resolveBackgroundId(this@MainActivity, s.homeBackgroundId, dark).takeIf { s.homeBackgroundEnabled },
                             homeBackgroundLevel = s.homeBackgroundLevel,
+                            glassBlur = s.glassBlur,
+                            glassTheme = s.glassTheme,
+                            glassIntroShown = s.glassIntroShown,
                             tourShown = s.tourShown,
                             deepLink = deepLinkRoute.value,
                             onDeepLinkHandled = { deepLinkRoute.value = null },

@@ -45,25 +45,26 @@ data class AppFeature(val label: String, val icon: ImageVector, val route: Strin
 object AppFeatures {
     const val DEFAULT_SHORTCUT = "radios"
 
-    // مرتّبةٌ حسب الأولويّة الأصليّة: القرآن أوّلاً، ثمّ حصن المسلم، ثمّ الأذكار…
+    // الترتيب بحسب الاستعمال اليوميّ ثمّ الأهمّيّة: القرآن والإذاعات، ثمّ الأذكار اليوميّة، ثمّ الأدعية
+    // والأحاديث، ثمّ التعلّم والرقية والموسميّ، ثمّ القراءة العامّة. والنجمة ترفع المفضّل فوق هذا كلّه.
     val all: List<AppFeature> = listOf(
         AppFeature("القرآن الكريم", Icons.Outlined.AutoStories, "quran"),
-        AppFeature("الطهارة والصلاة", Icons.Outlined.CleanHands, "learn_hub"),
-        AppFeature("الرقية الشرعية", Icons.Outlined.Spa, "ruqyah_hub"),
-        AppFeature("حصن المسلم", Icons.Outlined.Shield, "hisn"),
+        AppFeature("الإذاعات", Icons.Outlined.Radio, "radios"),
+        AppFeature("التفسير الميسّر", Icons.Outlined.Notes, "tafsir"),
         AppFeature("أذكار الصباح", Icons.Outlined.WbSunny, "adhkar_session/morning"),
         AppFeature("أذكار المساء", Icons.Outlined.NightsStay, "adhkar_session/evening"),
         AppFeature("أذكار النوم", Icons.Outlined.Bedtime, "hisn/2"),
         AppFeature("الأذكار الصوتية", Icons.Outlined.Headphones, "adhkar_audio"),
+        AppFeature("حصن المسلم", Icons.Outlined.Shield, "hisn"),
         AppFeature("التسبيح", Icons.Outlined.Fingerprint, "tasbih"),
         AppFeature("الأدعية المأثورة", Icons.Outlined.VolunteerActivism, "duas"),
-        AppFeature("التفسير الميسّر", Icons.Outlined.Notes, "tafsir"),
         AppFeature("الأربعون والأحاديث", Icons.Outlined.MenuBook, "hadith"),
         AppFeature("أسماء الله الحسنى", Icons.Outlined.AutoAwesome, "asma"),
+        AppFeature("الطهارة والصلاة", Icons.Outlined.CleanHands, "learn_hub"),
+        AppFeature("الرقية الشرعية", Icons.Outlined.Spa, "ruqyah_hub"),
+        AppFeature("إمساكيّة رمضان", Icons.Outlined.DarkMode, "imsakiah"),
         AppFeature("حِكَم ومواعظ", Icons.Outlined.FormatQuote, "hikam"),
         AppFeature("أحداثٌ تاريخيّة", Icons.Outlined.HistoryEdu, "events"),
-        AppFeature("الإذاعات", Icons.Outlined.Radio, "radios"),
-        AppFeature("إمساكيّة رمضان", Icons.Outlined.DarkMode, "imsakiah"),
     )
 
     /** يسقط إلى الإذاعات إن كان المسار المحفوظ غير معروف. */

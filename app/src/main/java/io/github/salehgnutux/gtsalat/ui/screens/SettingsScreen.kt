@@ -147,6 +147,7 @@ fun SettingsScreen(onShowTour: () -> Unit = {}, vm: SettingsViewModel = hiltView
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         SectionCard("الموقع وطريقة الحساب", openSection == "الموقع وطريقة الحساب", { toggle("الموقع وطريقة الحساب") }) {
+            InfoRow("المنطقة الزمنيّة للهاتف", "\u2066" + io.github.salehgnutux.gtsalat.domain.TimeZoneCheck.label(java.time.ZoneId.systemDefault().rules.getOffset(java.time.Instant.now())) + "\u2069")
             InfoRow("الموقع الحاليّ", listOf(settings.city, settings.country).filter { it.isNotBlank() }.joinToString("، ").ifBlank { "غير محدّد" })
             val locationGate = io.github.salehgnutux.gtsalat.ui.location.rememberLocationGate()
             ClickRow("إعادة اكتشاف الموقع") { locationGate { vm.redetectLocation() } }
@@ -384,6 +385,13 @@ fun SettingsScreen(onShowTour: () -> Unit = {}, vm: SettingsViewModel = hiltView
             }
         }
 
+        val customBgAvailable by vm.customBackgroundAvailable.collectAsStateWithLifecycle()
+        val importingBg by vm.importingBackground.collectAsStateWithLifecycle()
+        val bgMessage by vm.backgroundMessage.collectAsStateWithLifecycle()
+        // منتقي الصور في النظام: لا يحتاج إذناً، ويعطي الصورة المختارة وحدها.
+        val pickBackground = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            if (uri != null) vm.importCustomBackground(uri)
+        }
         SectionCard("خلفيّة الرئيسيّة", openSection == "خلفيّة الرئيسيّة", { toggle("خلفيّة الرئيسيّة") }) {
             HomeBackgroundSettings(
                 enabled = settings.homeBackgroundEnabled,
@@ -392,8 +400,18 @@ fun SettingsScreen(onShowTour: () -> Unit = {}, vm: SettingsViewModel = hiltView
                 onEnabled = vm::setHomeBackgroundEnabled,
                 onSelect = vm::selectHomeBackground,
                 onLevel = vm::setHomeBackgroundLevel,
+                blur = settings.glassBlur,
+                customAvailable = customBgAvailable,
+                importing = importingBg,
+                onPickCustom = {
+                    pickBackground.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
+                blurSlider = {
+                    MinutesSlider("شدّة التغبيش:", settings.glassBlur, 0, 100, suffix = "من 100") { vm.setGlassBlur(it) }
+                },
                 switchRow = { label, checked, onChange -> SwitchRow(label, checked, onChange) },
             )
+            bgMessage?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary) }
         }
 
         SectionCard("المظهر", openSection == "المظهر", { toggle("المظهر") }) {
@@ -459,17 +477,6 @@ fun SettingsScreen(onShowTour: () -> Unit = {}, vm: SettingsViewModel = hiltView
 
         SectionCard("تنزيل المحتوى", openSection == "تنزيل المحتوى", { toggle("تنزيل المحتوى") }) {
             DownloadsSectionContent()
-        }
-
-        SectionCard("المصادر المعتمَدة", openSection == "المصادر المعتمَدة", { toggle("المصادر المعتمَدة") }) {
-            Text(
-                "أُثري التطبيق بمحتوىً وبياناتٍ من مشاريعَ حرّةٍ ومفتوحةِ المصدر، بالشكر والتقدير:",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.outline,
-            )
-            io.github.salehgnutux.gtsalat.domain.Credits.SOURCES.forEach { src ->
-                LinkRow(src.name, src.note) { openUrl(context, src.url) }
-            }
         }
 
         SectionCard("النسخ الاحتياطيّ والمشاركة", openSection == "النسخ الاحتياطيّ والمشاركة", { toggle("النسخ الاحتياطيّ والمشاركة") }) {
@@ -546,6 +553,17 @@ fun SettingsScreen(onShowTour: () -> Unit = {}, vm: SettingsViewModel = hiltView
             LinkRow("المستودع (GitHub)", "الشيفرة المصدريّة") { openUrl(context, io.github.salehgnutux.gtsalat.domain.Credits.REPO) }
             LinkRow("موقع المشروع", "الصفحة التعريفيّة") { openUrl(context, io.github.salehgnutux.gtsalat.domain.Credits.WEBSITE) }
             LinkRow("مشاريع GNUTUX", "بقيّة مشاريع المطوّر") { openUrl(context, io.github.salehgnutux.gtsalat.domain.Credits.PROJECTS) }
+        }
+
+        SectionCard("المصادر المعتمَدة", openSection == "المصادر المعتمَدة", { toggle("المصادر المعتمَدة") }) {
+            Text(
+                "أُثري التطبيق بمحتوىً وبياناتٍ من مشاريعَ حرّةٍ ومفتوحةِ المصدر، بالشكر والتقدير:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.outline,
+            )
+            io.github.salehgnutux.gtsalat.domain.Credits.SOURCES.forEach { src ->
+                LinkRow(src.name, src.note) { openUrl(context, src.url) }
+            }
         }
     }
 

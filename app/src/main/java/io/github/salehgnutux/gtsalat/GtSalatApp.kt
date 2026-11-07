@@ -19,6 +19,7 @@ class GtSalatApp : Application(), Configuration.Provider {
     @Inject lateinit var notifications: NotificationHelper
     @Inject lateinit var workScheduler: WorkScheduler
     @Inject lateinit var scheduler: PrayerAlarmScheduler
+    @Inject lateinit var repo: io.github.salehgnutux.gtsalat.data.PrayerRepository
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
@@ -29,6 +30,8 @@ class GtSalatApp : Application(), Configuration.Provider {
         workScheduler.ensurePeriodic()
         // إعادة تسليح + تحديث الإشعار الدائم والودجت عند كلّ إقلاعٍ للتطبيق (يعيد الإشعار إن أُزيل).
         CoroutineScope(Dispatchers.Default).launch {
+            // قبل التسليح: مسح الجداول المخزّنة بالطريقة القديمة مرّةً، فلا يُسلَّح أذانٌ بوقتٍ خاطئ.
+            runCatching { repo.migrateTimetableCache() }
             runCatching { scheduler.scheduleNext(allowNetwork = false) }
         }
     }

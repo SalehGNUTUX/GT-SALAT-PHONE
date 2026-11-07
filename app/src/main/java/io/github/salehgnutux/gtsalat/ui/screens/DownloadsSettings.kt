@@ -40,7 +40,7 @@ import javax.inject.Inject
 @HiltViewModel
 class DownloadsViewModel @Inject constructor(private val downloader: QuranDownloader) : ViewModel() {
     val mushaf = downloader.mushaf
-    fun downloadMushaf(riwaya: String) = viewModelScope.launch { downloader.downloadMushaf(riwaya) }
+    fun downloadMushaf(riwaya: String) = downloader.startMushaf(riwaya)
     fun deleteMushaf(riwaya: String) = downloader.deleteMushaf(riwaya)
     fun mushafCount(riwaya: String) = downloader.mushafDownloadedCount(riwaya)
 }

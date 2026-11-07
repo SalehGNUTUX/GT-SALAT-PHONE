@@ -22,6 +22,8 @@ import javax.inject.Singleton
  * المصدر الموحّد للمواقيت. سلسلة السقوط: Room (كاش طويل) → AlAdhan API → حساب محلّيّ.
  * كلّ ما يُجلب من API أو يُحسب محلّيّاً يُخزَّن في Room ليعمل بعدها دون إنترنت لأشهرٍ طويلة.
  */
+private const val TIMETABLE_CACHE_VERSION = 2
+
 @Singleton
 class PrayerRepository @Inject constructor(
     private val dao: TimetableDao,
@@ -30,7 +32,8 @@ class PrayerRepository @Inject constructor(
     private val locationProvider: LocationProvider,
     private val content: ContentRepository,
 ) {
-    private fun locKey(lat: Double, lon: Double): String =
+    /** مفتاح الموقع (بدقّة نحو 1 كم)؛ يربط منطقة الموقع الزمنيّة بالموقع الذي جاءت معه. */
+    fun locKey(lat: Double, lon: Double): String =
         String.format(Locale.US, "%.2f_%.2f", lat, lon)
 
     suspend fun monthTimetable(year: Int, month: Int): List<DayTimetable> =
@@ -128,6 +131,33 @@ class PrayerRepository @Inject constructor(
             val d = start.plusMonths(i.toLong())
             monthTimetable(d.year, d.monthValue, s)
         }
+        runCatching { ensureLocationTimeZone() }
+    }
+
+    /**
+     * إزاحة الموقع الزمنيّة اليوم من الخادم، مرّةً في اليوم لكلّ موقع (طلبٌ خفيف).
+     * للعرض فقط: لا يمسّ المواقيت ولا الجدولة، ويفشل بصمت دون إنترنت.
+     */
+    suspend fun ensureLocationTimeZone() {
+        val s = settingsRepo.current()
+        val lat = s.lat ?: return
+        val lon = s.lon ?: return
+        val key = locKey(lat, lon)
+        val today = LocalDate.now().toString()
+        if (s.locationTimeZoneKey == key && s.locationTzDate == today) return
+        api.locationOffsetToday(lat, lon)?.let { (minutes, zone) ->
+            settingsRepo.setLocationTimeZone(zone, minutes, today, key)
+        }
+    }
+
+    /**
+     * مرّةً واحدة: يمسح ما خُزّن من الخادم بالطريقة القديمة، التي فسّرت الأوقات بقاعدة مناطق الجهاز فأخطأت
+     * بساعةٍ على الهواتف غير المحدَّثة. يُعاد بناؤه من الخادم أو بالحساب المحلّيّ، وكلاهما صحيح.
+     */
+    suspend fun migrateTimetableCache() {
+        if (settingsRepo.current().timetableCacheVersion >= TIMETABLE_CACHE_VERSION) return
+        dao.deleteBySource("api")
+        settingsRepo.setTimetableCacheVersion(TIMETABLE_CACHE_VERSION)
     }
 
     /** حذف أيّام الأشهر المنصرمة (قبل أوّل الشهر الحاليّ) تفاديّاً للتراكم. يعيد عدد الأشهر المتبقّية. */

@@ -60,6 +60,22 @@ class DashboardViewModel @Inject constructor(
     private val _ui = MutableStateFlow(DashboardUi())
     val ui: StateFlow<DashboardUi> = _ui.asStateFlow()
 
+    /** يتجدّد عند عودة المستخدم إلى التطبيق، فيرى أثر ضبطه منطقة الهاتف فوراً. */
+    private val tzRecheck = MutableStateFlow(0L)
+    fun recheckTimeZone() { tzRecheck.value = System.currentTimeMillis() }
+
+    /** اختلاف منطقة الهاتف الزمنيّة عن منطقة الموقع (للعرض فقط)، أو null. */
+    val timeZoneMismatch: StateFlow<io.github.salehgnutux.gtsalat.domain.TimeZoneMismatch?> =
+        kotlinx.coroutines.flow.combine(settingsRepo.settings, tzRecheck) { s, _ ->
+            val lat = s.lat
+            val lon = s.lon
+            // لا حكم إلّا بإزاحةٍ معروفةٍ لهذا الموقع ولهذا اليوم.
+            if (lat == null || lon == null || s.locationTimeZoneKey != repo.locKey(lat, lon) ||
+                s.locationTzDate != java.time.LocalDate.now().toString()
+            ) null
+            else io.github.salehgnutux.gtsalat.domain.TimeZoneCheck.mismatch(s.locationTzOffsetMin, java.time.ZoneId.systemDefault())
+        }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), null)
+
     /** قسم اختصار أعلى الرئيسيّة. */
     val shortcutRoute: StateFlow<String> = settingsRepo.settings
         .map { it.homeShortcutRoute }
@@ -104,6 +120,8 @@ class DashboardViewModel @Inject constructor(
     private var ayah: io.github.salehgnutux.gtsalat.domain.DailyAyah? = null
 
     init {
+        // منطقة الموقع لمن خُزّنت جداوله قبل هذه الميزة (طلبٌ واحدٌ خفيفٌ لكلّ موقع).
+        viewModelScope.launch { runCatching { repo.ensureLocationTimeZone() } }
         viewModelScope.launch {
             val dayOfYear = LocalDate.now().dayOfYear
             azkarList = azkar.all()

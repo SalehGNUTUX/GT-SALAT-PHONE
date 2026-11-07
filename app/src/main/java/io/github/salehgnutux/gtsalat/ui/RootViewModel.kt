@@ -27,6 +27,8 @@ data class RootState(
     val homeBackgroundId: String,
     val homeBackgroundLevel: Int,
     val glassTheme: Boolean,
+    val glassBlur: Int,
+    val glassIntroShown: Boolean,
     val tourShown: Boolean,
 )
 
@@ -45,7 +47,7 @@ class RootViewModel @Inject constructor(
                 it.gradTopLight, it.gradBotLight, it.gradTopDark, it.gradBotDark,
                 it.clock24h, it.setupCompleted,
                 it.homeBackgroundEnabled, it.homeBackgroundId, it.homeBackgroundLevel,
-                it.glassTheme, it.tourShown,
+                it.glassTheme, it.glassBlur, it.glassIntroShown, it.tourShown,
             )
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)

@@ -60,6 +60,13 @@ data class AppSettings(
     val homeBackgroundEnabled: Boolean = true,
     val homeBackgroundId: String = "hassan",
     val homeBackgroundLevel: Int = 1,
+    val locationTimeZone: String = "",           // اسم منطقة الموقع من الخادم (للعرض)
+    val locationTzOffsetMin: Int = 0,            // إزاحة الموقع عن التوقيت العالميّ كما يعتمدها الخادم
+    val locationTzDate: String = "",             // يوم تلك الإزاحة (تتغيّر بالتوقيت الصيفيّ ونحوه)
+    val locationTimeZoneKey: String = "",        // مفتاح الموقع الذي جاءت معه
+    val timetableCacheVersion: Int = 0,          // إصدار طريقة تخزين المواقيت (لمسح القديم مرّةً)
+    val glassBlur: Int = 30,                     // شدّة تغبيش الخلفيّة خلف الزجاج: 0 حادّة · 100 تمويهٌ كامل
+    val glassIntroShown: Boolean = false,         // نافذة التعريف بالسمة الزجاجيّة (مرّةً بعد التثبيت أو التحديث)
     val glassTheme: Boolean = true,              // السمة الزجاجيّة
     val homeShortcutRoute: String = "radios",    // اختصار أعلى الرئيسيّة (أحد أقسام «المزيد»)
     val tourShown: Boolean = false,              // هل عُرض الشرح المرئيّ؟

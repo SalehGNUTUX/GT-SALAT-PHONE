@@ -32,6 +32,14 @@ class RadioService : Service() {
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private val sleepRunnable = Runnable { stopEverything() }
 
+    // إعادة الاتّصال: انقطاعٌ لحظيٌّ للشبكة شائعٌ والشاشة مطفأة (نوم الواي فاي، أو التحوّل إلى البيانات)،
+    // وكان أيّ خطأٍ يوقف البثّ نهائيّاً. نعيد المحاولة بتباعدٍ متزايد، وفور عودة الشبكة.
+    private var retries = 0
+    private var reconnectPending = false
+    private val reconnectRunnable = Runnable { reconnectPending = false; play() }
+    private var reconnectWake: PowerManager.WakeLock? = null
+    private var netCallback: android.net.ConnectivityManager.NetworkCallback? = null
+
     private val attrs = AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_MEDIA)
         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
@@ -60,6 +68,7 @@ class RadioService : Service() {
         requestFocus()
         acquireWifiLock()   // يبقي الواي‑فاي حيّاً للبثّ والشاشة مغلقة
         // المؤقّت يبقى عند الانتقال بين الإذاعات.
+        clearReconnect()
         RadioPlayback.update { RadioState(active = true, name = name, url = url, isPlaying = true, loading = true, sleepUntil = it.sleepUntil) }
         play()
         return START_STICKY
@@ -72,8 +81,17 @@ class RadioService : Service() {
             setWakeMode(this@RadioService, PowerManager.PARTIAL_WAKE_LOCK)
             val ok = runCatching { setDataSource(url) }.isSuccess
             if (!ok) { stopEverything(); return }
-            setOnPreparedListener { start(); RadioPlayback.update { it.copy(loading = false, isPlaying = true) }; updateNotification() }
-            setOnErrorListener { _, _, _ -> stopEverything(); true }
+            setOnPreparedListener { retries = 0; releaseReconnectWake(); start(); RadioPlayback.update { it.copy(loading = false, isPlaying = true) }; updateNotification() }
+            setOnErrorListener { _, what, extra -> scheduleReconnect("خطأ $what/$extra"); true }
+            // البثّ الحيّ لا ينتهي؛ انتهاؤه يعني انقطاع الاتّصال.
+            setOnCompletionListener { scheduleReconnect("انقطع البثّ") }
+            setOnInfoListener { _, what, _ ->
+                when (what) {
+                    MediaPlayer.MEDIA_INFO_BUFFERING_START -> RadioPlayback.update { it.copy(loading = true) }
+                    MediaPlayer.MEDIA_INFO_BUFFERING_END -> RadioPlayback.update { it.copy(loading = false) }
+                }
+                false
+            }
             prepareAsync()
         }
     }
@@ -87,6 +105,61 @@ class RadioService : Service() {
         val delay = minutes * 60_000L
         handler.postDelayed(sleepRunnable, delay)
         RadioPlayback.update { it.copy(sleepUntil = android.os.SystemClock.elapsedRealtime() + delay) }
+    }
+
+    private fun scheduleReconnect(reason: String) {
+        if (!RadioPlayback.state.value.active || reconnectPending) return
+        releasePlayer()
+        if (retries >= MAX_RETRIES) {
+            io.github.salehgnutux.gtsalat.alarm.AlarmLog.add(this, "الإذاعة توقّفت بعد $MAX_RETRIES محاولات", detail = reason)
+            stopEverything()
+            return
+        }
+        retries++
+        io.github.salehgnutux.gtsalat.alarm.AlarmLog.add(this, "الإذاعة: إعادة اتّصال ($retries)", detail = reason)
+        RadioPlayback.update { it.copy(loading = true) }
+        // قفل استيقاظٍ قصير، وإلّا نام المعالج والشاشة مطفأة فلم تأتِ المحاولة.
+        runCatching {
+            if (reconnectWake == null) {
+                reconnectWake = (getSystemService(POWER_SERVICE) as PowerManager)
+                    .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "gtsalat:radio-reconnect").apply { setReferenceCounted(false) }
+            }
+            reconnectWake?.acquire(90_000L)
+        }
+        reconnectPending = true
+        handler.postDelayed(reconnectRunnable, minOf(30_000L, 1_000L shl retries))
+        registerNetworkCallback()
+    }
+
+    /** عودة الشبكة تختصر الانتظار: نعيد الاتّصال فوراً. */
+    private fun registerNetworkCallback() {
+        if (netCallback != null) return
+        val cm = getSystemService(CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return
+        val cb = object : android.net.ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) {
+                handler.post {
+                    if (reconnectPending) {
+                        handler.removeCallbacks(reconnectRunnable)
+                        reconnectPending = false
+                        play()
+                    }
+                }
+            }
+        }
+        if (runCatching { cm.registerDefaultNetworkCallback(cb) }.isSuccess) netCallback = cb
+    }
+
+    private fun releaseReconnectWake() { runCatching { reconnectWake?.let { if (it.isHeld) it.release() } } }
+
+    private fun clearReconnect() {
+        handler.removeCallbacks(reconnectRunnable)
+        reconnectPending = false
+        retries = 0
+        releaseReconnectWake()
+        netCallback?.let { cb ->
+            runCatching { (getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager).unregisterNetworkCallback(cb) }
+        }
+        netCallback = null
     }
 
     private fun toggle() { if (isPlaying()) pause() else resume() }
@@ -132,11 +205,12 @@ class RadioService : Service() {
 
     private fun stopEverything() {
         handler.removeCallbacks(sleepRunnable)
+        clearReconnect()
         releasePlayer(); abandonFocus(); releaseWifiLock(); RadioPlayback.reset()
         stopForeground(STOP_FOREGROUND_REMOVE); stopSelf()
     }
 
-    override fun onDestroy() { handler.removeCallbacks(sleepRunnable); releasePlayer(); abandonFocus(); releaseWifiLock(); super.onDestroy() }
+    override fun onDestroy() { handler.removeCallbacks(sleepRunnable); clearReconnect(); releasePlayer(); abandonFocus(); releaseWifiLock(); super.onDestroy() }
 
     private fun stopPendingIntent(): PendingIntent {
         val i = Intent(this, RadioService::class.java).setAction(ACTION_STOP)
@@ -147,6 +221,7 @@ class RadioService : Service() {
         const val ACTION_START = "io.github.salehgnutux.gtsalat.RADIO_START"
         const val ACTION_STOP = "io.github.salehgnutux.gtsalat.RADIO_STOP"
         const val ACTION_TOGGLE = "io.github.salehgnutux.gtsalat.RADIO_TOGGLE"
+        private const val MAX_RETRIES = 8
         const val ACTION_SLEEP = "io.github.salehgnutux.gtsalat.RADIO_SLEEP"
         const val EXTRA_MINUTES = "minutes"
         const val EXTRA_NAME = "name"

@@ -27,6 +27,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
+    private val customBackground: io.github.salehgnutux.gtsalat.data.CustomBackgroundStore,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context,
     private val updateRepo: io.github.salehgnutux.gtsalat.data.UpdateRepository,
     @ApplicationContext private val context: Context,
     private val settingsRepo: SettingsRepository,
@@ -213,6 +215,24 @@ class SettingsViewModel @Inject constructor(
     fun setHomeBackgroundEnabled(v: Boolean) = viewModelScope.launch { settingsRepo.setHomeBackgroundEnabled(v) }
     fun selectHomeBackground(id: String) = viewModelScope.launch { settingsRepo.selectHomeBackground(id) }
     fun setHomeBackgroundLevel(v: Int) = viewModelScope.launch { settingsRepo.setHomeBackgroundLevel(v) }
+    private val _customBg = kotlinx.coroutines.flow.MutableStateFlow(io.github.salehgnutux.gtsalat.data.CustomBackgroundStore.exists(appContext))
+    val customBackgroundAvailable: StateFlow<Boolean> = _customBg
+    private val _importingBg = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val importingBackground: StateFlow<Boolean> = _importingBg
+    private val _bgMessage = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val backgroundMessage: StateFlow<String?> = _bgMessage
+
+    /** يستورد صورةً من الهاتف ويجعلها الخلفيّة. */
+    fun importCustomBackground(uri: android.net.Uri) = viewModelScope.launch {
+        _importingBg.value = true
+        val ok = customBackground.import(uri)
+        _importingBg.value = false
+        _customBg.value = io.github.salehgnutux.gtsalat.data.CustomBackgroundStore.exists(appContext)
+        if (ok) settingsRepo.selectHomeBackground(io.github.salehgnutux.gtsalat.domain.HomeBackgrounds.CUSTOM_ID)
+        _bgMessage.value = if (ok) "✓ صارت صورتك خلفيّة الرئيسيّة." else "تعذّر فتح الصورة. جرّب صورةً أخرى."
+    }
+
+    fun setGlassBlur(v: Int) = viewModelScope.launch { settingsRepo.setGlassBlur(v) }
     fun setGlassTheme(v: Boolean) = viewModelScope.launch { settingsRepo.setGlassTheme(v) }
     fun setHomeShortcut(route: String) = viewModelScope.launch { settingsRepo.setHomeShortcut(route) }
     fun replayTour() = viewModelScope.launch { settingsRepo.setTourShown(false) }

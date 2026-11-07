@@ -105,6 +105,9 @@ fun AppRoot(
     gradientBottom: Int = 0,
     homeBackgroundId: String? = null,
     homeBackgroundLevel: Int = 1,
+    glassBlur: Int = 30,
+    glassTheme: Boolean = true,
+    glassIntroShown: Boolean = true,
     tourShown: Boolean = true,
     deepLink: String? = null,
     onDeepLinkHandled: () -> Unit = {},
@@ -202,13 +205,15 @@ fun AppRoot(
 
     // الشرح الحركيّ: يبدأ في الرئيسيّة بعد الرسائل المعروضة، مرّةً عند التثبيت ومتى طُلب من الإعدادات.
     val tour = remember { io.github.salehgnutux.gtsalat.ui.tour.TourController() }
-    val tourActive = onDashboard && !tourShown && !showWhatsNew && !(permDue && permsMissing)
+    // نافذة التعريف بالسمة الزجاجيّة أوّلاً، ثمّ الشرح الحركيّ، فلا يتداخلان.
+    val glassIntroActive = onDashboard && !glassIntroShown && !showWhatsNew && !(permDue && permsMissing)
+    val tourActive = onDashboard && !tourShown && glassIntroShown && !showWhatsNew && !(permDue && permsMissing)
     LaunchedEffect(tourShown) { if (!tourShown) tour.stepIndex = 0 }
     LaunchedEffect(tourActive) { tour.active = tourActive }
     val blurredBitmap = io.github.salehgnutux.gtsalat.ui.screens.rememberBlurredBitmap(homeBackgroundId.takeIf { glass })
     val frostScrim = cs.background.copy(alpha = io.github.salehgnutux.gtsalat.ui.screens.homeScrimTop(homeBackgroundLevel))
-    val frosted = remember(blurredBitmap, frostScrim) {
-        blurredBitmap?.let { io.github.salehgnutux.gtsalat.ui.screens.FrostedBackdrop(it, frostScrim) }
+    val frosted = remember(blurredBitmap, frostScrim, glassBlur) {
+        blurredBitmap?.let { io.github.salehgnutux.gtsalat.ui.screens.FrostedBackdrop(it, frostScrim, glassBlur / 100f) }
     }
     // القارئ النصّيّ والمصحف بلا صورة: القراءة الطويلة أريح على خلفيّةٍ هادئة.
     val readingRoute = currentDest?.route?.let { it.startsWith("quran_read") || it == "quran_mushaf" } == true
@@ -222,7 +227,7 @@ fun AppRoot(
             val lastBlurId = remember { mutableStateOf(homeBackgroundId) }
             if (homeBackgroundId != null) lastBlurId.value = homeBackgroundId
             lastBlurId.value?.let {
-                io.github.salehgnutux.gtsalat.ui.screens.BlurredBackdrop(it, Modifier.fillMaxSize())
+                io.github.salehgnutux.gtsalat.ui.screens.BlurredBackdrop(it, glassBlur / 100f, Modifier.fillMaxSize())
             }
         }
         // صورة الرئيسيّة خلف الشاشة كلّها (تحت شريط الحالة أيضاً)، وتتلاشى عند مغادرة الرئيسيّة.
@@ -402,6 +407,20 @@ fun AppRoot(
                 }
             }
         }
+        }
+        if (glassIntroActive) {
+            io.github.salehgnutux.gtsalat.ui.GlassIntroOverlay(
+                saved = glassTheme,
+                onConfirm = { whatsNewVm.finishGlassIntro(it) },
+                onConfirmAndOpenSettings = {
+                    whatsNewVm.finishGlassIntro(it, openSection = "خلفيّة الرئيسيّة")
+                    nav.navigate(Dest.SETTINGS.route) {
+                        popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                    }
+                },
+                onCancel = { whatsNewVm.finishGlassIntro(null) },
+            )
         }
         // طبقة الشرح الحركيّ فوق الواجهة الحقيقيّة.
         if (tourActive) {

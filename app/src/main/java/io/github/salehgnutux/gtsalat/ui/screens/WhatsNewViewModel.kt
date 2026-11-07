@@ -22,6 +22,13 @@ class WhatsNewViewModel @Inject constructor(
         .map { it.lastWhatsNewCode != BuildConfig.VERSION_CODE }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    /** يحفظ اختيار السمة الزجاجيّة من نافذة التعريف، ويفتح قسم الإعدادات المطلوب إن طُلب. */
+    fun finishGlassIntro(glass: Boolean?, openSection: String? = null) = viewModelScope.launch {
+        if (glass != null) settingsRepo.setGlassTheme(glass)
+        if (openSection != null) settingsRepo.setSettingsOpenSection(openSection)
+        settingsRepo.setGlassIntroShown(true)
+    }
+
     fun markTourShown() = viewModelScope.launch { settingsRepo.setTourShown(true) }
 
     fun markShown() = viewModelScope.launch { settingsRepo.setLastWhatsNewCode(BuildConfig.VERSION_CODE) }

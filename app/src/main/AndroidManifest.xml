@@ -108,6 +108,12 @@
 
         <!-- خدمة تنزيل التحديث (dataSync) في نكهة foss وحدها: src/foss/AndroidManifest.xml -->
 
+        <!-- خدمة تنزيلات القرآن (مقدّمة، dataSync): تُبقي التنزيل حيّاً بعد مغادرة القسم أو الخروج -->
+        <service
+            android:name=".data.QuranDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <!-- مُستقبِل إطلاق الإنذار عند دخول وقت الصلاة -->
         <receiver
             android:name=".alarm.PrayerAlarmReceiver"
