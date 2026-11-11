@@ -61,8 +61,18 @@ class QuranRepository @Inject constructor(
                     val body = resp.body?.string().orEmpty()
                     if (body.isBlank()) emptyList()
                     else json.decodeFromString<Mp3Response>(body).reciters.flatMap { r ->
-                        r.moshaf.filter { it.server.isNotBlank() }.map { m ->
-                            SurahReciter("${r.id}-${m.id}", r.name, classifyRiwaya(m.name), m.server)
+                        val list = r.moshaf.filter { it.server.isNotBlank() }
+                        // قارئٌ بأكثر من مصحف (الطبلاوي: مرتّل ومجوّد) كان يظهر باسمٍ مكرّرٍ بلا تمييز:
+                        // يُلحَق بالاسم نوع المصحف، أو اسمه كاملاً إن تكرّر النوع (حفص وورش مرتّلان مثلاً).
+                        val styles = list.map { moshafStyle(it.name) }
+                        val unique = styles.toSet().size == styles.size
+                        list.mapIndexed { i, m ->
+                            val name = when {
+                                list.size == 1 -> r.name
+                                unique && styles[i].isNotBlank() -> "${r.name} (${styles[i]})"
+                                else -> "${r.name} (${m.name})"
+                            }
+                            SurahReciter("${r.id}-${m.id}", name, classifyRiwaya(m.name), m.server)
                         }
                     }
                 }
@@ -73,6 +83,14 @@ class QuranRepository @Inject constructor(
             .sortedWith(compareBy({ order[it.riwaya] ?: 9 }, { it.ar }))
         onlineRecitersCache = result
         return result
+    }
+
+    /** نوع المصحف من اسمه في mp3quran («حفص عن عاصم - المصحف المجود» ← «مجوّد»). */
+    private fun moshafStyle(moshafName: String): String = when {
+        moshafName.contains("مجود") -> "مجوّد"
+        moshafName.contains("مرتل") -> "مرتّل"
+        moshafName.contains("معلم") -> "معلّم"
+        else -> moshafName.substringAfterLast(" - ", "").removePrefix("المصحف ").trim()
     }
 
     private fun classifyRiwaya(moshafName: String): String = when {
