@@ -1,5 +1,26 @@
 package io.github.salehgnutux.gtsalat.ui.screens
 
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Alarm
+import androidx.compose.material.icons.outlined.VerifiedUser
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Wallpaper
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.Backup
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.LibraryBooks
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.text.style.TextAlign
 import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
@@ -142,10 +163,26 @@ fun SettingsScreen(onShowTour: () -> Unit = {}, vm: SettingsViewModel = hiltView
     val openSection: String? = settings.settingsOpenSection.ifBlank { null }
     fun toggle(title: String) { vm.setSettingsSection(if (openSection == title) "" else title) }
 
+    // شكل البطاقات (الافتراضيّ منذ 2.2): شبكةٌ تفتح كلّ بطاقةٍ منها صفحة قسمها. الصفحة المفتوحة محلّيّة
+    // (تُحفَظ مع تدوير الشاشة)، فالعودة إلى الإعدادات تبدأ من الشبكة.
+    val cards = settings.settingsCards
+    var page by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
+    androidx.activity.compose.BackHandler(enabled = cards && page != null) { page = null }
+    // قسمٌ طُلب فتحه من خارج الإعدادات (ما الجديد، رسالة الأذونات) يُفتَح صفحتُه مرّةً ثمّ يُستهلَك الطلب.
+    val requested by io.github.salehgnutux.gtsalat.ui.UiEvents.openSettingsPage.collectAsStateWithLifecycle()
+    androidx.compose.runtime.LaunchedEffect(requested) {
+        requested?.let { if (cards) page = it; io.github.salehgnutux.gtsalat.ui.UiEvents.openSettingsPage.value = null }
+    }
+    val scroll = rememberScrollState()
+    androidx.compose.runtime.LaunchedEffect(page, cards) { scroll.scrollTo(0) }
+
+    androidx.compose.runtime.CompositionLocalProvider(LocalSettingsPage provides SettingsPageMode(cards, page)) {
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        Modifier.fillMaxSize().verticalScroll(scroll).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        if (cards && page == null) SettingsCardsGrid(onOpen = { page = it })
+        if (cards && page != null) SettingsPageHeader(page!!, onBack = { page = null })
         SectionCard("الموقع وطريقة الحساب", openSection == "الموقع وطريقة الحساب", { toggle("الموقع وطريقة الحساب") }) {
             InfoRow("المنطقة الزمنيّة للهاتف", "\u2066" + io.github.salehgnutux.gtsalat.domain.TimeZoneCheck.label(java.time.ZoneId.systemDefault().rules.getOffset(java.time.Instant.now())) + "\u2069")
             InfoRow("الموقع الحاليّ", listOf(settings.city, settings.country).filter { it.isNotBlank() }.joinToString("، ").ifBlank { "غير محدّد" })
@@ -416,6 +453,22 @@ fun SettingsScreen(onShowTour: () -> Unit = {}, vm: SettingsViewModel = hiltView
 
         SectionCard("المظهر", openSection == "المظهر", { toggle("المظهر") }) {
             SwitchRow("السمة الزجاجيّة", settings.glassTheme) { vm.setGlassTheme(it) }
+            LabeledRow("شكل الإعدادات") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(settings.settingsCards, { vm.setSettingsCards(true) }, { Text("بطاقات") })
+                    FilterChip(!settings.settingsCards, {
+                        // يبقى «المظهر» مفتوحاً بعد التبديل فلا يضيع موضع المستخدم.
+                        vm.setSettingsSection("المظهر"); vm.setSettingsCards(false)
+                    }, { Text("مطويّات") })
+                }
+            }
+            // يُقلَب أيضاً بلمسةٍ على البطاقة نفسها في الرئيسيّة.
+            LabeledRow("مواقيت الرئيسيّة") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(settings.homeTimesHorizontal, { vm.setHomeTimesHorizontal(true) }, { Text("صفٌّ عرضيّ") })
+                    FilterChip(!settings.homeTimesHorizontal, { vm.setHomeTimesHorizontal(false) }, { Text("قائمةٌ طوليّة") })
+                }
+            }
             // اختصار أعلى الرئيسيّة (يُغيَّر أيضاً بضغطةٍ مطوّلةٍ على أيقونته هناك).
             var pickShortcut by remember { mutableStateOf(false) }
             val shortcut = AppFeatures.byRoute(settings.homeShortcutRoute)
@@ -454,9 +507,9 @@ fun SettingsScreen(onShowTour: () -> Unit = {}, vm: SettingsViewModel = hiltView
             }
             LabeledRow("نمط ودجت الساعة والتقدّم") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(settings.widgetProgressStyle == "day", { vm.setWidgetProgressStyle("day") }, { Text("يوميّ") })
                     FilterChip(settings.widgetProgressStyle == "classic", { vm.setWidgetProgressStyle("classic") }, { Text("كلاسيكيّ") })
                     FilterChip(settings.widgetProgressStyle == "center", { vm.setWidgetProgressStyle("center") }, { Text("مركزيّ") })
-                    FilterChip(settings.widgetProgressStyle == "day", { vm.setWidgetProgressStyle("day") }, { Text("يوميّ") })
                 }
             }
         }
@@ -565,6 +618,7 @@ fun SettingsScreen(onShowTour: () -> Unit = {}, vm: SettingsViewModel = hiltView
                 LinkRow(src.name, src.note) { openUrl(context, src.url) }
             }
         }
+    }
     }
 
     if (showWhatsNew) WhatsNewDialog(onDismiss = { showWhatsNew = false })
@@ -740,8 +794,18 @@ private fun SectionCard(
     title: String,
     expanded: Boolean,
     onToggle: () -> Unit,
+    key: String = title,
     content: @Composable () -> Unit,
 ) {
+    // شكل البطاقات: لا يُرسَم القسم في الشبكة، ويُرسَم مفتوحاً بلا ترويسة طيٍّ في صفحته.
+    val mode = LocalSettingsPage.current
+    if (mode.cards) {
+        if (mode.page != key) return
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
+        }
+        return
+    }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
@@ -784,7 +848,7 @@ private fun ReliabilityCard(expanded: Boolean, onToggle: () -> Unit, onTest: () 
     val fullScreenOk = remember(refreshKey) { canUseFullScreenIntent(context) }
     val allOk = notifOk && exactOk && batteryOk && fullScreenOk
 
-    SectionCard(if (allOk) "موثوقيّة التنبيهات ✓" else "موثوقيّة التنبيهات", expanded, onToggle) {
+    SectionCard(if (allOk) "موثوقيّة التنبيهات ✓" else "موثوقيّة التنبيهات", expanded, onToggle, key = "موثوقيّة التنبيهات") {
         Text(
             "الصلاحيات للعمل في الخلفيّة — تضمن وصول الأذان والأذكار في وقتها حتى والتطبيق مغلق:",
             style = MaterialTheme.typography.bodyMedium,
@@ -1308,5 +1372,109 @@ private fun MethodDropdown(methodId: Int, onSelect: (Int) -> Unit) {
                 )
             }
         }
+    }
+}
+
+
+/** وضع عرض الإعدادات: بطاقاتٌ (`page` = القسم المفتوح، أو null للشبكة) أو مطويّات. */
+private data class SettingsPageMode(val cards: Boolean, val page: String?)
+
+private val LocalSettingsPage = androidx.compose.runtime.staticCompositionLocalOf { SettingsPageMode(false, null) }
+
+/** بطاقة قسمٍ في شبكة الإعدادات. المفتاح يطابق عنوان [SectionCard] حرفيّاً. */
+private data class SettingsCategory(
+    val key: String,
+    val subtitle: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+)
+
+private val SETTINGS_CATEGORIES = listOf(
+    SettingsCategory("الموقع وطريقة الحساب", "المدينة والطريقة والمذهب", Icons.Outlined.LocationOn),
+    SettingsCategory("الأذان والتنبيهات", "نوع الأذان والصوت والتنبيه المسبق", Icons.Outlined.NotificationsActive),
+    SettingsCategory("التذكيرات اليوميّة", "آية اليوم والوِرد والأذكار والسُّنن", Icons.Outlined.Alarm),
+    SettingsCategory("موثوقيّة التنبيهات", "صلاحيّات العمل في الخلفيّة", Icons.Outlined.VerifiedUser),
+    SettingsCategory("التقويم والتواريخ", "الهجريّ والميلاديّ ونظام الوقت", Icons.Outlined.CalendarMonth),
+    SettingsCategory("خلفيّة الرئيسيّة", "المساجد وصورتك والتغبيش", Icons.Outlined.Wallpaper),
+    SettingsCategory("المظهر", "السمة والزجاج والودجت", Icons.Outlined.Palette),
+    SettingsCategory("عامّ", "طريقة الخروج من التطبيق", Icons.Outlined.Tune),
+    SettingsCategory("تنزيل المحتوى", "القرآن المسموع والمصحف", Icons.Outlined.CloudDownload),
+    SettingsCategory("النسخ الاحتياطيّ والمشاركة", "تصدير الإعدادات واستيرادها", Icons.Outlined.Backup),
+    SettingsCategory("مشاركة التطبيق", "رابطٌ أو ملفّ التثبيت", Icons.Outlined.Share),
+    SettingsCategory("حول", "النسخة وما الجديد والشرح والتحديثات", Icons.Outlined.Info),
+    SettingsCategory("المصادر المعتمَدة", "المشاريع الحرّة التي أثرته", Icons.Outlined.LibraryBooks),
+)
+
+/**
+ * شبكة الإعدادات: بطاقتان في كلّ صفّ، لكلٍّ أيقونةٌ في دائرةٍ ملوّنة (بأسلوب بطاقات «المزيد») وعنوانٌ ووصفٌ قصير.
+ * بطاقة «موثوقيّة التنبيهات» تحمل شارة حالتها، فيُرى نقصُ صلاحيّةٍ دون فتحها.
+ */
+@Composable
+private fun SettingsCardsGrid(onOpen: (String) -> Unit) {
+    val context = LocalContext.current
+    val reliable = remember {
+        notificationsOk(context) && canScheduleExact(context) && isBatteryUnrestricted(context) && canUseFullScreenIntent(context)
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SETTINGS_CATEGORIES.chunked(2).forEach { row ->
+            Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                row.forEach { c ->
+                    val badge = if (c.key == "موثوقيّة التنبيهات") reliable else null
+                    SettingsCategoryCard(c, badge, Modifier.weight(1f).fillMaxHeight()) { onOpen(c.key) }
+                }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsCategoryCard(c: SettingsCategory, ok: Boolean?, modifier: Modifier, onClick: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    Card(modifier.clickable(onClickLabel = "فتح ${c.key}", onClick = onClick)) {
+        Box(Modifier.fillMaxWidth()) {
+            Column(
+                Modifier.fillMaxWidth().padding(vertical = 18.dp, horizontal = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(Modifier.size(52.dp).clip(CircleShape).background(cs.primaryContainer), contentAlignment = Alignment.Center) {
+                    Icon(c.icon, contentDescription = null, tint = cs.onPrimaryContainer)
+                }
+                Text(c.key, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, color = cs.onSurface)
+                Text(c.subtitle, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, color = cs.outline, maxLines = 2)
+            }
+            if (ok != null) {
+                // شارة الحالة: علامةٌ خضراء إن اكتملت الصلاحيّات، وتنبيهٌ ذهبيٌّ إن نقص شيء.
+                Icon(
+                    if (ok) Icons.Filled.CheckCircle else Icons.Filled.Error,
+                    contentDescription = if (ok) "الصلاحيّات مكتملة" else "صلاحيّةٌ ناقصة",
+                    tint = if (ok) cs.primary else cs.tertiary,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(10.dp).size(20.dp),
+                )
+            }
+        }
+    }
+}
+
+/** ترويسة صفحة القسم في شكل البطاقات: زرّ الرجوع إلى الشبكة، وأيقونة القسم واسمه. */
+@Composable
+private fun SettingsPageHeader(key: String, onBack: () -> Unit) {
+    val c = SETTINGS_CATEGORIES.firstOrNull { it.key == key }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onBack) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "العودة إلى الإعدادات", tint = MaterialTheme.colorScheme.primary)
+        }
+        if (c != null) {
+            Box(Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+                Icon(c.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(20.dp))
+            }
+        }
+        Text(
+            key,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 10.dp),
+        )
     }
 }

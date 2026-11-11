@@ -1,5 +1,7 @@
 package io.github.salehgnutux.gtsalat.ui.screens
 
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -106,12 +108,13 @@ fun RadiosScreen(onBack: () -> Unit, vm: RadiosViewModel = hiltViewModel()) {
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             SubScreenHeader("الإذاعات", onBack, actions = {
+                // المؤقّت يبقى في مكانه: أيقونةٌ بلا مؤقّت، وحلقةُ عدٍّ تنازليٍّ حين يُضبَط (لا يُزاحم اسم الإذاعة في الشريط).
                 IconButton(onClick = { showSleepTimer = true }) {
-                    Icon(
-                        Icons.Outlined.Timer,
-                        "مؤقّت إيقاف البثّ",
-                        tint = if (sleepPlay.sleepUntil > 0L) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
-                    )
+                    if (sleepPlay.sleepUntil > 0L) {
+                        SleepTimerRing(sleepPlay.sleepUntil, sleepPlay.sleepTotal)
+                    } else {
+                        Icon(Icons.Outlined.Timer, "مؤقّت إيقاف البثّ", tint = MaterialTheme.colorScheme.primary)
+                    }
                 }
                 IconButton(onClick = { confirmResetAll = true }) { Icon(Icons.Filled.Refresh, "إعادة الإذاعات الافتراضيّة", tint = MaterialTheme.colorScheme.primary) }
                 IconButton(onClick = { showAdd = true }) { Icon(Icons.Filled.Add, "إضافة إذاعة", tint = MaterialTheme.colorScheme.primary) }
@@ -229,12 +232,61 @@ private fun rememberSleepMinutesLeft(sleepUntil: Long): Int {
     return left
 }
 
+/**
+ * حلقة مؤقّت الإيقاف: دائرةٌ بحافّةٍ ذهبيّة، وفي داخلها قطاعٌ ممتلئٌ يتناقص بانسيابٍ مع الوقت بدءاً من الأعلى،
+ * والمتبقّي في وسطها — دقائق، ثمّ ثوانٍ في الدقيقة الأخيرة. تحلّ محلّ أيقونة المؤقّت في الشريط العلويّ.
+ */
 @Composable
-private fun RadioSleepRemaining(sleepUntil: Long) {
-    if (sleepUntil <= 0L) return
-    val left = rememberSleepMinutesLeft(sleepUntil)
-    Icon(Icons.Outlined.Timer, "مؤقّت الإيقاف", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
-    Text("$left دقيقة", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.padding(start = 3.dp))
+private fun SleepTimerRing(sleepUntil: Long, total: Long) {
+    var remaining by remember { mutableStateOf(0L) }
+    androidx.compose.runtime.LaunchedEffect(sleepUntil) {
+        while (true) {
+            remaining = (sleepUntil - android.os.SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+            if (remaining == 0L) break
+            kotlinx.coroutines.delay(1_000L)
+        }
+    }
+    val fraction = if (total > 0L) (remaining.toFloat() / total).coerceIn(0f, 1f) else 0f
+    // انتقالٌ ناعمٌ بين نبضات الثانية، فلا يقفز القطاع.
+    val animated by androidx.compose.animation.core.animateFloatAsState(
+        fraction, androidx.compose.animation.core.tween(900, easing = androidx.compose.animation.core.LinearEasing), label = "sleepRing",
+    )
+    val gold = MaterialTheme.colorScheme.tertiary
+    val track = MaterialTheme.colorScheme.outlineVariant
+    val lastMinute = remaining in 1L until 60_000L
+    val label = if (lastMinute) "${(remaining + 999L) / 1000L}" else "${(remaining + 59_999L) / 60_000L}"
+    val desc = if (lastMinute) "يتوقّف البثّ بعد $label ثانية" else "يتوقّف البثّ بعد $label دقيقة"
+    Box(
+        Modifier.size(36.dp).semantics { contentDescription = desc },
+        contentAlignment = Alignment.Center,
+    ) {
+        androidx.compose.foundation.Canvas(Modifier.matchParentSize()) {
+            val edge = 2.dp.toPx()
+            val gap = 2.5.dp.toPx()
+            // الحافّة: مسارٌ خافتٌ كامل، والذهبيّ فوقه بقدر المتبقّي.
+            drawCircle(track, radius = size.minDimension / 2 - edge / 2, style = androidx.compose.ui.graphics.drawscope.Stroke(edge))
+            drawArc(
+                gold, startAngle = -90f, sweepAngle = 360f * animated, useCenter = false,
+                topLeft = androidx.compose.ui.geometry.Offset(edge / 2, edge / 2),
+                size = androidx.compose.ui.geometry.Size(size.width - edge, size.height - edge),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(edge, cap = androidx.compose.ui.graphics.StrokeCap.Round),
+            )
+            // الداخل: قطاعٌ ممتلئٌ يتناقص مع العدّ.
+            val inset = edge + gap
+            drawArc(
+                gold.copy(alpha = 0.24f), startAngle = -90f, sweepAngle = 360f * animated, useCenter = true,
+                topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
+                size = androidx.compose.ui.geometry.Size(size.width - inset * 2, size.height - inset * 2),
+            )
+        }
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = gold,
+            maxLines = 1,
+        )
+    }
 }
 
 /** مؤقّت إيقاف البثّ: 15 أو 30 أو 45 دقيقة، أو مدّةٌ تُكتب يدويّاً. */
@@ -332,7 +384,6 @@ fun RadioMiniPlayer(onOpen: () -> Unit, vm: RadiosViewModel = hiltViewModel()) {
                     color = onC,
                     maxLines = 1,
                 )
-                RadioSleepRemaining(play.sleepUntil)
             }
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),

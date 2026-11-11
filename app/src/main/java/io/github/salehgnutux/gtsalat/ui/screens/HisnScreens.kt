@@ -150,7 +150,7 @@ fun HisnCategoryScreen(onBack: () -> Unit, vm: HisnCategoryViewModel = hiltViewM
     val done = remaining.count { it == 0 }
     val total = items.size
 
-    val cards by androidx.hilt.navigation.compose.hiltViewModel<ThemeToggleViewModel>().adhkarCardView.collectAsStateWithLifecycle()
+    val cards by androidx.hilt.navigation.compose.hiltViewModel<ThemeToggleViewModel>().adhkarSessionCards.collectAsStateWithLifecycle()
     val pager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { items.size })
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
@@ -164,7 +164,7 @@ fun HisnCategoryScreen(onBack: () -> Unit, vm: HisnCategoryViewModel = hiltViewM
                 Icon(Icons.Filled.Refresh, contentDescription = null)
                 Text("تصفير")
             }
-            AdhkarViewToggleButton()
+            AdhkarViewToggleButton(session = true)
         })
         if (total > 0) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {

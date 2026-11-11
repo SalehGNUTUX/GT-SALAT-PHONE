@@ -52,7 +52,7 @@ fun AdhkarSessionScreen(onBack: () -> Unit, vm: AdhkarSessionViewModel = hiltVie
     val title = if (vm.isEvening) "أذكار المساء" else "أذكار الصباح"
     val doneCount = remaining.count { it == 0 }
     val total = vm.items.size
-    val cards by androidx.hilt.navigation.compose.hiltViewModel<ThemeToggleViewModel>().adhkarCardView.collectAsStateWithLifecycle()
+    val cards by androidx.hilt.navigation.compose.hiltViewModel<ThemeToggleViewModel>().adhkarSessionCards.collectAsStateWithLifecycle()
     // حالة الـpager مرفوعةٌ للأعلى ليعيدها زرّ «تصفير» إلى البطاقة الأولى.
     val pager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { vm.items.size })
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -77,7 +77,7 @@ fun AdhkarSessionScreen(onBack: () -> Unit, vm: AdhkarSessionViewModel = hiltVie
                 Icon(Icons.Filled.Refresh, contentDescription = null)
                 Text("تصفير")
             }
-            AdhkarViewToggleButton()
+            AdhkarViewToggleButton(session = true)
         })
 
         // شريط تقدّم الجلسة

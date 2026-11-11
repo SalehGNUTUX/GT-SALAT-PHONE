@@ -65,7 +65,8 @@ data class AppSettings(
     val locationTzDate: String = "",             // يوم تلك الإزاحة (تتغيّر بالتوقيت الصيفيّ ونحوه)
     val locationTimeZoneKey: String = "",        // مفتاح الموقع الذي جاءت معه
     val timetableCacheVersion: Int = 0,          // إصدار طريقة تخزين المواقيت (لمسح القديم مرّةً)
-    val glassBlur: Int = 30,                     // شدّة تغبيش الخلفيّة خلف الزجاج: 0 حادّة · 100 تمويهٌ كامل
+    val glassBlur: Int = 30,
+    val homeTimesHorizontal: Boolean = true,     // مواقيت الرئيسيّة: صفٌّ عرضيٌّ كالودجت (افتراضيّ) أو قائمةٌ طوليّة، تُقلَب بلمسة                     // شدّة تغبيش الخلفيّة خلف الزجاج: 0 حادّة · 100 تمويهٌ كامل
     val glassIntroShown: Boolean = false,         // نافذة التعريف بالسمة الزجاجيّة (مرّةً بعد التثبيت أو التحديث)
     val glassTheme: Boolean = true,              // السمة الزجاجيّة
     val homeShortcutRoute: String = "radios",    // اختصار أعلى الرئيسيّة (أحد أقسام «المزيد»)
@@ -81,6 +82,7 @@ data class AppSettings(
     val autoUpdateLocation: Boolean = true,      // تحديث الموقع تلقائيّاً عند فتح التطبيق ودوريّاً (للمتنقّلين)
     val translateLocationNames: Boolean = false,  // ترجمة أسماء المواقع الأجنبيّة للعربيّة (الافتراضيّ: اسمُ الموقع بلغته)
     val locationHistory: List<io.github.salehgnutux.gtsalat.domain.Place> = emptyList(), // آخر 5 مواقع مكتشَفة (للعودة إليها)
+    val settingsCards: Boolean = true,            // شكل الإعدادات: بطاقاتٌ تفتح صفحاتها (افتراضيّ) أو مطويّات
     val settingsOpenSection: String = "الموقع وطريقة الحساب",  // آخر قسم إعداداتٍ مفتوح ("" = الكلّ مطويّ)
     val allowPrereleaseUpdates: Boolean = false,  // إشعارٌ عن التحديثات الاختباريّة أيضاً
     val checkUpdates: Boolean = true,             // إشعارٌ عند توفّر نسخةٍ جديدة
@@ -107,9 +109,10 @@ data class AppSettings(
     // وِرد التلاوة اليوميّ (يدويّ): بطاقةٌ اختياريّةٌ مطفأةٌ افتراضيّاً (التذكير في الإشعارات مستقلٌّ ومفعّل).
     val enableWird: Boolean = false,
     // طريقة عرض أقسام الأذكار: true = بطاقاتٌ سلايد (افتراضيّ، بأسلوب أسماء الله الحسنى)، false = قائمة.
-    val adhkarCardView: Boolean = true,
+    val adhkarCardView: Boolean = false,          // أقسام القراءة (المحتوى/التفسير/الدروس/الرقية): بطاقاتٌ أم قائمة
+    val adhkarSessionCards: Boolean = true,       // الأذكار المعدودة (الصباح/المساء/حصن المسلم): بطاقاتٌ تُنقَر وتنتقل تلقائيّاً، افتراضيّاً منذ 2.2
     // نمط ودجت الساعة/التقدّم: classic (كلاسيكيّ، الساعة يميناً) أو center (مركزيّ).
-    val widgetProgressStyle: String = "classic",
+    val widgetProgressStyle: String = "day",       // نمط ودجت الساعة والتقدّم: day (افتراضيّ منذ 2.2) | classic | center
     // بطاقات «المزيد» المفضّلة (بمفاتيح المسارات) — تصعد للأعلى بترتيبها الأصليّ.
     val favoriteFeatures: Set<String> = emptySet(),
     // الوحدة والعدد + آخر يومٍ أُتمَّ فيه + سلسلة الأيّام المتتالية.

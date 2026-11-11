@@ -12,6 +12,7 @@ data class RadioState(
     val isPlaying: Boolean = false,
     val loading: Boolean = false,
     val sleepUntil: Long = 0L,   // لحظة التوقّف (elapsedRealtime)، و0 بلا مؤقّت
+    val sleepTotal: Long = 0L,   // مدّة المؤقّت كاملةً بالميلّي — لحلقة العدّ التنازليّ في الواجهة
 )
 
 object RadioPlayback {

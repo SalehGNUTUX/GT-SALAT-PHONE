@@ -29,7 +29,7 @@ data class WidgetSnapshot(
     val gregorian: String = "",      // التاريخ الميلاديّ المختصر (تحت الهجريّ)
     val remainingMillis: Long = 0L,  // المدّة المتبقّية للصلاة القادمة (لعدّاد Chronometer الحيّ)
     val use24: Boolean = true,       // نظام 24/12 ساعة (لساعة TextClock الحيّة)
-    val progressStyle: String = "classic", // نمط ودجت التقدّم: classic | center | day
+    val progressStyle: String = "day", // نمط ودجت التقدّم: day (افتراضيّ) | classic | center
     val weekday: String = "",        // اسم اليوم (للنمط اليوميّ: كبيرٌ في الوسط)
 )
 
@@ -41,7 +41,7 @@ interface WidgetEntryPoint {
     fun settingsRepository(): SettingsRepository
 }
 
-private val EMPTY = WidgetSnapshot(false, "", "", "", "", "", null, emptyList(), "", "", 0f, "", 0L, true, "classic", "")
+private val EMPTY = WidgetSnapshot(false, "", "", "", "", "", null, emptyList(), "", "", 0f, "", 0L, true, "day", "")
 
 /**
  * لقطة الودجت. المواقيت تُحسَب **محليّاً فوراً** (PrayerCalculator) فلا تعتمد على الكاش أو

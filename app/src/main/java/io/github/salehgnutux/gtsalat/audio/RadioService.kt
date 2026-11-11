@@ -69,7 +69,7 @@ class RadioService : Service() {
         acquireWifiLock()   // يبقي الواي‑فاي حيّاً للبثّ والشاشة مغلقة
         // المؤقّت يبقى عند الانتقال بين الإذاعات.
         clearReconnect()
-        RadioPlayback.update { RadioState(active = true, name = name, url = url, isPlaying = true, loading = true, sleepUntil = it.sleepUntil) }
+        RadioPlayback.update { RadioState(active = true, name = name, url = url, isPlaying = true, loading = true, sleepUntil = it.sleepUntil, sleepTotal = it.sleepTotal) }
         play()
         return START_STICKY
     }
@@ -99,12 +99,12 @@ class RadioService : Service() {
     private fun setSleepTimer(minutes: Int) {
         handler.removeCallbacks(sleepRunnable)
         if (minutes <= 0) {
-            RadioPlayback.update { it.copy(sleepUntil = 0L) }
+            RadioPlayback.update { it.copy(sleepUntil = 0L, sleepTotal = 0L) }
             return
         }
         val delay = minutes * 60_000L
         handler.postDelayed(sleepRunnable, delay)
-        RadioPlayback.update { it.copy(sleepUntil = android.os.SystemClock.elapsedRealtime() + delay) }
+        RadioPlayback.update { it.copy(sleepUntil = android.os.SystemClock.elapsedRealtime() + delay, sleepTotal = delay) }
     }
 
     private fun scheduleReconnect(reason: String) {

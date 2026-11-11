@@ -76,6 +76,7 @@ class SettingsRepository @Inject constructor(
         val GLASS_THEME = booleanPreferencesKey("glass_theme")
         val GLASS_INTRO_SHOWN = booleanPreferencesKey("glass_intro_shown")
         val GLASS_BLUR = intPreferencesKey("glass_blur")
+        val HOME_TIMES_ROW = booleanPreferencesKey("home_times_horizontal")
         val LOCATION_TZ = stringPreferencesKey("location_tz")
         val LOCATION_TZ_KEY = stringPreferencesKey("location_tz_key")
         val LOCATION_TZ_OFFSET = intPreferencesKey("location_tz_offset")
@@ -97,6 +98,7 @@ class SettingsRepository @Inject constructor(
         val TRANSLATE_LOC = booleanPreferencesKey("translate_loc_names")
         val LOCATION_HISTORY = stringPreferencesKey("location_history")
         val SETTINGS_OPEN_SECTION = stringPreferencesKey("settings_open_section")
+        val SETTINGS_CARDS = booleanPreferencesKey("settings_cards")
         val ALLOW_PRERELEASE = booleanPreferencesKey("allow_prerelease_updates")
         val CHECK_UPDATES = booleanPreferencesKey("check_updates")
         val FULLSCREEN_ADHAN = booleanPreferencesKey("fullscreen_adhan")
@@ -118,6 +120,7 @@ class SettingsRepository @Inject constructor(
         val BOOKMARKS = androidx.datastore.preferences.core.stringSetPreferencesKey("quran_bookmarks")
         val ENABLE_WIRD = booleanPreferencesKey("enable_wird")
         val ADHKAR_CARD_VIEW = booleanPreferencesKey("adhkar_card_view")
+        val ADHKAR_SESSION_CARDS = booleanPreferencesKey("adhkar_session_cards")
         val WIDGET_PROGRESS_STYLE = stringPreferencesKey("widget_progress_style")
         val FAV_FEATURES = androidx.datastore.preferences.core.stringSetPreferencesKey("favorite_features")
         val WIRD_UNIT = stringPreferencesKey("wird_goal_unit")
@@ -183,6 +186,7 @@ class SettingsRepository @Inject constructor(
             glassTheme = this[Keys.GLASS_THEME] ?: true,
             glassIntroShown = this[Keys.GLASS_INTRO_SHOWN] ?: false,
             glassBlur = (this[Keys.GLASS_BLUR] ?: 30).coerceIn(0, 100),
+            homeTimesHorizontal = this[Keys.HOME_TIMES_ROW] ?: true,
             locationTimeZone = this[Keys.LOCATION_TZ] ?: "",
             locationTimeZoneKey = this[Keys.LOCATION_TZ_KEY] ?: "",
             locationTzOffsetMin = this[Keys.LOCATION_TZ_OFFSET] ?: 0,
@@ -204,6 +208,7 @@ class SettingsRepository @Inject constructor(
             translateLocationNames = this[Keys.TRANSLATE_LOC] ?: false,
             locationHistory = this[Keys.LOCATION_HISTORY]?.let { runCatching { locJson.decodeFromString<List<io.github.salehgnutux.gtsalat.domain.Place>>(it) }.getOrNull() } ?: emptyList(),
             settingsOpenSection = this[Keys.SETTINGS_OPEN_SECTION] ?: "الموقع وطريقة الحساب",
+            settingsCards = this[Keys.SETTINGS_CARDS] ?: true,
             checkUpdates = this[Keys.CHECK_UPDATES] ?: true,
             allowPrereleaseUpdates = this[Keys.ALLOW_PRERELEASE] ?: false,
             fullScreenAdhan = this[Keys.FULLSCREEN_ADHAN] ?: true,
@@ -225,7 +230,8 @@ class SettingsRepository @Inject constructor(
             bookmarks = this[Keys.BOOKMARKS] ?: emptySet(),
             enableWird = this[Keys.ENABLE_WIRD] ?: false,
             adhkarCardView = this[Keys.ADHKAR_CARD_VIEW] ?: false,
-            widgetProgressStyle = this[Keys.WIDGET_PROGRESS_STYLE] ?: "classic",
+            adhkarSessionCards = this[Keys.ADHKAR_SESSION_CARDS] ?: true,
+            widgetProgressStyle = this[Keys.WIDGET_PROGRESS_STYLE] ?: "day",
             favoriteFeatures = this[Keys.FAV_FEATURES] ?: emptySet(),
             wirdGoalUnit = this[Keys.WIRD_UNIT] ?: "juz",
             wirdGoalCount = this[Keys.WIRD_COUNT] ?: 1,
@@ -237,6 +243,7 @@ class SettingsRepository @Inject constructor(
     /** يفعّل/يطفئ بطاقة الوِرد في القرآن (لا يمسّ تذكير الإشعارات). */
     suspend fun setEnableWird(v: Boolean) = context.dataStore.edit { it[Keys.ENABLE_WIRD] = v }
     suspend fun setAdhkarCardView(v: Boolean) = context.dataStore.edit { it[Keys.ADHKAR_CARD_VIEW] = v }
+    suspend fun setAdhkarSessionCards(v: Boolean) = context.dataStore.edit { it[Keys.ADHKAR_SESSION_CARDS] = v }
     suspend fun setWidgetProgressStyle(v: String) = context.dataStore.edit { it[Keys.WIDGET_PROGRESS_STYLE] = v }
     /** تبديل تفضيل بطاقةٍ في «المزيد» (بمفتاح مسارها). */
     suspend fun toggleFavoriteFeature(route: String) = context.dataStore.edit {
@@ -427,6 +434,7 @@ class SettingsRepository @Inject constructor(
         p[Keys.LOCATION_HISTORY] = locJson.encodeToString(next)
     }
     suspend fun setSettingsOpenSection(title: String) = context.dataStore.edit { it[Keys.SETTINGS_OPEN_SECTION] = title }
+    suspend fun setSettingsCards(v: Boolean) = context.dataStore.edit { it[Keys.SETTINGS_CARDS] = v }
     suspend fun setAllowPrereleaseUpdates(v: Boolean) = context.dataStore.edit { it[Keys.ALLOW_PRERELEASE] = v }
     suspend fun setCheckUpdates(v: Boolean) = context.dataStore.edit { it[Keys.CHECK_UPDATES] = v }
     suspend fun setFullScreenAdhan(v: Boolean) = context.dataStore.edit { it[Keys.FULLSCREEN_ADHAN] = v }
@@ -449,6 +457,7 @@ class SettingsRepository @Inject constructor(
     }
     suspend fun setTimetableCacheVersion(v: Int) = context.dataStore.edit { it[Keys.TIMETABLE_CACHE_VERSION] = v }
     suspend fun setGlassBlur(v: Int) = context.dataStore.edit { it[Keys.GLASS_BLUR] = v.coerceIn(0, 100) }
+    suspend fun setHomeTimesHorizontal(v: Boolean) = context.dataStore.edit { it[Keys.HOME_TIMES_ROW] = v }
     suspend fun setGlassIntroShown(v: Boolean) = context.dataStore.edit { it[Keys.GLASS_INTRO_SHOWN] = v }
     suspend fun setGlassTheme(v: Boolean) = context.dataStore.edit { it[Keys.GLASS_THEME] = v }
     suspend fun setHomeShortcut(route: String) = context.dataStore.edit { it[Keys.HOME_SHORTCUT] = route }

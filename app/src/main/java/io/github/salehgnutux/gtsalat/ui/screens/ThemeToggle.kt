@@ -42,6 +42,13 @@ class ThemeToggleViewModel @Inject constructor(
 
     fun toggleAdhkarView(current: Boolean) = viewModelScope.launch { settingsRepo.setAdhkarCardView(!current) }
 
+    /** الأذكار المعدودة لها مفتاحها: اختيار القائمة في التفسير لا يجعل الأذكار قائمة. */
+    val adhkarSessionCards = settingsRepo.settings
+        .map { it.adhkarSessionCards }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    fun toggleAdhkarSession(current: Boolean) = viewModelScope.launch { settingsRepo.setAdhkarSessionCards(!current) }
+
     /** يبدّل بين الفاتح والداكن؛ إن كان تابعاً للنظام قلبَ إلى عكس وضع النظام الحاليّ. */
     fun toggle(effectiveDark: Boolean) = viewModelScope.launch {
         settingsRepo.setTheme(if (effectiveDark) ThemeMode.LIGHT else ThemeMode.DARK)
@@ -63,11 +70,14 @@ fun ClockFormatToggleButton(vm: ThemeToggleViewModel = hiltViewModel()) {
     }
 }
 
-/** زرٌّ لتبديل طريقة عرض الأذكار (قائمة ↔ بطاقات سلايد) — يُوضَع بجانب زرّ السِمة. */
+/**
+ * زرٌّ لتبديل طريقة العرض (قائمة ↔ بطاقات سلايد) — يُوضَع بجانب زرّ السِمة.
+ * `session = true` للأذكار المعدودة (مفتاح `adhkarSessionCards`)، وإلّا لأقسام القراءة (`adhkarCardView`).
+ */
 @Composable
-fun AdhkarViewToggleButton(vm: ThemeToggleViewModel = hiltViewModel()) {
-    val cards by vm.adhkarCardView.collectAsStateWithLifecycle()
-    IconButton(onClick = { vm.toggleAdhkarView(cards) }) {
+fun AdhkarViewToggleButton(session: Boolean = false, vm: ThemeToggleViewModel = hiltViewModel()) {
+    val cards by (if (session) vm.adhkarSessionCards else vm.adhkarCardView).collectAsStateWithLifecycle()
+    IconButton(onClick = { if (session) vm.toggleAdhkarSession(cards) else vm.toggleAdhkarView(cards) }) {
         Icon(
             if (cards) Icons.Outlined.Notes else Icons.Outlined.AutoStories,
             contentDescription = if (cards) "العرض كقائمة" else "العرض كبطاقات",

@@ -24,6 +24,12 @@ object Format {
         return if (use24) z.format(fmt24) else z.format(fmt12) + meridiem(z.hour)
     }
 
+    /** الوقت بلا «ص/م» — للخانات الضيّقة (صفّ المواقيت العرضيّ في الرئيسيّة). */
+    fun clockShort(epochMillis: Long): String {
+        val z = Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault())
+        return if (use24) z.format(fmt24) else z.format(fmt12)
+    }
+
     /** الساعة الحاليّة (24 أو 12 ساعة) بأرقامٍ مغربيّة (0-9). */
     fun clockNow(): String {
         val t = java.time.LocalTime.now()

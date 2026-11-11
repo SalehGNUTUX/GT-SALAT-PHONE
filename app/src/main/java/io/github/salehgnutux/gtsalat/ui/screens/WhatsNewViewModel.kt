@@ -25,7 +25,10 @@ class WhatsNewViewModel @Inject constructor(
     /** يحفظ اختيار السمة الزجاجيّة من نافذة التعريف، ويفتح قسم الإعدادات المطلوب إن طُلب. */
     fun finishGlassIntro(glass: Boolean?, openSection: String? = null) = viewModelScope.launch {
         if (glass != null) settingsRepo.setGlassTheme(glass)
-        if (openSection != null) settingsRepo.setSettingsOpenSection(openSection)
+        if (openSection != null) {
+            settingsRepo.setSettingsOpenSection(openSection)
+            io.github.salehgnutux.gtsalat.ui.UiEvents.requestSettingsPage(openSection)
+        }
         settingsRepo.setGlassIntroShown(true)
     }
 
@@ -43,6 +46,7 @@ class WhatsNewViewModel @Inject constructor(
     /** يفتح قسم «موثوقيّة التنبيهات» في الإعدادات (لتفعيل الأذونات) ويُعلِّم الرسالة كمعروضة. */
     fun openReliabilitySection() = viewModelScope.launch {
         settingsRepo.setSettingsOpenSection("موثوقيّة التنبيهات")
+        io.github.salehgnutux.gtsalat.ui.UiEvents.requestSettingsPage("موثوقيّة التنبيهات")
         settingsRepo.setLastPermPromptCode(BuildConfig.VERSION_CODE)
     }
 }

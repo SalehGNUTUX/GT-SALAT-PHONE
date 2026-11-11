@@ -2,8 +2,11 @@ package io.github.salehgnutux.gtsalat.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.ui.draw.clip
 import io.github.salehgnutux.gtsalat.ui.tour.tourTarget
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -195,7 +198,7 @@ fun DashboardScreen(onOpenSettings: () -> Unit = {}, onOpenShortcut: (String) ->
             }
 
             // 2 — قائمة صلوات اليوم والليلة
-            item { TodayPrayersCard(ui) }
+            item { TodayPrayersCard(ui, onToggle = vm::toggleTimesLayout) }
 
             // 3 — ذكر اليوم (قابل للتجديد والنسخ)
             item {
@@ -570,51 +573,149 @@ private fun CountdownRing(
     }
 }
 
+/**
+ * مواقيت اليوم: **صفٌّ عرضيٌّ** كودجت سطح الشاشة (افتراضيّاً) يوفّر المساحة ويُظهر الخلفيّة، أو **قائمةٌ طوليّة**.
+ * لمسةٌ واحدةٌ على البطاقة تقلبها، ويُحفظ الاختيار (`homeTimesHorizontal`، وفي الإعدادات ← المظهر).
+ * البطاقة تبقى العنصر 2 في القائمة بالشكلين، فلا تنزاح فهارس `I_DHIKR`… .
+ */
 @Composable
-private fun TodayPrayersCard(ui: DashboardUi) {
+private fun TodayPrayersCard(ui: DashboardUi, onToggle: () -> Unit) {
     val today = ui.today
-    Card(Modifier.fillMaxWidth().tourTarget(io.github.salehgnutux.gtsalat.ui.tour.TourKeys.PRAYERS).frostedGlass(MaterialTheme.shapes.medium), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = homeCardColor())) {
-        Column(Modifier.padding(vertical = 6.dp)) {
+    val shape = MaterialTheme.shapes.medium
+    Card(
+        Modifier
+            .fillMaxWidth()
+            .tourTarget(io.github.salehgnutux.gtsalat.ui.tour.TourKeys.PRAYERS)
+            .frostedGlass(shape)
+            .clip(shape)
+            .clickable(
+                enabled = today != null,
+                onClickLabel = if (ui.timesHorizontal) "عرض المواقيت قائمةً طوليّة" else "عرض المواقيت صفّاً عرضيّاً",
+                onClick = onToggle,
+            )
+            .animateContentSize(),
+        shape = shape,
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = homeCardColor()),
+    ) {
+        if (today == null) {
+            Text(
+                "حدّد موقعك من الإعدادات لعرض المواقيت.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+            )
+            return@Card
+        }
+        if (ui.timesHorizontal) TodayPrayersRow(ui, today) else TodayPrayersList(ui, today)
+    }
+}
+
+/** الصفّ العرضيّ: الصلوات الخمس (الفجر يميناً في RTL) والقادمة مميّزة، ثمّ سطرٌ صغيرٌ للشروق. */
+@Composable
+private fun TodayPrayersRow(ui: DashboardUi, today: io.github.salehgnutux.gtsalat.domain.DayTimetable) {
+    val cs = MaterialTheme.colorScheme
+    // من كبّر خطّ النظام كثيراً تصغر الأرقام درجةً كي لا تتلاصق الخانات الخمس.
+    val big = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.15f
+    val timeStyle = if (big) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium
+    val nameStyle = if (big) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge
+    Column(Modifier.padding(horizontal = 8.dp, vertical = 10.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            today.prayers.filter { it.id != PrayerId.SUNRISE }.forEach { p ->
+                val isNext = ui.next?.prayer?.id == p.id
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(if (isNext) cs.primary.copy(alpha = 0.16f) else androidx.compose.ui.graphics.Color.Transparent)
+                        .padding(vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        p.id.arabic,
+                        style = nameStyle,
+                        fontWeight = if (isNext) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isNext) cs.tertiary else cs.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                    Text(
+                        Format.clockShort(p.epochMillis),
+                        style = timeStyle,
+                        fontWeight = if (isNext) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isNext) cs.tertiary else cs.onSurface,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+            }
+        }
+        val sunrise = today.prayers.firstOrNull { it.id == PrayerId.SUNRISE }
+        Row(
+            Modifier.fillMaxWidth().padding(top = 6.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (sunrise != null) {
+                Text(
+                    "${PrayerId.SUNRISE.arabic} ${Format.clock(sunrise.epochMillis)}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = cs.outline,
+                )
+            }
+            Icon(
+                androidx.compose.material.icons.Icons.Outlined.KeyboardArrowDown,
+                contentDescription = null,
+                tint = cs.outline,
+                modifier = Modifier.padding(start = 4.dp).size(18.dp),
+            )
+        }
+    }
+}
+
+/** القائمة الطوليّة (الشكل السابق) بعنوانها وسهمٍ يدلّ على القلب إلى الصفّ. */
+@Composable
+private fun TodayPrayersList(ui: DashboardUi, today: io.github.salehgnutux.gtsalat.domain.DayTimetable) {
+    Column(Modifier.padding(vertical = 6.dp)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
                 "مواقيت اليوم والليلة",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
-            if (today == null) {
+            Icon(
+                androidx.compose.material.icons.Icons.Outlined.KeyboardArrowUp,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outline,
+            )
+        }
+        today.prayers.forEach { p ->
+            val isNext = ui.next?.prayer?.id == p.id
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
-                    "حدّد موقعك من الإعدادات لعرض المواقيت.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    p.id.arabic,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = if (isNext) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isNext) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                 )
-                return@Card
-            }
-            today.prayers.forEach { p ->
-                val isNext = ui.next?.prayer?.id == p.id
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        p.id.arabic,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (isNext) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isNext) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        Format.clock(p.epochMillis),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (isNext) FontWeight.Bold else FontWeight.Normal,
-                        color = when {
-                            p.id == PrayerId.SUNRISE -> MaterialTheme.colorScheme.outline
-                            isNext -> MaterialTheme.colorScheme.primary
-                            else -> MaterialTheme.colorScheme.onSurface
-                        },
-                    )
-                }
+                Text(
+                    Format.clock(p.epochMillis),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = if (isNext) FontWeight.Bold else FontWeight.Normal,
+                    color = when {
+                        p.id == PrayerId.SUNRISE -> MaterialTheme.colorScheme.outline
+                        isNext -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.onSurface
+                    },
+                )
             }
         }
     }

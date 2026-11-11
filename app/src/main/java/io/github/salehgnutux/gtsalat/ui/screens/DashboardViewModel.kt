@@ -42,6 +42,8 @@ data class DashboardUi(
     val hikmah: Hikmah? = null,
     val ayah: io.github.salehgnutux.gtsalat.domain.DailyAyah? = null,
     val showAyah: Boolean = true,
+    /** مواقيت اليوم صفٌّ عرضيٌّ (كالودجت) أم قائمةٌ طوليّة. */
+    val timesHorizontal: Boolean = true,
 )
 
 /** حالةٌ خفيفةٌ تتغيّر كلّ ثانية (الساعة والعدّاد) — معزولةٌ عن [DashboardUi]
@@ -148,6 +150,11 @@ class DashboardViewModel @Inject constructor(
     }
 
     /** ذكر جديد عشوائيّ (زرّ «ذكر جديد»). */
+    /** لمسةٌ على بطاقة المواقيت تقلبها بين الصفّ العرضيّ والقائمة الطوليّة، ويُحفظ الاختيار. */
+    fun toggleTimesLayout() = viewModelScope.launch {
+        settingsRepo.setHomeTimesHorizontal(!ui.value.timesHorizontal)
+    }
+
     fun refreshDhikr() {
         if (azkarList.isNotEmpty()) {
             dhikr = azkarList[Random.nextInt(azkarList.size)]
@@ -201,6 +208,7 @@ class DashboardViewModel @Inject constructor(
                 hikmah = hikmah,
                 ayah = ayah,
                 showAyah = s.enableDailyAyah,
+                timesHorizontal = s.homeTimesHorizontal,
             )
             return
         }
@@ -223,6 +231,7 @@ class DashboardViewModel @Inject constructor(
             hikmah = hikmah,
             ayah = ayah,
             showAyah = s.enableDailyAyah,
+            timesHorizontal = s.homeTimesHorizontal,
         )
     }
 
