@@ -206,6 +206,54 @@
     .phone{width:260px}
     .backdrop i{filter:blur(56px)}
   }
+
+  /* ── التجاوب مع الهاتف ─────────────────────────────────────────────
+     قائمة ☰ بدل الروابط المخفيّة، وبطاقتان في السطر بخطوطٍ أصغر، ولا فيضَ أفقيّاً. */
+  html{overflow-x:hidden}
+  .menu-btn{display:none}
+  .mnav{display:none}
+  @media(max-width:900px){
+    .menu-btn{display:inline-flex;align-items:center;justify-content:center}
+    .mnav{position:fixed;top:82px;left:12px;right:12px;z-index:30;border-radius:20px;padding:8px;flex-direction:column;gap:2px}
+    .mnav.open{display:flex}
+    .mnav a{padding:13px 16px;border-radius:14px;font-weight:600;color:var(--text)}
+    .mnav a:active,.mnav a:hover{background:var(--chip)}
+  }
+  @media(max-width:640px){
+    .nav-in{height:56px;padding:0 10px;gap:6px}
+    .brand b{font-size:1.1rem}
+    .brand img{width:30px;height:30px}
+    .icon-btn{width:38px;height:38px}
+    .hero{padding:22px 0 8px;gap:18px}
+    .hero-logo{width:70px;height:70px;border-radius:20px}
+    .hero h1{font-size:34px;margin:8px 0 2px}
+    .tag{font-size:1rem;line-height:1.75}
+    .badges{gap:6px;margin-top:14px}
+    .badge{font-size:.76rem;padding:5px 10px}
+    .section{padding:28px 0}
+    .sec-head{margin-bottom:16px}
+    .sec-head h2{font-size:1.55rem}
+    .sec-head p{font-size:.9rem}
+    .news-card{padding:18px}
+    .news-card h3{font-size:1.25rem}
+    .news-card li{font-size:.92rem;margin:5px 0}
+    .grid{grid-template-columns:1fr 1fr;gap:10px}
+    .card{padding:14px 12px;border-radius:18px}
+    .card:hover{transform:none}
+    .card .ic{width:40px;height:40px;font-size:1.15rem;margin-bottom:6px}
+    .card h3{font-size:1.02rem;margin:2px 0 4px}
+    .card p{font-size:.82rem;line-height:1.6}
+    .src-grid{grid-template-columns:1fr 1fr;gap:8px}
+    .src{padding:11px 12px;border-radius:14px}
+    .src b{font-size:.86rem}
+    .src span{font-size:.76rem;line-height:1.5}
+    .panel .amiri{font-size:1.2rem}
+    .dev{padding:24px 16px}
+    footer{padding:24px 0 30px}
+    footer .amiri{font-size:1.02rem}
+    footer p{font-size:.85rem}
+  }
+  @media(max-width:360px){.grid,.src-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -220,10 +268,12 @@
       <a class="hide-sm" href="#download">التنزيل</a>
       <a class="hide-sm" href="#sources">المصادر</a>
       <a class="nav-desk" target="_blank" rel="noopener noreferrer" href="https://salehgnutux.github.io/GT-SALAT/">💻 نسخة الحاسوب</a>
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="قائمة الأقسام" aria-expanded="false">☰</button>
       <button class="icon-btn" id="themeBtn" aria-label="تبديل الوضع الداكن والفاتح">🌙</button>
     </nav>
   </div>
 </header>
+<nav class="mnav glass strong" id="mnav" aria-label="أقسام الصفحة"><a href="#news">الجديد</a><a href="#features">المميزات</a><a href="#download">التنزيل</a><a href="#sources">المصادر</a></nav>
 
 <a id="top"></a>
 <div class="wrap">
@@ -375,7 +425,7 @@
         </div>
         <div class="glass">
           <h3>💻 نسخة سطح المكتب</h3>
-          <p class="muted" style="margin:0 0 10px">لغنو/لينكس بالمزايا نفسها، بصيغ AppImage وdeb وrpm، بالسمة الزجاجيّة وخلفيّات المساجد نفسها. آخر إصدار: <span class="num">2.3.1</span>.</p>
+          <p class="muted" style="margin:0 0 10px">لغنو/لينكس بالمزايا نفسها، بصيغ AppImage وdeb وrpm، بالسمة الزجاجيّة وخلفيّات المساجد نفسها. آخر إصدار: <span class="num">2.4.0</span>.</p>
           <div class="cta" style="margin-top:0;justify-content:flex-start">
             <a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://salehgnutux.github.io/GT-SALAT/">🌐 موقعها</a>
             <a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://github.com/SalehGNUTUX/GT-SALAT/releases/latest">⬇️ تنزيل</a>
@@ -493,6 +543,16 @@
       var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}})},{threshold:.1});
       document.querySelectorAll('.reveal').forEach(function(el){io.observe(el)});
     }catch(e){ document.querySelectorAll('.reveal').forEach(function(el){el.classList.add('in')}); }
+
+    // قائمة الأقسام على الهاتف: تُفتَح بـ☰ وتُغلَق باختيار رابطٍ أو بالنقر خارجها.
+    (function(){
+      var mb=document.getElementById('menuBtn'), mn=document.getElementById('mnav');
+      if(!mb||!mn) return;
+      function set(o){ mn.classList.toggle('open',o); mb.setAttribute('aria-expanded',o?'true':'false'); mb.textContent=o?'✕':'☰'; }
+      mb.addEventListener('click',function(e){ e.stopPropagation(); set(!mn.classList.contains('open')); });
+      mn.querySelectorAll('a').forEach(function(a){ a.addEventListener('click',function(){ set(false); }); });
+      document.addEventListener('click',function(e){ if(mn.classList.contains('open')&&!mn.contains(e.target)) set(false); });
+    })();
   })();
 </script>
 </body>
