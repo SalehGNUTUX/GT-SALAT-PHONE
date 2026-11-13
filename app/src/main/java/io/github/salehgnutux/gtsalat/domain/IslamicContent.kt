@@ -115,11 +115,12 @@ data class PlacesFile(val places: List<Place>)
 /** أدوات المواقع المُضمَّنة — استدلالٌ على المدينة من الإحداثيّات دون إنترنت. */
 object Places {
     /**
-     * هل هما الموقع نفسه؟ بالإحداثيّات (نحو 5 كم) أو بالاسم والبلد معاً.
-     * الإحداثيّات أوّلاً لأنّ الاسم يتبدّل بين «Salé» و«سلا» بخيار الترجمة.
+     * هل هما الموقع نفسه؟ بالإحداثيّات (نحو 1 كم) أو بالاسم والبلد معاً.
+     * الإحداثيّات أوّلاً لأنّ الاسم يتبدّل بين «Salé» و«سلا» بخيار الترجمة. لا توسّع العتبة:
+     * الرباط وسلا بينهما نحو 4 كم، وبعتبة 0.05° (نحو 5.5 كم، في v2.3) حلّت سلا محلّ الرباط.
      */
     fun same(a: Place, b: Place): Boolean =
-        (kotlin.math.abs(a.lat - b.lat) < 0.05 && kotlin.math.abs(a.lon - b.lon) < 0.05) ||
+        (kotlin.math.abs(a.lat - b.lat) < 0.01 && kotlin.math.abs(a.lon - b.lon) < 0.012) ||
             (a.city.isNotBlank() && a.city.equals(b.city, ignoreCase = true) && a.country.equals(b.country, ignoreCase = true))
 
     /**

@@ -228,7 +228,8 @@ app/src/main/java/io/github/salehgnutux/gtsalat/
 - **v2.1 (versionCode 46، صدر 2026-11-07):** إزاحة الخادم بدل قاعدة مناطق الجهاز (عودة المغرب إلى GMT+0) + `migrateTimetableCache` · تنبيه المنطقة الزمنيّة · شدّة التغبيش (`glassBlur`) · نافذة التعريف بالزجاج (`GlassIntro`) · خلفيّةٌ من صور المستخدم (`CustomBackgroundStore`) · التنزيلات على نطاق التطبيق (`QuranDownloadService`) · إعادة اتّصال الإذاعة · 372 مدينةً مغربيّة (GeoNames + أسماء OSM، `places.json` بترخيص ODbL) · ترتيب «المزيد» · المصادر آخر الإعدادات.
 - **v2.2 (versionCode 48، صدر 2026-11-11؛ سبقته v2.2-beta بالرقم 47):** مواقيت الرئيسيّة صفٌّ عرضيٌّ يُقلَب بلمسة (`homeTimesHorizontal`) · الإعدادات بطاقات (`settingsCards`، المطويّات خيار) · مفتاحٌ مستقلّ للأذكار المعدودة (`adhkarSessionCards`) · حلقة مؤقّت الإذاعة (`sleepTotal`) · «يوميّ» افتراضيّ للودجت · القارئ الطبلاوي وتمييز مصاحف القارئ الواحد (`moshafStyle`).
 - **v2.3 (versionCode 50، صدر 2026-11-13؛ سبقته v2.3-beta بالرقم 49):** نصوص ورش وقالون والدوري الحقيقيّة مضمَّنة (`riwaya_*.json`) · الخطّ المغربيّ وخطّ المجمّع (`QuranText`/`quranTextStyle`) · القرآن النصّيّ متّصلٌ صفحةً صفحة (`quranFlowText`، `QuranFlowText.kt`) · تسجيلاتٌ جديدةٌ للأذكار · سجلّ المواقع السابقة في `setLocation` ونافذةٌ مصغّرة · إزالة العفاسي (`Quran.isExcludedReciter`) · إذاعة الطبلاوي.
-- **الإصدار المستقرّ الحاليّ: v2.3** (versionCode 50). أوّل مستقرّ: v1.0 (versionCode 19).
+- **v2.3.1 (versionCode 51، صدر 2026-11-13):** عتبة `Places.same` نحو 1 كم بدل 5.5 كم (عُدّت الرباط وسلا موقعاً واحداً).
+- **الإصدار المستقرّ الحاليّ: v2.3.1** (versionCode 51). أوّل مستقرّ: v1.0 (versionCode 19).
 
 ## المصادر الحرّة المدروسة (للإلهام لا النسخ)
 Five-Prayers (النموذج الهجين للجدولة، سلسلة السقوط، الكاتم، USAGE_ALARM، Nominatim بلا Google) ·
