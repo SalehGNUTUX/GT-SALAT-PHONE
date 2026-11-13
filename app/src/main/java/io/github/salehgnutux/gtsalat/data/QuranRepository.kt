@@ -2,6 +2,7 @@ package io.github.salehgnutux.gtsalat.data
 
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.salehgnutux.gtsalat.domain.Quran
 import io.github.salehgnutux.gtsalat.domain.QuranAyah
 import io.github.salehgnutux.gtsalat.domain.QuranMeta
 import io.github.salehgnutux.gtsalat.domain.Reciter
@@ -61,6 +62,7 @@ class QuranRepository @Inject constructor(
                     val body = resp.body?.string().orEmpty()
                     if (body.isBlank()) emptyList()
                     else json.decodeFromString<Mp3Response>(body).reciters.flatMap { r ->
+                        if (Quran.isExcludedReciter(r.name)) return@flatMap emptyList()
                         val list = r.moshaf.filter { it.server.isNotBlank() }
                         // قارئٌ بأكثر من مصحف (الطبلاوي: مرتّل ومجوّد) كان يظهر باسمٍ مكرّرٍ بلا تمييز:
                         // يُلحَق بالاسم نوع المصحف، أو اسمه كاملاً إن تكرّر النوع (حفص وورش مرتّلان مثلاً).
@@ -116,35 +118,31 @@ class QuranRepository @Inject constructor(
         content.tafsirSurah(surah)?.ayahs?.map { QuranAyah(it.n, it.text) } ?: emptyList()
 
     /**
-     * نصّ آيات سورةٍ **برواية**: حفص من tafsir.json المُضمَّن (فوريّ)، وغيرها يُجلب مرّةً من
-     * alquran.cloud (`/surah/{n}/{apiSlug}`) ويُخزَّن في filesDir ليعمل بعدها دون إنترنت.
+     * نصّ آيات سورةٍ **برواية**: حفص من tafsir.json، وورش وقالون والدوري من نصوص مجمّع الملك فهد
+     * المضمَّنة (`assets/content/riwaya_{slug}.json`)، فتعمل دون إنترنت.
+     *
+     * كانت تُجلب من alquran.cloud، وهو لا يملك هذه الروايات فيعيد نصّ حفصٍ بترميزٍ آخر:
+     * فكان «ورش» يُعرض حفصاً (يُؤْمِنُونَ لا يُومِنُونَ). تُحذف ذاكرته القديمة مرّةً هنا.
      */
     suspend fun ayatForRiwaya(surah: Int, apiSlug: String): List<QuranAyah> {
         if (apiSlug.isBlank() || apiSlug == "quran-uthmani") return ayat(surah)
-        return withContext(Dispatchers.IO) {
-            val cache = File(context.filesDir, "riwaya_text/$apiSlug/$surah.json")
-            val body = if (cache.exists() && cache.length() > 0) cache.readText()
-            else runCatching {
-                http.newCall(Request.Builder().url("https://api.alquran.cloud/v1/surah/$surah/$apiSlug").build())
-                    .execute().use { if (it.isSuccessful) it.body?.string().orEmpty() else "" }
-            }.getOrDefault("")
-            if (body.isBlank()) return@withContext ayat(surah)
-            val parsed = runCatching { json.decodeFromString<AqSurahResp>(body) }.getOrNull()
-            val ayahs = parsed?.data?.ayahs?.map { QuranAyah(it.numberInSurah, it.text) }.orEmpty()
-            if (ayahs.isNotEmpty() && !(cache.exists() && cache.length() > 0)) {
-                runCatching { cache.parentFile?.mkdirs(); cache.writeText(body) }
-            }
-            ayahs.ifEmpty { ayat(surah) }
-        }
+        val all = riwayaCache[apiSlug] ?: withContext(Dispatchers.Default) {
+            runCatching {
+                File(context.filesDir, "riwaya_text").takeIf { it.exists() }?.deleteRecursively()
+                json.decodeFromString<RiwayaFile>(
+                    context.assets.open("content/riwaya_$apiSlug.json").bufferedReader().use { it.readText() }
+                ).surahs
+            }.getOrNull()
+        }?.also { riwayaCache[apiSlug] = it }
+        val list = all?.getOrNull(surah - 1) ?: return ayat(surah)
+        return list.mapIndexed { i, t -> QuranAyah(i + 1, t) }
     }
 
-    /** هل نُزِّل نصّ سورةٍ برواية؟ */
-    fun riwayaTextCached(surah: Int, apiSlug: String): Boolean =
-        apiSlug == "quran-uthmani" || File(context.filesDir, "riwaya_text/$apiSlug/$surah.json").let { it.exists() && it.length() > 0 }
+    /** جدول بدايات صفحات المصحف المدنيّ (للعرض المتّصل). */
+    suspend fun pageStarts(): List<List<Int>> = meta().pageStarts
 
-    @Serializable private data class AqSurahResp(val data: AqSurah? = null)
-    @Serializable private data class AqSurah(val ayahs: List<AqAyah> = emptyList())
-    @Serializable private data class AqAyah(val numberInSurah: Int = 0, val text: String = "")
+    private val riwayaCache = java.util.concurrent.ConcurrentHashMap<String, List<List<String>>>()
+    @Serializable private data class RiwayaFile(val surahs: List<List<String>> = emptyList())
 
     /**
      * بحثٌ شاملٌ داخل نصّ القرآن (6236 آية) بالكلمات والعبارات، مع التطبيع العربيّ

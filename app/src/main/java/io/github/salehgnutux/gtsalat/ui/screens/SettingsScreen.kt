@@ -1,5 +1,13 @@
 package io.github.salehgnutux.gtsalat.ui.screens
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedButton
+import io.github.salehgnutux.gtsalat.domain.Places
+import io.github.salehgnutux.gtsalat.domain.Place
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Alarm
@@ -249,14 +257,28 @@ fun SettingsScreen(onShowTour: () -> Unit = {}, vm: SettingsViewModel = hiltView
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
             )
-            // سجلّ آخر المواقع المكتشَفة — للعودة إليها إن تعذّر الكشف التلقائيّ.
-            if (settings.locationHistory.isNotEmpty()) {
-                Text("مواقعُ سابقة (اضغط للعودة إليها):", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                settings.locationHistory.forEach { pl ->
-                    val name = listOf(pl.city, pl.country).filter { it.isNotBlank() }.joinToString("، ")
-                        .ifBlank { String.format(java.util.Locale.US, "%.3f، %.3f", pl.lat, pl.lon) }
-                    ClickRow(name) { vm.restoreLocation(pl) }
+            // آخر 5 مواقع سابقة: زرٌّ يفتح نافذةً مصغّرة. يُستبعَد منها الموقع الحاليّ
+            // (سجلّاتٌ قديمةٌ قبل 2.3 كانت تحفظه)، وتُزال المكرّرات احتياطاً.
+            val previous = remember(settings.locationHistory, settings.lat, settings.lon, settings.city) {
+                val here = settings.lat?.let { la -> settings.lon?.let { lo -> Place(settings.country, settings.city, la, lo) } }
+                settings.locationHistory
+                    .filterNot { here != null && Places.same(it, here) }
+                    .fold(emptyList<Place>()) { acc, p -> if (acc.any { Places.same(it, p) }) acc else acc + p }
+                    .take(5)
+            }
+            if (previous.isNotEmpty()) {
+                var showPrevious by remember { mutableStateOf(false) }
+                OutlinedButton(onClick = { showPrevious = true }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Outlined.History, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("مواقع سابقة (${previous.size})")
                 }
+                if (showPrevious) PreviousLocationsDialog(
+                    places = previous,
+                    onPick = { showPrevious = false; vm.restoreLocation(it) },
+                    onRemove = { vm.removeLocationFromHistory(it) },
+                    onDismiss = { showPrevious = false },
+                )
             }
             HorizontalDivider()
             MethodDropdown(settings.methodId) { vm.setMethod(it) }
@@ -1477,4 +1499,48 @@ private fun SettingsPageHeader(key: String, onBack: () -> Unit) {
             modifier = Modifier.padding(start = 10.dp),
         )
     }
+}
+
+/** اسم الموقع للعرض: المدينة والبلد، وإلّا الإحداثيّات. */
+private fun placeLabel(p: Place): String =
+    listOf(p.city, p.country).filter { it.isNotBlank() }.joinToString("، ")
+        .ifBlank { String.format(java.util.Locale.US, "%.3f، %.3f", p.lat, p.lon) }
+
+/** نافذةٌ مصغّرة بآخر المواقع السابقة: النقر يعود إلى الموقع، وزرّ الحذف يزيله من السجلّ. */
+@Composable
+private fun PreviousLocationsDialog(
+    places: List<Place>,
+    onPick: (Place) -> Unit,
+    onRemove: (Place) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Outlined.History, contentDescription = null) },
+        title = { Text("مواقع سابقة") },
+        text = {
+            Column {
+                Text(
+                    "اختر موقعاً للعودة إليه. اختيارٌ يدويّ يطفئ «تحديث الموقع تلقائيّاً».",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+                Spacer(Modifier.height(8.dp))
+                places.forEach { p ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onPick(p) }.padding(start = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text(placeLabel(p), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { onRemove(p) }) {
+                            Icon(Icons.Outlined.Close, contentDescription = "حذف من السجلّ", tint = MaterialTheme.colorScheme.outline)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("إغلاق") } },
+    )
 }

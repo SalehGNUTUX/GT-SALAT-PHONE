@@ -149,7 +149,7 @@ private fun AyahTafsirPagerCard(a: TafsirAyah) {
                 Modifier.size(34.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center,
             ) { Text("${a.n}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer) }
-            Text(a.text, fontFamily = AmiriQuran, fontSize = 24.sp, lineHeight = 46.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            Text(a.text, fontFamily = io.github.salehgnutux.gtsalat.ui.theme.UthmanicHafs, fontSize = 25.sp, lineHeight = 52.sp, color = MaterialTheme.colorScheme.onSurface)
             if (a.tafsir.isNotBlank()) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Text(a.tafsir, style = MaterialTheme.typography.bodyMedium, lineHeight = 28.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -171,10 +171,9 @@ private fun AyahCard(a: TafsirAyah) {
                 }
                 Text(
                     a.text,
-                    fontFamily = AmiriQuran,
-                    fontSize = 22.sp,
-                    lineHeight = 42.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontFamily = io.github.salehgnutux.gtsalat.ui.theme.UthmanicHafs,
+                    fontSize = 23.sp,
+                    lineHeight = 48.sp,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
                 )

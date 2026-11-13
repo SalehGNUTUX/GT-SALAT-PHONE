@@ -24,6 +24,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.automirrored.outlined.Notes
+import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -82,6 +85,7 @@ import io.github.salehgnutux.gtsalat.audio.QuranAudio
 import io.github.salehgnutux.gtsalat.audio.QuranMode
 import io.github.salehgnutux.gtsalat.audio.QuranPlayback
 import io.github.salehgnutux.gtsalat.data.QuranRepository
+import io.github.salehgnutux.gtsalat.domain.Quran
 import io.github.salehgnutux.gtsalat.domain.QuranAyah
 import io.github.salehgnutux.gtsalat.domain.Reciter
 import io.github.salehgnutux.gtsalat.domain.Riwaya
@@ -182,7 +186,7 @@ class QuranMetaViewModel @Inject constructor(
     /** متابعة القرآن المسموع (سورةٌ كاملة): آخر سورةٍ/قارئٍ وموضعٍ محفوظ — لاستئناف الاستماع. */
     val audioResume: StateFlow<AudioResume?> =
         kotlinx.coroutines.flow.combine(settingsRepo.settings, surahs) { s, list ->
-            if (s.lastAudioSurah in 1..114) AudioResume(
+            if (s.lastAudioSurah in 1..114 && !Quran.isExcludedReciter(s.lastAudioReciterName, s.lastAudioServer)) AudioResume(
                 surah = s.lastAudioSurah,
                 surahName = list.firstOrNull { it.n == s.lastAudioSurah }?.ar ?: "سورة ${s.lastAudioSurah}",
                 reciterId = s.lastAudioReciter,
@@ -567,7 +571,7 @@ fun SurahIndexScreen(
                     Card(Modifier.fillMaxWidth().clickable { onOpenAyah(hit.surah, hit.ayah) }) {
                         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text("سورة ${hit.surahName} · الآية ${hit.ayah}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                            Text(hit.text, fontFamily = AmiriQuran, fontSize = 20.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, maxLines = 3)
+                            Text(hit.text, fontFamily = io.github.salehgnutux.gtsalat.ui.theme.UthmanicHafs, fontSize = 22.sp, lineHeight = 44.sp, color = MaterialTheme.colorScheme.onSurface, maxLines = 3)
                         }
                     }
                 }
@@ -616,6 +620,20 @@ class TextReaderViewModel @Inject constructor(
     private val _textLoading = MutableStateFlow(false)
     val textLoading: StateFlow<Boolean> = _textLoading.asStateFlow()
 
+    /** العرض المتّصل كالمصحف (افتراضيّ) أو بطاقةٌ لكلّ آية. */
+    val flowText: StateFlow<Boolean> = settingsRepo.settings.map { it.quranFlowText }
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), true)
+    fun setFlowText(v: Boolean) = viewModelScope.launch { settingsRepo.setQuranFlowText(v) }
+
+    /** بدايات صفحات المصحف، والبسملة بنصّ الرواية المختارة (عنوانٌ في العرض المتّصل). */
+    private val _pageStarts = MutableStateFlow<List<List<Int>>>(emptyList())
+    val pageStarts: StateFlow<List<List<Int>>> = _pageStarts.asStateFlow()
+    private val _bismillah = MutableStateFlow("")
+    val bismillah: StateFlow<String> = _bismillah.asStateFlow()
+    private suspend fun loadBismillah(r: Riwaya?) {
+        _bismillah.value = repo.ayatForRiwaya(1, r?.apiSlug.orEmpty()).firstOrNull()?.text.orEmpty()
+    }
+
     fun pickRiwaya(r: Riwaya) {
         if (_riwaya.value?.id == r.id) return
         _riwaya.value = r
@@ -623,6 +641,7 @@ class TextReaderViewModel @Inject constructor(
             settingsRepo.setLastRiwaya(r.id)   // تُستعاد عند العودة للتطبيق
             _textLoading.value = true
             _ayat.value = repo.ayatForRiwaya(n, r.apiSlug)
+            loadBismillah(r)
             _textLoading.value = false
             // نوافق الصوت مع النصّ: نختار قارئاً بنفس الرواية إن توفّر.
             _reciters.value.firstOrNull { it.riwaya == r.id }?.let { _reciter.value = it }
@@ -697,6 +716,8 @@ class TextReaderViewModel @Inject constructor(
             val savedRiwaya = repo.riwayat().firstOrNull { it.id == cur.lastRiwaya }
                 ?: repo.riwayat().firstOrNull { it.id == "hafs" }
             _riwaya.value = savedRiwaya
+            _pageStarts.value = repo.pageStarts()
+            loadBismillah(savedRiwaya)
             if (savedRiwaya != null && savedRiwaya.id != "hafs") {
                 _textLoading.value = true
                 _ayat.value = repo.ayatForRiwaya(n, savedRiwaya.apiSlug)
@@ -706,7 +727,7 @@ class TextReaderViewModel @Inject constructor(
             val list = repo.reciters().filter { it.hasAyahAudio }
             _reciters.value = list
             _reciter.value = list.firstOrNull { it.id == cur.lastReciterId }
-                ?: list.firstOrNull { it.id == "alafasy" } ?: list.firstOrNull()
+                ?: list.firstOrNull { it.id == "husary" } ?: list.firstOrNull()
             // آية البحث لها الأولويّة، وإلّا نتابع من الآية المحفوظة لنفس السورة، وإلّا من أوّلها.
             val startAyah = when {
                 gotoAyah > 0 -> gotoAyah
@@ -733,6 +754,12 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
     val textLoading by vm.textLoading.collectAsStateWithLifecycle()
     val bookmarked by vm.bookmarkedAyat.collectAsStateWithLifecycle()
     val scrollSpeed by vm.scrollSpeed.collectAsStateWithLifecycle()
+    val flowText by vm.flowText.collectAsStateWithLifecycle()
+    val pageStarts by vm.pageStarts.collectAsStateWithLifecycle()
+    val bismillah by vm.bismillah.collectAsStateWithLifecycle()
+    val font = riwaya?.font
+    val qStyle = quranTextStyle(font)
+    val gold = quranGold()
     // بحثٌ داخل السورة (بالكلمات) للوصول إلى آيةٍ معيّنة.
     var showSearch by remember { mutableStateOf(false) }
     var searchQ by remember { mutableStateOf("") }
@@ -746,6 +773,11 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
     // الآية المُظلَّلة: الجاريةُ أثناء التشغيل، وإلّا موضعُ المتابعة (يُبدأ منه).
     val highlight = if (playingAyah > 0) playingAyah else target
     val listState = rememberLazyListState()
+    // العرض المتّصل صفحةً صفحة (والبحث يعرض نتائجه بطاقاتٍ دائماً).
+    val flow = flowText && searchQ.isBlank()
+    val chunks = remember(ayat, pageStarts, vm.n) { chunkByPage(vm.n, ayat, pageStarts) }
+    // تخطيط كلّ صفحةٍ وبدايات آياتها: للتمرير إلى سطر الآية داخل صفحتها.
+    val pageLayouts = remember(chunks, font) { mutableMapOf<Int, Pair<androidx.compose.ui.text.TextLayoutResult, Map<Int, Int>>>() }
     // وضع القراءة التلقائيّة (بلا صوت): تنتقل الآية المظلَّلة تلقائيّاً بوتيرةٍ تناسب طولها.
     var readingMode by remember { mutableStateOf(false) }
     // وضع التمرير الانسيابيّ: تنزلق الصفحة مرورًا بالآيات بوتيرةٍ يضبطها المستخدم (كالتلقين).
@@ -764,10 +796,19 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
     LaunchedEffect(playingAyah) {
         if (playingAyah > 0) vm.saveListenPosition(playingAyah)
     }
-    LaunchedEffect(highlight, ayat) {
+    LaunchedEffect(highlight, ayat, flow) {
         if (ayat.isNotEmpty() && highlight > 1) {
-            val idx = ayat.indexOfFirst { it.n == highlight }
-            if (idx >= 0) runCatching { listState.animateScrollToItem(idx) }
+            if (flow) {
+                val ci = chunks.indexOfFirst { c -> c.ayat.any { it.n == highlight } }
+                if (ci >= 0) {
+                    // سطر الآية داخل صفحتها، إن رُسمت الصفحة من قبل؛ وإلّا أوّل الصفحة.
+                    val lineTop = pageLayouts[ci]?.let { (l, st) -> st[highlight]?.let { l.getLineTop(l.getLineForOffset(it)).toInt() } } ?: 0
+                    runCatching { listState.animateScrollToItem(ci + 1, (lineTop - 40).coerceAtLeast(0)) }
+                }
+            } else {
+                val idx = ayat.indexOfFirst { it.n == highlight }
+                if (idx >= 0) runCatching { listState.animateScrollToItem(idx) }
+            }
         }
     }
     // حلقة التنقّل التلقائيّ في وضع القراءة (تتوقّف عند بدء الاستماع أو نهاية السورة).
@@ -805,6 +846,13 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         SubScreenHeader("سورة ${surah?.ar ?: ""}".trim(), onBack, actions = {
+            // التبديل بين النصّ المتّصل (كالمصحف) وبطاقةٍ لكلّ آية.
+            IconButton(onClick = { vm.setFlowText(!flowText) }) {
+                Icon(
+                    if (flowText) Icons.Outlined.ViewAgenda else Icons.AutoMirrored.Outlined.Notes,
+                    contentDescription = if (flowText) "عرض الآيات بطاقات" else "عرض النصّ متّصلاً كالمصحف",
+                )
+            }
             IconButton(onClick = { showSearch = !showSearch; if (!showSearch) searchQ = "" }) {
                 Icon(if (showSearch) Icons.Filled.Close else Icons.Filled.Search, contentDescription = "بحثٌ في السورة")
             }
@@ -932,6 +980,22 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+          if (flow) {
+            item(key = "head") { QuranFlowHeader(surah?.ar ?: "", vm.n, bismillah, font) }
+            itemsIndexed(chunks, key = { _, c -> "p${c.page}" }) { ci, chunk ->
+                QuranFlowPage(
+                    chunk = chunk, surahN = vm.n, font = font,
+                    playing = playingAyah, target = target, bookmarked = bookmarked,
+                    onTap = { n -> vm.setTarget(n); if (here) QuranAudio.seekAyah(ctx, n) },
+                    onLongPress = { n ->
+                        val had = n in bookmarked
+                        vm.toggleBookmark(n)
+                        readerScope.launch { readerSnackbar.showSnackbar(if (had) "أُزيلت إشارة الآية $n" else "أُضيفت إشارةٌ على الآية $n") }
+                    },
+                    onLayout = { l, st -> pageLayouts[ci] = l to st },
+                )
+            }
+          } else {
             items(shownAyat, key = { it.n }) { a ->
                 val isPlaying = a.n == playingAyah                 // الآية الجاريّة أثناء التلاوة (أخضر)
                 val isResume = playingAyah == 0 && a.n == target && target > 1  // موضع المتابعة (لونٌ مميّز)
@@ -965,7 +1029,8 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
                                 color = if (container != null) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer)
                         }
                         Text(
-                            a.text, fontFamily = AmiriQuran, fontSize = 23.sp, lineHeight = 46.sp, fontWeight = FontWeight.Bold,
+                            quranAnnotated(a.text, font, gold), fontFamily = qStyle.family, fontSize = qStyle.size,
+                            lineHeight = qStyle.lineHeight, fontWeight = qStyle.weight,
                             color = onContainer,
                             modifier = Modifier.weight(1f),
                         )
@@ -981,6 +1046,7 @@ fun TextReaderScreen(onBack: () -> Unit, vm: TextReaderViewModel = hiltViewModel
                     }
                 }
             }
+          }
         }
     }
     androidx.compose.material3.SnackbarHost(readerSnackbar, Modifier.align(Alignment.BottomCenter))

@@ -77,6 +77,7 @@ class SettingsRepository @Inject constructor(
         val GLASS_INTRO_SHOWN = booleanPreferencesKey("glass_intro_shown")
         val GLASS_BLUR = intPreferencesKey("glass_blur")
         val HOME_TIMES_ROW = booleanPreferencesKey("home_times_horizontal")
+        val QURAN_FLOW_TEXT = booleanPreferencesKey("quran_flow_text")
         val LOCATION_TZ = stringPreferencesKey("location_tz")
         val LOCATION_TZ_KEY = stringPreferencesKey("location_tz_key")
         val LOCATION_TZ_OFFSET = intPreferencesKey("location_tz_offset")
@@ -187,6 +188,7 @@ class SettingsRepository @Inject constructor(
             glassIntroShown = this[Keys.GLASS_INTRO_SHOWN] ?: false,
             glassBlur = (this[Keys.GLASS_BLUR] ?: 30).coerceIn(0, 100),
             homeTimesHorizontal = this[Keys.HOME_TIMES_ROW] ?: true,
+            quranFlowText = this[Keys.QURAN_FLOW_TEXT] ?: true,
             locationTimeZone = this[Keys.LOCATION_TZ] ?: "",
             locationTimeZoneKey = this[Keys.LOCATION_TZ_KEY] ?: "",
             locationTzOffsetMin = this[Keys.LOCATION_TZ_OFFSET] ?: 0,
@@ -361,8 +363,24 @@ class SettingsRepository @Inject constructor(
     suspend fun setLastRiwaya(id: String) = context.dataStore.edit { it[Keys.LAST_RIWAYA] = id }
     suspend fun setQuranScrollSpeed(pct: Int) = context.dataStore.edit { it[Keys.QURAN_SCROLL_SPEED] = pct.coerceIn(50, 300) }
 
+    /**
+     * يحفظ الموقع الحاليّ، ويدفع الموقع **السابق** إلى سجلّ آخر 5 مواقع في المعاملة نفسها.
+     * كان السجلّ يُملأ بالموقع الجديد من مسار الكشف وحده، فيظهر فيه الموقع الحاليّ لا السابق،
+     * ولا تدخله المواقع المختارة يدويّاً. الآن كلّ تغييرٍ (كشفٌ أو اختيارٌ أو إدخالٌ أو استعادة) يمرّ هنا.
+     */
     suspend fun setLocation(lat: Double, lon: Double, city: String, country: String) {
         context.dataStore.edit {
+            if (it[Keys.HAS_LOC] == true) {
+                val oldLat = it[Keys.LAT]; val oldLon = it[Keys.LON]
+                if (oldLat != null && oldLon != null) {
+                    val prev = io.github.salehgnutux.gtsalat.domain.Place(it[Keys.COUNTRY].orEmpty(), it[Keys.CITY].orEmpty(), oldLat, oldLon)
+                    val now = io.github.salehgnutux.gtsalat.domain.Place(country, city, lat, lon)
+                    val cur = readHistory(it)
+                    val next = if (io.github.salehgnutux.gtsalat.domain.Places.same(prev, now)) cur.filterNot { h -> io.github.salehgnutux.gtsalat.domain.Places.same(h, now) }
+                    else (listOf(prev) + cur.filterNot { h -> io.github.salehgnutux.gtsalat.domain.Places.same(h, prev) || io.github.salehgnutux.gtsalat.domain.Places.same(h, now) }).take(5)
+                    it[Keys.LOCATION_HISTORY] = locJson.encodeToString(next)
+                }
+            }
             it[Keys.LAT] = lat
             it[Keys.LON] = lon
             it[Keys.HAS_LOC] = true
@@ -424,14 +442,12 @@ class SettingsRepository @Inject constructor(
     suspend fun setAutoUpdateLocation(v: Boolean) = context.dataStore.edit { it[Keys.AUTO_UPDATE_LOC] = v }
     suspend fun setTranslateLocationNames(v: Boolean) = context.dataStore.edit { it[Keys.TRANSLATE_LOC] = v }
 
-    /** يضيف موقعاً إلى سجلّ آخر 5 مواقع (يزيل المكرّر ويُبقي الأحدث). */
-    suspend fun addLocationToHistory(place: io.github.salehgnutux.gtsalat.domain.Place) = context.dataStore.edit { p ->
-        val cur = p[Keys.LOCATION_HISTORY]?.let { runCatching { locJson.decodeFromString<List<io.github.salehgnutux.gtsalat.domain.Place>>(it) }.getOrNull() } ?: emptyList()
-        fun sameSpot(a: io.github.salehgnutux.gtsalat.domain.Place, b: io.github.salehgnutux.gtsalat.domain.Place) =
-            (a.city.isNotBlank() && a.city == b.city && a.country == b.country) ||
-                (kotlin.math.abs(a.lat - b.lat) < 0.05 && kotlin.math.abs(a.lon - b.lon) < 0.05)
-        val next = (listOf(place) + cur.filterNot { sameSpot(it, place) }).take(5)
-        p[Keys.LOCATION_HISTORY] = locJson.encodeToString(next)
+    private fun readHistory(p: Preferences): List<io.github.salehgnutux.gtsalat.domain.Place> =
+        p[Keys.LOCATION_HISTORY]?.let { runCatching { locJson.decodeFromString<List<io.github.salehgnutux.gtsalat.domain.Place>>(it) }.getOrNull() } ?: emptyList()
+
+    /** يحذف موقعاً من السجلّ (زرّ الحذف في نافذة المواقع السابقة). */
+    suspend fun removeLocationFromHistory(place: io.github.salehgnutux.gtsalat.domain.Place) = context.dataStore.edit { p ->
+        p[Keys.LOCATION_HISTORY] = locJson.encodeToString(readHistory(p).filterNot { io.github.salehgnutux.gtsalat.domain.Places.same(it, place) })
     }
     suspend fun setSettingsOpenSection(title: String) = context.dataStore.edit { it[Keys.SETTINGS_OPEN_SECTION] = title }
     suspend fun setSettingsCards(v: Boolean) = context.dataStore.edit { it[Keys.SETTINGS_CARDS] = v }
@@ -458,6 +474,7 @@ class SettingsRepository @Inject constructor(
     suspend fun setTimetableCacheVersion(v: Int) = context.dataStore.edit { it[Keys.TIMETABLE_CACHE_VERSION] = v }
     suspend fun setGlassBlur(v: Int) = context.dataStore.edit { it[Keys.GLASS_BLUR] = v.coerceIn(0, 100) }
     suspend fun setHomeTimesHorizontal(v: Boolean) = context.dataStore.edit { it[Keys.HOME_TIMES_ROW] = v }
+    suspend fun setQuranFlowText(v: Boolean) = context.dataStore.edit { it[Keys.QURAN_FLOW_TEXT] = v }
     suspend fun setGlassIntroShown(v: Boolean) = context.dataStore.edit { it[Keys.GLASS_INTRO_SHOWN] = v }
     suspend fun setGlassTheme(v: Boolean) = context.dataStore.edit { it[Keys.GLASS_THEME] = v }
     suspend fun setHomeShortcut(route: String) = context.dataStore.edit { it[Keys.HOME_SHORTCUT] = route }

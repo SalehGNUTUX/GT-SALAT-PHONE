@@ -17,8 +17,8 @@ android {
         applicationId = "io.github.salehgnutux.gtsalat"
         minSdk = 26
         targetSdk = 36
-        versionCode = 48
-        versionName = "2.2"
+        versionCode = 49
+        versionName = "2.3-beta"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -75,6 +75,24 @@ android {
             applicationIdSuffix = ".debug"
             // الحزم الموزَّعة تُبنى اليوم من نوع debug، فتوقَّع بالمفتاح الدائم لا بمفتاح الجهاز.
             signingConfigs.findByName("permanent")?.let { signingConfig = it }
+        }
+    }
+
+    // المحدِّث الذاتيّ في النكهتين ما دام التطبيق خارج متجر غوغل بلاي (منذ 2.3).
+    // سياسة بلاي تمنع تحديث التطبيق نفسه، فبناء المتجر يُخرجه من full: ./gradlew bundleFullRelease -PplayStore=true
+    // الشيفرة في src/selfUpdate، وبدائلها الفارغة (نفس التواقيع) في src/playStore.
+    val playStoreBuild = (findProperty("playStore") as String?)?.toBoolean() == true
+    sourceSets {
+        getByName("foss") {
+            java.srcDir("src/selfUpdate/java")
+            kotlin.srcDir("src/selfUpdate/java")
+            manifest.srcFile("src/selfUpdate/AndroidManifest.xml")
+        }
+        getByName("full") {
+            val dir = if (playStoreBuild) "src/playStore" else "src/selfUpdate"
+            java.srcDir("$dir/java")
+            kotlin.srcDir("$dir/java")
+            manifest.srcFile("$dir/AndroidManifest.xml")
         }
     }
 

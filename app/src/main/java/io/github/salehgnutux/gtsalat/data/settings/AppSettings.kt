@@ -66,6 +66,7 @@ data class AppSettings(
     val locationTimeZoneKey: String = "",        // مفتاح الموقع الذي جاءت معه
     val timetableCacheVersion: Int = 0,          // إصدار طريقة تخزين المواقيت (لمسح القديم مرّةً)
     val glassBlur: Int = 30,
+    val quranFlowText: Boolean = true,           // القرآن النصّيّ: نصٌّ متّصلٌ صفحةً صفحة كالمصحف (افتراضيّ) أو بطاقة لكلّ آية
     val homeTimesHorizontal: Boolean = true,     // مواقيت الرئيسيّة: صفٌّ عرضيٌّ كالودجت (افتراضيّ) أو قائمةٌ طوليّة، تُقلَب بلمسة                     // شدّة تغبيش الخلفيّة خلف الزجاج: 0 حادّة · 100 تمويهٌ كامل
     val glassIntroShown: Boolean = false,         // نافذة التعريف بالسمة الزجاجيّة (مرّةً بعد التثبيت أو التحديث)
     val glassTheme: Boolean = true,              // السمة الزجاجيّة

@@ -281,6 +281,10 @@ class SettingsViewModel @Inject constructor(
         _locationStatus.value = "✓ استُعيد الموقع: $name"
     }
 
+    fun removeLocationFromHistory(place: io.github.salehgnutux.gtsalat.domain.Place) = viewModelScope.launch {
+        settingsRepo.removeLocationFromHistory(place)
+    }
+
     /** إدخال الموقع يدويّاً بخطّي العرض/الطول (دون إنترنت). */
     fun setManualLocation(lat: Double, lon: Double) = viewModelScope.launch {
         settingsRepo.setAutoUpdateLocation(false)   // اختيارٌ صريح: لا يستبدله التحديث التلقائيّ

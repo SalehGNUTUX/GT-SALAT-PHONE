@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  تراكبُ نكهة foss (تنزيلٌ مباشر + F-Droid): تضيف ما يخصّ المحدِّث الذاتيّ وحده.
-  سياسةُ غوغل بلاي تمنع هذا (تحديثُ التطبيق نفسَه)، فيخرج من نكهة full كلَّه — شيفرةً
-  وبياناً — عبر شجرة المصدر لا رايةً وقتَ التشغيل.
+  تراكب المحدِّث الذاتيّ: يُضاف إلى نكهتَي foss وfull (انظر sourceSets في app/build.gradle.kts).
+  سياسة غوغل بلاي تمنع تحديث التطبيق نفسه، فبناء المتجر (-PplayStore=true) يستبدل به src/playStore.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 

@@ -1,0 +1,23 @@
+خطوط المصحف المضمَّنة في GT-SALAT
+==================================
+
+1) res/font/uthmanic_hafs.ttf — KFGQPC HAFS Uthmanic Script، الإصدار 2.2
+   مجمّع الملك فهد لطباعة المصحف الشريف — https://fonts.qurancomplex.gov.sa/
+   يُوزَّع دون تعديلٍ ومجّاناً وفق ترخيصه المضمَّن في الخطّ نفسه، ونصّه:
+
+   By installing this Font You accept all the terms and conditions of this Agreement.
+   Copyright (c) 2010 by King Fahd Glorious Quran Printing Complex (KFGQPC), AlMadinah AlMunawarrah, Kingdom of Saudi Arabia. All Rights Reserved. KFGQPC retains full title and ownership of this Typeface both as artwork and font software. This Agreement does not grant you any intellectual property rights in the Font.
+   Permission is hereby granted, Free of Cost, to any person obtaining a copy of this Font accompanying this license, the rights to Use, Copy, Distribute, subject to the following conditions:
+   1.    The Font Software cannot be Sold, Modified, Altered, Translated, Reverse Engineered, Decompiled, Disassembled, Reproduced or Attempted to discover the Source Code of this Font in no means.
+   2.    The Font Software is provided "AS IS", and KFGQPC makes no warranties as to its use or performance, fitness for a particular purpose. KFGQPC does not and cannot warrant the performance or results you may obtain by using the Font. In no event shall KFGQPC be liable for any Claims, Damages or other Liability, including any Damages, arising from, out of the use or inability to use the Font or from other dealings in the Font.
+
+2) res/font/maghribi_quran.otf — AALMAGHRIBI، الإصدار 4.9.6 (04-02-2024)
+   «Created Font by Tayi Idriss morocco. Foundation Mohammed VI for the publication
+   of the Holy Quran. The Kingdom of Morocco.» — يُوزَّع دون تعديل.
+
+3) res/font/amiri_quran.ttf — Amiri Quran، بترخيص SIL Open Font License 1.1.
+
+نصوص روايات ورش وقالون والدوري (assets/content/riwaya_*.json): نصوص مجمّع الملك فهد
+عبر github.com/fawazahmed0/quran-api (ara-quranwarsh وara-quranqaloon وara-qurandoori)،
+بترقيم الآيات العثمانيّ. تُعرَض كما هي، وتحويل بعض العلامات إلى ترميز الخطّ المغربيّ
+يجري وقت العرض فقط (`domain/QuranText`).

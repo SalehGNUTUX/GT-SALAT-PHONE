@@ -115,6 +115,14 @@ data class PlacesFile(val places: List<Place>)
 /** أدوات المواقع المُضمَّنة — استدلالٌ على المدينة من الإحداثيّات دون إنترنت. */
 object Places {
     /**
+     * هل هما الموقع نفسه؟ بالإحداثيّات (نحو 5 كم) أو بالاسم والبلد معاً.
+     * الإحداثيّات أوّلاً لأنّ الاسم يتبدّل بين «Salé» و«سلا» بخيار الترجمة.
+     */
+    fun same(a: Place, b: Place): Boolean =
+        (kotlin.math.abs(a.lat - b.lat) < 0.05 && kotlin.math.abs(a.lon - b.lon) < 0.05) ||
+            (a.city.isNotBlank() && a.city.equals(b.city, ignoreCase = true) && a.country.equals(b.country, ignoreCase = true))
+
+    /**
      * أقربُ مدينةٍ من القائمة المُضمَّنة لإحداثيّاتٍ معطاة، بشرط أن تكون ضمن النطاق [maxKm]
      * (وإلّا فلا نُلصق اسمًا بعيدًا) — يُستعمَل للترميز العكسيّ دون إنترنت.
      */

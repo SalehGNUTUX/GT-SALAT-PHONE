@@ -195,6 +195,6 @@ class RuqyahAudioService : Service() {
         const val EXTRA_AYAHS = "ayahs"
         const val EXTRA_LABELS = "labels"
         const val EXTRA_INDEX = "index"
-        private const val RECITER = "Alafasy_128kbps"   // مشاري العفاسي (everyayah)
+        private const val RECITER = "Husary_128kbps"   // محمود خليل الحصري (everyayah)
     }
 }

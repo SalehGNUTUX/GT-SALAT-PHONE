@@ -13,6 +13,13 @@ import kotlinx.serialization.Serializable
  * - صور المصحف: `https://raw.githubusercontent.com/SalehGNUTUX/Quran-PNG/master/{PPP}.png` (+ بدائل)
  */
 object Quran {
+    /**
+     * قرّاءٌ مستبعَدون بطلب المستخدم (منذ 2.3): لا يظهرون في التلاوة ولا الإذاعات ولا المتابعة.
+     * القائمة المُضمَّنة نُقّيت منهم، وهذا الفحص لقائمة mp3quran الحيّة ولما حُفظ قبل الإزالة.
+     */
+    fun isExcludedReciter(name: String, server: String = ""): Boolean =
+        name.contains("العفاسي") || server.contains("/afs/") || server.contains("Alafasy", ignoreCase = true)
+
     const val TOTAL_SURAHS = 114
     const val TOTAL_PAGES = 604
     const val TOTAL_JUZ = 30
@@ -131,6 +138,8 @@ data class QuranMeta(
     val riwayat: List<Riwaya> = emptyList(),
     val reciters: List<Reciter> = emptyList(),
     val surahReciters: List<SurahReciter> = emptyList(),
+    /** بداية كلّ صفحةٍ من المصحف المدنيّ [سورة، آية] — 604 مدخلاً، للعرض المتّصل صفحةً صفحة. */
+    val pageStarts: List<List<Int>> = emptyList(),
 )
 
 /** آيةٌ نصّيّة (رقم + نصّ) — تُشتقّ من tafsir.json. */

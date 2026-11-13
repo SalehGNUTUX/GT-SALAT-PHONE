@@ -24,12 +24,14 @@ object Credits {
         Source("mp3quran.net", "تلاوات السور الكاملة", "https://mp3quran.net"),
         Source("Quran-PNG", "صور صفحات مصحف المدينة (حفص)", "https://github.com/SalehGNUTUX/Quran-PNG"),
         Source("QuranHub/quran-pages-images", "صور مصحف ورش (مجمّع الملك فهد)", "https://github.com/QuranHub/quran-pages-images"),
-        Source("alquran.cloud (روايات)", "نصّ القرآن بالروايات (ورش/قالون/الدوري)", "https://alquran.cloud"),
+        Source("مجمّع الملك فهد · quran-api", "نصوص روايات ورش وقالون والدوري، مضمَّنةً بترقيمٍ عثمانيّ", "https://github.com/fawazahmed0/quran-api"),
         Source("AlAdhan API", "المواقيت والتاريخ الهجريّ", "https://aladhan.com"),
         Source("Adhan (Batoul Apps)", "حساب المواقيت والقبلة محلّيّاً", "https://github.com/batoulapps/adhan-java"),
         Source("GeoNames", "إحداثيّات المدن والبلدات المغربيّة لتحديد الموقع دون إنترنت (CC BY 4.0)", "https://www.geonames.org"),
         Source("OpenStreetMap · Nominatim", "الموقع بلا خدمات Google، والأسماء العربيّة للبلدات المغربيّة (ODbL)", "https://www.openstreetmap.org/copyright"),
-        Source("خطّ أميري", "الخطّ القرآنيّ للنصوص", "https://www.amirifont.org"),
+        Source("خطّ أميري", "الخطّ القرآنيّ للنصوص ولرواية الدوري", "https://www.amirifont.org"),
+        Source("الخطّ المغربيّ AALMAGHRIBI", "خطّ روايتَي ورش وقالون — مؤسّسة محمّد السادس لنشر القرآن الكريم", "https://github.com/SalehGNUTUX/GT-SQR/tree/main/fonts"),
+        Source("خطّ المجمّع العثمانيّ (حفص)", "خطّ رواية حفص — مجمّع الملك فهد لطباعة المصحف الشريف", "https://fonts.qurancomplex.gov.sa"),
         Source("خطّ Ubuntu Arabic", "خطّ الواجهة", "https://design.ubuntu.com/font"),
     )
 }

@@ -9,6 +9,17 @@ import io.github.salehgnutux.gtsalat.R
 
 val UbuntuArabic = FontFamily(Font(R.font.ubuntu_arabic))
 val AmiriQuran = FontFamily(Font(R.font.amiri_quran))
+/** الخطّ المغربيّ (AALMAGHRIBI، مؤسّسة محمّد السادس) لروايتَي ورش وقالون. */
+val MaghribiQuran = FontFamily(Font(R.font.maghribi_quran))
+/** خطّ المجمّع العثمانيّ (KFGQPC HAFS) لرواية حفص. */
+val UthmanicHafs = FontFamily(Font(R.font.uthmanic_hafs))
+
+/** خطّ نصّ القرآن حسب اسمه في `quran_meta.json` (حقل `font` للرواية). */
+fun quranFontFamily(name: String?): FontFamily = when (name) {
+    "Maghribi" -> MaghribiQuran
+    "UthmanicHafs" -> UthmanicHafs
+    else -> AmiriQuran
+}
 
 /** الطباعة الأساسيّة بخطّ Ubuntu Arabic؛ يُستعمل Amiri للنصوص القرآنيّة والأذكار. */
 val GtTypography = Typography().run {
